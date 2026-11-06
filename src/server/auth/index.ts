@@ -51,9 +51,13 @@ export async function rateLimitPeek(scope: string, action: string, windowMinutes
 // ---------- demo gate ----------
 export async function openGate(password: string, ip: string) {
   if (!isDemoMode()) throw new AppError('NOT_FOUND', 404, 'Not found.');
-  if (await rateLimitHit(`gate:${ip}`, 'gate', 15, 10)) throw new AppError('RATE_LIMITED', 429, 'Too many attempts. Try again later.');
+  // Only failed attempts count towards the limit (10 per IP per 15 real minutes).
+  if ((await rateLimitPeek(`gate:${ip}`, 'gate_fail', 15)) >= 10) throw new AppError('RATE_LIMITED', 429, 'Too many attempts. Try again later.');
   const expected = process.env.DEMO_ACCESS_PASSWORD ?? '';
-  if (!expected || !safeEqual(sha256(password), sha256(expected))) throw new AppError('BAD_GATE', 401, 'That access password did not work.');
+  if (!expected || !safeEqual(sha256(password), sha256(expected))) {
+    await rateLimitHit(`gate:${ip}`, 'gate_fail', 15, 1000);
+    throw new AppError('BAD_GATE', 401, 'That access password did not work.');
+  }
   const token = randomToken();
   await db().insert(demoAccessSessions).values({ tokenHash: hashToken(token), csrfHash: hashToken(csrfFor(token)), expiresAt: new Date(Date.now() + prototype.sessionHours * 3600_000) });
   return token;

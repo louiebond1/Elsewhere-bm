@@ -19,7 +19,7 @@ test('S01 anonymous match: no name or employer anywhere before acceptance, inclu
   await expect(rail).toBeVisible();
   await expect(rail.getByText(/£8,800/)).toBeVisible();
   await page.getByRole('link', { name: 'View evidence' }).first().click();
-  await expect(page.getByText(/18 to 4/)).toBeVisible();
+  await expect(page.getByText(/18 to 4/).first()).toBeVisible();
   const html = await page.content();
   for (const s of ['Maya', 'Ellis', 'Mallow', 'candidate.c01']) expect(html).not.toContain(s);
   for (const b of bodies) for (const s of ['Maya Ellis', 'Mallow Retail', 'candidate.c01']) expect(b).not.toContain(s);
@@ -37,6 +37,7 @@ test('S02 deposit on acceptance, balance on hire, reload safe', async ({ page })
   await switchTo(page, 'Emma Stone');
   await page.goto('/client/roles');
   await page.getByRole('link', { name: 'Assistant Accountant' }).click();
+  await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
   await page.goto(page.url().split('?')[0] + '?tab=pipeline');
   await expect(page.getByText('Maya Ellis').first()).toBeVisible();
   await page.getByRole('button', { name: 'Record hire' }).first().click();
@@ -54,6 +55,7 @@ test('S12 employer hiding: C05 is invisible to Alder and a guessed URL is a 404'
   await switchTo(page, 'Emma Stone');
   await page.goto('/client/roles');
   await page.getByRole('link', { name: 'Assistant Accountant' }).click();
+  await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
   const roleUrl = page.url().split('?')[0];
   expect(await page.content()).not.toContain('Hannah');
   const r = await page.goto(roleUrl + '/candidates/R0000000000000000000a');
