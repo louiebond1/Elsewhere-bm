@@ -43,7 +43,7 @@ async function nextTopic(ctx: Ctx, conv: typeof conversations.$inferSelect): Pro
 async function addQuestion(ctx: Ctx, conv: typeof conversations.$inferSelect) {
   const topic = await nextTopic(ctx, conv);
   if (!topic) return null;
-  let text = TOPIC_BANK[topic];
+  const text = TOPIC_BANK[topic];
   let reason = 'A specific example helps employers understand what you did.';
   if (aiMode() === 'live') {
     // Live phrasing is requested by the route after commit (no network call while locks are held).

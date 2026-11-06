@@ -7,8 +7,8 @@ import { LevelBadge } from './role';
 import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
-export async function CandidateDetail({ ctx, roleId, ref, base }: { ctx: Ctx; roleId: string; ref: string; base: string }) {
-  const { role, dto, introId, introState, counters } = await candidateOnRole(ctx, roleId, ref);
+export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx: Ctx; roleId: string; candidateRef: string; base: string }) {
+  const { role, dto, introId, introState, counters } = await candidateOnRole(ctx, roleId, candidateRef);
   const ch = await roleCharges(ctx, roleId);
   const name = dto.identity ? dto.identity.fullName : `Candidate ${dto.roleScopedReference.slice(0, 9)}`;
   return (
@@ -35,9 +35,9 @@ export async function CandidateDetail({ ctx, roleId, ref, base }: { ctx: Ctx; ro
         <aside className="space-y-4">
           <Card title="Next steps">
             <div className="flex flex-col gap-2">
-              {!introState && <RequestIntro roleId={roleId} candidateRef={ref} depositPaid={ch.depositPaid} holdExists={!!ch.holdUnits} depositUnits={ch.depositUnits} depositPence={ch.depositPence} disabledReason={dto.permittedActionFlags.canRequestIntro ? null : counters.accepted >= 10 ? 'This role has used all 10 accepted introductions.' : 'Not available'} />}
+              {!introState && <RequestIntro roleId={roleId} candidateRef={candidateRef} depositPaid={ch.depositPaid} holdExists={!!ch.holdUnits} depositUnits={ch.depositUnits} depositPence={ch.depositPence} disabledReason={dto.permittedActionFlags.canRequestIntro ? null : counters.accepted >= 10 ? 'This role has used all 10 accepted introductions.' : 'Not available'} />}
               {introState === 'pending' && <Notice>Introduction requested. Awaiting the candidate&apos;s response.</Notice>}
-              {(!dto.screeningStatus || dto.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={ref} disabledReason={dto.permittedActionFlags.canRequestScreening ? null : 'All five included screenings are used or booked.'} />}
+              {(!dto.screeningStatus || dto.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={candidateRef} disabledReason={dto.permittedActionFlags.canRequestScreening ? null : 'All five included screenings are used or booked.'} />}
               {dto.screeningStatus && dto.screeningStatus !== 'cancelled' && <p className="text-[15px]">Screening: {dto.screeningStatus}. {dto.screeningSummary ?? 'Your consultant has this request.'}</p>}
             </div>
           </Card>

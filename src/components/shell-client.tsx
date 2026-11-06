@@ -15,7 +15,11 @@ export function NotificationBell({ base }: { base: string }) {
   const csrf = useCsrf();
   const router = useRouter();
   const load = async () => { const r = await api<N[]>('notifications'); if (r.ok) setItems(r.data); };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let alive = true;
+    api<N[]>('notifications').then((r) => { if (alive && r.ok) setItems(r.data); });
+    return () => { alive = false; };
+  }, []);
   const unread = items.filter((i) => !i.readAt).length;
   const hrefFor = (n: N) => {
     if (n.ref === 'role') return `${base}/roles/${n.refId}`;

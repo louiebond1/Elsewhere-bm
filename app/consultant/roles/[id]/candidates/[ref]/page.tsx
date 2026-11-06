@@ -9,7 +9,7 @@ export default async function Page({ params }: { params: Promise<{ id: string; r
   const { id, ref } = await params;
   if (!isUuid(id)) notFound();
   try {
-    return await CandidateDetail({ ctx, roleId: id, ref, base: '/consultant' });
+    return await CandidateDetail({ ctx, roleId: id, candidateRef: ref, base: '/consultant' });
   } catch (e) {
     if (e instanceof AppError && e.status === 404) notFound();
     throw e;

@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, bigserial, uuid, text, timestamp, integer, boolean, bigint, jsonb, date, uniqueIndex, index, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, bigserial, uuid, text, timestamp, integer, boolean, bigint, jsonb, date, uniqueIndex, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ---------- shared columns ----------

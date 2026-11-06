@@ -8,7 +8,6 @@ import { lockWallet, balances, insertTransaction, orderPaymentState, shortfallEr
 import { logActivity } from './audit';
 import { requireUser, type Ctx } from './context';
 import { roleDraftInput, roleUpdateInput, type RoleDraftInput } from './inputs';
-import type { z } from 'zod';
 
 export type Role = typeof roles.$inferSelect;
 export type Order = typeof hireOrders.$inferSelect;

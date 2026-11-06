@@ -11,7 +11,6 @@ import { enqueue } from './jobs';
 import { safeClaimProblems } from '../ai/validate';
 import { signupInput, preferencesInput, employerInput, evidenceReviseInput } from './inputs';
 import { storage } from './storage';
-import type { z } from 'zod';
 
 export const TERMS_VERSION = 'prototype-terms-v1';
 
