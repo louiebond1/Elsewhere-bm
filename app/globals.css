@@ -1,0 +1,34 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-page: #F6F7F9;
+  --color-surface: #FFFFFF;
+  --color-ink: #17212B;
+  --color-muted: #596675;
+  --color-line: #DDE3EA;
+  --color-primary: #183B56;
+  --color-primary-hover: #10293D;
+  --color-link: #145A7A;
+  --color-success: #176B4D;
+  --color-success-tint: #E6F2EC;
+  --color-warning: #8A5700;
+  --color-warning-tint: #FBF1DF;
+  --color-danger: #B42318;
+  --color-danger-tint: #FBE9E7;
+  --color-info-tint: #E7EEF4;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--color-page); color: var(--color-ink); font-size: 16px; line-height: 1.5; }
+h1 { font-size: 28px; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; }
+h2 { font-size: 24px; line-height: 1.3; font-weight: 650; }
+h3 { font-size: 20px; line-height: 1.35; font-weight: 600; }
+input, select, textarea { font-size: 16px; }
+a { color: var(--color-link); }
+:focus-visible { outline: 3px solid #4C8DBA; outline-offset: 2px; border-radius: 6px; }
+* { transition-duration: 150ms; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.skeleton { background: linear-gradient(90deg, #EEF1F4, #F6F7F9, #EEF1F4); background-size: 200% 100%; animation: sk 1.2s infinite; border-radius: 8px; }
+@keyframes sk { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
