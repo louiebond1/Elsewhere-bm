@@ -96,7 +96,7 @@ export function Tabs({ tabs, current }: { tabs: Array<{ key: string; label: stri
   return (
     <nav className="mb-4 flex gap-1 overflow-x-auto border-b border-line" aria-label="Sections">
       {tabs.map((t) => (
-        <Link key={t.key} href={t.href} aria-current={t.key === current ? 'page' : undefined} className={cx('whitespace-nowrap border-b-2 px-3 py-2.5 text-[15px] no-underline', t.key === current ? 'border-primary font-semibold text-ink' : 'border-transparent text-muted hover:text-ink')}>
+        <Link key={t.key} href={t.href} aria-current={t.key === current ? 'page' : undefined} className={cx('whitespace-nowrap border-b-2 px-3 py-2.5 text-[15px] no-underline', t.key === current ? 'border-accent font-medium text-ink' : 'border-transparent text-muted hover:text-ink')}>
           {t.label}{t.count !== undefined ? <span className="ml-1.5 text-[13px] text-muted">{t.count}</span> : null}
         </Link>
       ))}

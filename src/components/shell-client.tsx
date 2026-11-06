@@ -2,7 +2,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Bell, LogOut, Menu, X, Repeat } from 'lucide-react';
+import { Bell, Menu, X, Repeat, Home, User, Users, Star, Search, ClipboardList, Briefcase, CreditCard, GraduationCap, LifeBuoy, FileText, Shield, MessageSquare, Inbox } from 'lucide-react';
+
+const ICONS: Record<string, typeof Home> = { home: Home, clients: User, candidates: User, hires: Star, ops: Search, demo: ClipboardList, roles: Briefcase, credits: CreditCard, training: GraduationCap, support: LifeBuoy, profile: User, intros: Inbox, checkins: MessageSquare, cv: FileText, privacy: Shield, users: Users };
 import { api, useCsrf, Dialog } from './client';
 import { relative } from '../lib/format';
 import { cx } from './ui';
@@ -63,8 +65,8 @@ export function NotificationBell({ base }: { base: string }) {
 export function SignOut() {
   const csrf = useCsrf();
   return (
-    <button type="button" className="inline-flex h-11 items-center gap-2 rounded-lg px-3 text-[15px] hover:bg-page" onClick={async () => { await api('auth/logout', { body: {}, csrf }); try { sessionStorage.clear(); } catch {} window.location.replace('/login'); }}>
-      <LogOut size={18} aria-hidden /> <span className="hidden sm:inline">Sign out</span>
+    <button type="button" className="inline-flex h-11 items-center rounded-lg px-3 text-[15px] hover:bg-page" onClick={async () => { await api('auth/logout', { body: {}, csrf }); try { sessionStorage.clear(); } catch {} window.location.replace('/login'); }}>
+      Sign out
     </button>
   );
 }
@@ -79,15 +81,21 @@ export function SwitchPersona() {
 
 export type NavItem = { href: string; label: string; icon: string };
 
-export function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
+export function NavLinks({ items, onNavigate, dark }: { items: NavItem[]; onNavigate?: () => void; dark?: boolean }) {
   const path = usePathname();
   return (
-    <ul className="space-y-1">
+    <ul className={dark ? '' : 'space-y-1'}>
       {items.map((i) => {
         const active = path === i.href || path.startsWith(i.href + '/');
+        const Icon = ICONS[i.icon] ?? Home;
         return (
           <li key={i.href}>
-            <Link href={i.href} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={cx('flex h-11 items-center rounded-lg px-3 text-[15px] no-underline', active ? 'bg-info-tint font-semibold text-ink' : 'text-ink hover:bg-page')}>{i.label}</Link>
+            <Link href={i.href} onClick={onNavigate} aria-current={active ? 'page' : undefined}
+              className={dark
+                ? cx('flex h-[60px] items-center gap-3 border-l-[3px] px-5 text-[16px] no-underline', active ? 'border-accent bg-sidebar-hover text-white' : 'border-transparent text-white/85 hover:bg-sidebar-hover hover:text-white')
+                : cx('flex h-11 items-center gap-3 rounded-lg px-3 text-[15px] no-underline', active ? 'bg-info-tint font-semibold text-ink' : 'text-ink hover:bg-page')}>
+              <Icon size={20} strokeWidth={1.6} aria-hidden />{i.label}
+            </Link>
           </li>
         );
       })}

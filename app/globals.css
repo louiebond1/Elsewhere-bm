@@ -18,6 +18,10 @@
   --color-danger: #B42318;
   --color-danger-tint: #FBE9E7;
   --color-info-tint: #E7EEF4;
+  --color-accent: #D9861C;
+  --color-sidebar: #1C2531;
+  --color-sidebar-hover: #263241;
+  --color-banner: #142B45;
 }
 
 @layer base {
