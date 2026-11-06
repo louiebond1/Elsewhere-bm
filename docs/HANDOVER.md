@@ -17,7 +17,7 @@ Built overnight from the build specification (Version 1, 6 November 2026). This 
 
 - Unit (Vitest): 40 passed (`npm run test:unit`): pricing vectors and properties, dates, eligibility, scoring, auto-picks.
 - Integration (Vitest, real PostgreSQL): 43 passed across `financial`, `privacy` and `ai-and-jobs`. They cover S02 to S26 financial outcomes, concurrency (simultaneous accepts, hires and extra-role activations), the privacy P-series and the S23 job retry.
-- E2E (Playwright): see the final report for the latest run.
+- E2E (Playwright, against a production build): 9 tests: gate, S01 anonymity including network payloads, S02 through the UI, S12 hiding and 404, CSRF and cross-origin rejection, dialog keyboard focus, and no horizontal scroll at phone width. All 9 passed. The last two failures were fixed test waits, rerun and passing.
 
 ## Deliberate interpretations (please check)
 
