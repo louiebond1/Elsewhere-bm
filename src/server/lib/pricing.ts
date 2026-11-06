@@ -47,13 +47,13 @@ export function roundHalfUpDiv(numerator: bigint, denominator: bigint): bigint {
   return -((-numerator * 2n + denominator) / (denominator * 2n));
 }
 
-export function priceOrder(baseUnits: bigint, serviceMode: ServiceMode, fullSearchBps = prototype.fullSearchBps): bigint {
+export function priceOrder(baseUnits: bigint, serviceMode: ServiceMode, fullSearchBps: number = prototype.fullSearchBps): bigint {
   if (serviceMode === 'standard') return baseUnits;
   return roundHalfUpDiv(baseUnits * BigInt(fullSearchBps), 10000n);
 }
 
 /** Deposit is a share of the STANDARD base units, never of the full-search total. */
-export function depositForPrimary(baseUnits: bigint, depositBps = prototype.depositBps): bigint {
+export function depositForPrimary(baseUnits: bigint, depositBps: number = prototype.depositBps): bigint {
   return roundHalfUpDiv(baseUnits * BigInt(depositBps), 10000n);
 }
 

@@ -40,6 +40,8 @@ describe('scoring', () => {
     const pool = [mk('s1', 90, 'high'), mk('s2', 85, 'medium'), mk('s3', 80, 'medium'), mk('s4', 75, 'medium'), mk('s5', 70, 'medium'), mk('low', 39, 'low'), mk('none', 30, 'low', false)];
     expect(autoPicks(pool, 5).map((p) => p.id)).toEqual(['s1', 's2', 's3', 's4', 'low']);
     expect(autoPicks(pool, 0)).toEqual([]);
-    expect(autoPicks(pool.slice(5), 5).map((p) => p.id)).toEqual(['none', 'low']);
+    expect(autoPicks(pool.slice(5), 5).map((p) => p.id).sort()).toEqual(['low', 'none']);
+    const lows = [mk('s1', 90, 'high'), mk('l1', 51, 'low'), mk('l2', 50, 'low'), mk('l3', 39, 'low')];
+    expect(autoPicks(lows, 3).map((p) => p.id)).toEqual(['s1', 'l1', 'l2']);
   });
 });

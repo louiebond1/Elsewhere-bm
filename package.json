@@ -6,7 +6,25 @@
   "engines": {
     "node": ">=22.14"
   },
-  "scripts": {},
+  "scripts": {
+    "dev": "next dev",
+    "worker:dev": "tsx watch --conditions=react-server src/server/worker.ts",
+    "build": "next build",
+    "start": "node scripts/start.mjs",
+    "worker": "tsx --conditions=react-server src/server/worker.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx --conditions=react-server scripts/migrate.ts",
+    "db:seed": "tsx --conditions=react-server scripts/seed.ts",
+    "demo:reset": "tsx --conditions=react-server scripts/reset.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "test": "vitest run",
+    "check:env": "tsx --conditions=react-server scripts/check-env.ts",
+    "check:seed": "tsx --conditions=react-server scripts/check-seed.ts"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "1.6.0",
     "@aws-sdk/client-s3": "3.1163.0",
@@ -41,5 +59,6 @@
     "tailwindcss": "4.3.4",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
-  }
+  },
+  "type": "module"
 }

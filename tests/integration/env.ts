@@ -1,0 +1,10 @@
+process.env.APP_MODE = 'demo';
+process.env.APP_URL = 'http://localhost:3000';
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://bm:bm@localhost:5432/bondmoran_test';
+process.env.AI_PROVIDER = 'fixture';
+process.env.STORAGE_DRIVER = 'database';
+process.env.DEMO_ACCESS_PASSWORD = 'test-gate-password';
+process.env.DEMO_LOGIN_PASSWORD = 'TestOnly2026!';
+process.env.SESSION_PEPPER = 'a'.repeat(64);
+process.env.PUBLIC_REF_SECRET = 'b'.repeat(64);
+process.env.PG_POOL_MAX = '8';
