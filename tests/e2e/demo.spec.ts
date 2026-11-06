@@ -15,8 +15,9 @@ test('S01 anonymous match: no name or employer anywhere before acceptance, inclu
   const bodies: string[] = [];
   page.on('response', async (r) => { try { if (r.url().startsWith(new URL(page.url()).origin)) bodies.push(await r.text()); } catch {} });
   await page.getByRole('link', { name: /Assistant Accountant/ }).first().click();
-  await expect(page.getByText('Your hire price')).toBeVisible();
-  await expect(page.getByText('£8,800')).toBeVisible();
+  const rail = page.locator('aside').filter({ hasText: 'Your hire price' });
+  await expect(rail).toBeVisible();
+  await expect(rail.getByText(/£8,800/)).toBeVisible();
   await page.getByRole('link', { name: 'View evidence' }).first().click();
   await expect(page.getByText(/18 to 4/)).toBeVisible();
   const html = await page.content();
@@ -30,6 +31,8 @@ test('S02 deposit on acceptance, balance on hire, reload safe', async ({ page })
   await page.goto('/candidate/introductions');
   await page.getByRole('button', { name: 'Accept introduction' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Accept introduction' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goto('/candidate/introductions?tab=accepted');
   await expect(page.getByRole('link', { name: 'Interview prep' })).toBeVisible();
   await switchTo(page, 'Emma Stone');
   await page.goto('/client/roles');
@@ -57,7 +60,7 @@ test('S12 employer hiding: C05 is invisible to Alder and a guessed URL is a 404'
   expect(r?.status()).toBe(404);
   await switchTo(page, 'Hannah Cole');
   await page.goto('/candidate/privacy');
-  await expect(page.getByText('Alder Works').first()).toBeVisible();
+  await expect(page.locator('li').filter({ hasText: 'Alder Works' }).first()).toBeVisible();
 });
 
 test('mutations without CSRF or from another origin fail', async ({ page }) => {
