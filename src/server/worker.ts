@@ -1,4 +1,6 @@
 /** Durable job worker. Run with `npm run worker`. Uses the same services and policies as the web app. */
+import { loadEnv } from '../../scripts/load-env';
+loadEnv();
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { db, closeDb } from './db/client';

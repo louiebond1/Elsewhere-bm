@@ -20,6 +20,7 @@
   --color-info-tint: #E7EEF4;
 }
 
+@layer base {
 html { -webkit-text-size-adjust: 100%; }
 body { background: var(--color-page); color: var(--color-ink); font-size: 16px; line-height: 1.5; }
 h1 { font-size: 28px; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; }
@@ -30,5 +31,6 @@ a { color: var(--color-link); }
 :focus-visible { outline: 3px solid #4C8DBA; outline-offset: 2px; border-radius: 6px; }
 * { transition-duration: 150ms; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+}
 .skeleton { background: linear-gradient(90deg, #EEF1F4, #F6F7F9, #EEF1F4); background-size: 200% 100%; animation: sk 1.2s infinite; border-radius: 8px; }
 @keyframes sk { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }

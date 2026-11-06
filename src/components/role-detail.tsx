@@ -106,7 +106,7 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
                     <div className="font-semibold">{r.label}</div>
                     {r.ref && <Link href={`${base}/roles/${roleId}/candidates/${r.ref}`} className="text-[13px]">Profile</Link>}
                     {r.identified && <> · <Link href={`${base}/introductions/${r.introId}/prep`} className="text-[13px]">Interview prep</Link></>}
-                    {!r.hired && r.identified && <div className="mt-2 space-y-2"><StageMenu introId={r.introId} stage={r.stage ?? 'introduced'} />{(r.stage === 'offer' || r.stage === 'interview') && <RecordHire introId={r.introId} label={r.label} />}</div>}
+                    {!r.hired && r.identified && <div className="mt-2 space-y-2"><StageMenu introId={r.introId} stage={r.stage ?? 'introduced'} />{r.stage !== 'rejected' && <RecordHire introId={r.introId} label={r.label} />}</div>}
                   </div>
                 ))}
               </div>

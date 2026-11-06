@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCommand, ErrorText, Field, inputClass, textareaClass, Dialog } from './client';
+import { useCommand, ErrorText, Field, inputClass, textareaClass, Dialog, fillTemplate } from './client';
 import { buttonClass } from './ui';
 
 export function AdjustmentForm({ roleId, candidateId, evidence }: { roleId: string; candidateId: string; evidence: { id: string; claim: string }[] }) {
@@ -24,13 +24,15 @@ export function AdjustmentForm({ roleId, candidateId, evidence }: { roleId: stri
   );
 }
 
-export function SimpleForm({ path, fields, submitLabel, extra, redirect, transform }: { path: string; fields: Array<{ name: string; label: string; type?: string; options?: Array<[string, string]>; hint?: string; textarea?: boolean; defaultValue?: string; required?: boolean }>; submitLabel: string; extra?: Record<string, unknown>; redirect?: (d: unknown) => string; transform?: (v: Record<string, string>) => Record<string, unknown> }) {
+export function SimpleForm({ path, fields, submitLabel, extra, redirect, numberFields = [] }: { path: string; fields: Array<{ name: string; label: string; type?: string; options?: Array<[string, string]>; hint?: string; textarea?: boolean; defaultValue?: string; required?: boolean }>; submitLabel: string; extra?: Record<string, unknown>; redirect?: string; numberFields?: string[] }) {
   const { run, busy, error } = useCommand();
   const router = useRouter();
   const [vals, setVals] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.name, f.defaultValue ?? ''])));
   const [saved, setSaved] = useState(false);
   return (
-    <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setSaved(false); const body = { ...(transform ? transform(vals) : vals), ...extra }; const d = await run(path, body); if (d !== null) { setSaved(true); if (redirect) router.push(redirect(d)); } }}>
+    <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); setSaved(false); const conv: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(vals)) { if (v === '') continue; conv[k] = numberFields.includes(k) ? Number(v) : v; }
+      const body = { ...conv, ...extra }; const d = await run(path, body); if (d !== null) { setSaved(true); if (redirect) router.push(fillTemplate(redirect, d)); } }}>
       {fields.map((f) => (
         <Field key={f.name} label={f.label} hint={f.hint} error={error?.fieldErrors?.[f.name]}>
           {f.options ? <select className={inputClass} value={vals[f.name]} onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })}>{f.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>

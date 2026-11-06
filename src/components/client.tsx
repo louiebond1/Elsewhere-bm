@@ -98,7 +98,8 @@ type ActionProps = {
   label: ReactNode;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   confirm?: { title: string; body: ReactNode; confirmLabel?: string; typed?: string };
-  redirect?: string | ((data: unknown) => string | null);
+  /** Path, optionally with {field} placeholders filled from the response data. */
+  redirect?: string;
   disabledReason?: string | null;
   full?: boolean;
   onDone?: (data: unknown) => void;
@@ -118,7 +119,7 @@ export function ActionButton({ path, body = {}, label, variant = 'primary', conf
     setOpen(false);
     setDone(true);
     onDone?.(data);
-    const to = typeof redirect === 'function' ? redirect(data) : redirect;
+    const to = redirect ? fillTemplate(redirect, data) : null;
     if (to) router.push(to);
   };
   return (
@@ -146,6 +147,10 @@ export function ActionButton({ path, body = {}, label, variant = 'primary', conf
       )}
     </span>
   );
+}
+
+export function fillTemplate(t: string, data: unknown) {
+  return t.replace(/\{(\w+)\}/g, (_m, k) => encodeURIComponent(String((data as Record<string, unknown> | null)?.[k] ?? '')));
 }
 
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | null; children: ReactNode }) {
