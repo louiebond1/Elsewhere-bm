@@ -19,6 +19,8 @@ A working prototype built from the *BondMoran and Elsewhere prototype build spec
 7. `npm run dev` and, in another terminal, `npm run worker:dev`
 8. Open http://localhost:3000, enter `DEMO_ACCESS_PASSWORD`, then pick a fictional account. All fictional accounts use `DEMO_LOGIN_PASSWORD`.
 
+Start from nothing: `npm run demo:reset -- --confirm RESET --scenario EMPTY` (or "Start empty workspace" on `/demo/personas`). Only the two consultants exist; clients you create get a login with `DEMO_LOGIN_PASSWORD`.
+
 Reset to the baseline: `npm run demo:reset -- --confirm RESET` (or the Reset demo button on `/demo/personas`). Load a scenario from the command line: `npm run demo:reset -- --confirm RESET --scenario S02`.
 
 ## Commands

@@ -17,7 +17,7 @@ const REASON: Record<string, string> = {
 export default async function CandidateHome() {
   const { ctx } = await pageViewer('candidate');
   const o = await candidateOverview(ctx);
-  const fb = (o.profile?.feedback ?? null) as { strengths: { text: string }[]; gaps: { text: string }[]; nextQuestion?: string } | null;
+  const fb = (o.profile?.feedbackLive ?? o.profile?.feedback ?? null) as { strengths: { text: string }[]; gaps: { text: string }[]; nextQuestion?: string } | null;
   const initial = o.conversations.find((c) => c.kind === 'initial_screening');
   const steps = [
     ['Basics', true],

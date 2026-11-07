@@ -11,8 +11,13 @@ import { AiFailure, type AiProvider, type AiResult } from './providers/types';
 import { eq } from 'drizzle-orm';
 
 export { AiFailure };
-export const aiMode = (): 'fixture' | 'live' => (process.env.AI_PROVIDER === 'live' ? 'live' : 'fixture');
-export const provider = (): AiProvider => (aiMode() === 'live' ? anthropicProvider : fixtureProvider);
+let testProvider: AiProvider | null = null;
+/** Test hook: route live-mode code paths to a stand-in provider without network calls. */
+export function setProviderForTests(p: AiProvider | null) {
+  testProvider = p;
+}
+export const aiMode = (): 'fixture' | 'live' => (testProvider || process.env.AI_PROVIDER === 'live' ? 'live' : 'fixture');
+export const provider = (): AiProvider => testProvider ?? (aiMode() === 'live' ? anthropicProvider : fixtureProvider);
 export const providerLabel = () => (aiMode() === 'live' ? 'Live AI on fictional data' : 'Demo responses');
 
 const EST_OUTPUT: Record<string, number> = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500 };
@@ -53,6 +58,11 @@ export type RunMeta = { task: 'question' | 'extract' | 'feedback' | 'assess' | '
 /** Runs an AI task outside any database transaction and records usage (never bodies). */
 export async function runAi<T>(meta: RunMeta, fn: (p: AiProvider) => Promise<AiResult<T>>): Promise<AiResult<T>> {
   const inputJson = JSON.stringify(meta.input);
+  // Per-user limit on user-initiated generation (real clock). Worker jobs without a user are not counted.
+  if (meta.userId && aiMode() === 'live') {
+    const { rateLimitHit } = await import('../auth');
+    if (await rateLimitHit(`ai:${meta.userId}`, 'ai_request', 60, prototype.aiRequestsPerUserHour)) throw new AiFailure('user_rate_limited', 'You have reached the hourly limit for AI requests. Your work is saved; try again later.');
+  }
   const key = await reserve(meta.task, inputJson.length);
   const started = Date.now();
   await slot();
@@ -65,7 +75,7 @@ export async function runAi<T>(meta: RunMeta, fn: (p: AiProvider) => Promise<AiR
     const code = e instanceof AiFailure ? e.code : 'unknown';
     const u = (e as { usage?: { inputTokens: number; outputTokens: number } }).usage;
     await reconcile(key, u ? u.inputTokens + u.outputTokens : null);
-    await db().insert(aiRuns).values({ datasetId: meta.datasetId ?? null, jobId: meta.jobId ?? null, userId: meta.userId ?? null, candidateId: meta.candidateId ?? null, roleId: meta.roleId ?? null, task: meta.task, provider: aiMode() === 'live' ? 'anthropic' : 'fixture', modelId: aiMode() === 'live' ? cheapModel() : 'fixture', promptVersion: PROMPT_VERSION, inputTokens: u?.inputTokens ?? 0, outputTokens: u?.outputTokens ?? 0, durationMs: Date.now() - started, outcome: code === 'refused' ? 'refused' : 'failed', errorCode: code });
+    await db().insert(aiRuns).values({ datasetId: meta.datasetId ?? null, jobId: meta.jobId ?? null, userId: meta.userId ?? null, candidateId: meta.candidateId ?? null, roleId: meta.roleId ?? null, task: meta.task, provider: aiMode() === 'live' ? 'anthropic' : 'fixture', modelId: testProvider ? 'test' : aiMode() === 'live' ? cheapModel() : 'fixture', promptVersion: PROMPT_VERSION, inputTokens: u?.inputTokens ?? 0, outputTokens: u?.outputTokens ?? 0, durationMs: Date.now() - started, outcome: code === 'refused' ? 'refused' : 'failed', errorCode: code });
     throw e;
   } finally {
     release();

@@ -26,9 +26,15 @@ export default async function Clients() {
             { name: 'name', label: 'Organisation name (fictional)', required: true },
             { name: 'domain', label: 'Domain', hint: 'For example example.test' },
             { name: 'contactName', label: 'Contact name', required: true },
-            { name: 'contactEmail', label: 'Contact email', type: 'email', required: true },
+            { name: 'contactEmail', label: 'Contact email (becomes their login)', type: 'email', required: true, hint: 'They sign in with the shared demo password (DEMO_LOGIN_PASSWORD).' },
             { name: 'consultantUserId', label: 'Named consultant', options: cons.map((c) => [c.id, c.name ?? '']), defaultValue: viewer.actor.userId },
           ]} />
+        </Card>
+      </div>
+      <div className="mt-6 max-w-md">
+        <Card title="Add organisation (not a client)">
+          <p className="mb-3 text-[14px] text-muted">Adds an employer to the directory so a candidate can choose it as their current employer and be hidden from it.</p>
+          <SimpleForm path="consultant/organisations" submitLabel="Add organisation" fields={[{ name: 'name', label: 'Organisation name (fictional)', required: true }, { name: 'domain', label: 'Domain (optional)' }]} />
         </Card>
       </div>
     </>

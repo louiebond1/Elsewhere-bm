@@ -30,12 +30,19 @@ Built overnight from the build specification (Version 1, 6 November 2026). This 
 7. **Storage.** `STORAGE_DRIVER=database` was added for local and test runs without MinIO. Railway uses `s3`.
 8. **Seeded IDs.** UUIDv5 values derived from generation and fixture code, for core entities (users, candidates, clients, roles, organisations, orders, evidence). Lower-level rows use random UUIDs.
 
+## Stage 2 additions
+
+- **Empty workspace.** Choose "Start empty workspace" on `/demo/personas`, or run `npm run demo:reset -- --confirm RESET --scenario EMPTY`. Only Alex Morgan and Jamie Patel exist. Creating a client as a consultant also creates that contact's login, using `DEMO_LOGIN_PASSWORD`. Consultants can add non-client organisations, so candidates can be hidden from their employer. "Back to full demo data" restores the 40-candidate baseline.
+- **Live matching.** In live mode each pair first shows the deterministic result. A per-role `assess_match` worker job then asks Haiku, validates the answer (criteria, evidence ownership, identifying text, current profile and role versions) and stores it with provider `anthropic`. The cached result is reused until the profile or role version changes. Pairs awaiting AI never block introduction requests.
+- **Sonnet review.** On a role's "Consultant review" tab, "Ask for an AI review" produces a proposal (Sonnet in live mode, labelled demo responses in fixture mode). It changes nothing until the consultant presses Apply, and the same validation runs again.
+- **Live feedback.** A `generate_feedback` job writes AI feedback into `profile_versions.feedback_live`. Strengths that cite evidence outside that profile are dropped. The approved profile content stays immutable.
+- **Per-user AI limit.** 60 user-initiated AI requests per real hour, on top of the deployment-wide daily token budget. The token budget is preserved across demo resets.
+- Tests: 89 unit and integration tests, including live paths through a stand-in provider (no network), plus 9 browser tests.
+
 ## Known limitations (not hidden as future work)
 
-- Live-mode **criterion assessment by Haiku** and **Sonnet review** are implemented in the provider (`assessCriteria`) but not yet run by a worker job. Live mode currently uses AI for question phrasing, extraction and role structuring.
-- Live **feedback** text is still generated deterministically from approved evidence.
-- The daily token admission and the concurrency slots are process-local plus database-backed for tokens. They are not tested against a live provider (no API key was used).
-- Rate limiting applies to login, gate and sign-up only. The 60 AI requests per user per hour limit is not enforced separately.
+- Live mode has not been exercised against the real Anthropic API, because no API key was configured. The live code paths are tested with a stand-in provider. Before any real live demo, run one controlled call with a provider spending limit set.
+- Rate limiting covers login failures, gate failures, sign-up and per-user AI requests. Other endpoints are not rate limited.
 - The spec booklet itself is not copied into `docs/`. Add the Word or PDF file there.
 - E2E tests mutate the shared demo dataset. Run them against a disposable database.
 - Pin exact Node image digests in the Dockerfile after testing. The dependency versions are pinned exactly in `package.json` and `package-lock.json`.

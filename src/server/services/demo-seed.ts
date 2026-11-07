@@ -33,6 +33,8 @@ export type SeedOptions = {
   c03MinSalary?: number;
   /** S26: R1 seeded as a full-search draft. */
   r1FullSearchDraft?: boolean;
+  /** Empty workspace: only the two consultant accounts. No clients, candidates or roles. */
+  empty?: boolean;
 };
 
 export async function generateCvPdf(text: string): Promise<Buffer> {
@@ -99,7 +101,7 @@ export async function seedDataset(opts: SeedOptions & { name?: string; scenarioC
 
   // ---- pre-generate CV PDFs outside transactions ----
   const cvBytes = new Map<string, Buffer>();
-  for (const c of CANDIDATES) if (c.code !== 'C40') cvBytes.set(c.code, await generateCvPdf(cvText(c, `candidate.${c.code.toLowerCase()}@example.test`)));
+  if (!opts.empty) for (const c of CANDIDATES) if (c.code !== 'C40') cvBytes.set(c.code, await generateCvPdf(cvText(c, `candidate.${c.code.toLowerCase()}@example.test`)));
 
   await T(system, async (ctx) => {
     const tx = ctx.tx;
@@ -111,6 +113,7 @@ export async function seedDataset(opts: SeedOptions & { name?: string; scenarioC
     };
     const alex = await user('alex', 'alex@bondmoran.example.test', 'consultant', 'Alex Morgan');
     const jamie = await user('jamie', 'jamie@bondmoran.example.test', 'consultant', 'Jamie Patel');
+    if (opts.empty) return;
 
     const org = async (code: string, name: string, domain: string | null, groupId: string | null, isClient: boolean) => {
       const oid = id(`org:${code}`);

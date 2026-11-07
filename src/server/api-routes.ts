@@ -25,7 +25,9 @@ import { and, eq, desc, isNull } from 'drizzle-orm';
 import { activateInput, closeInput, reopenInput, introRequestInput, hireInput, outsideHireInput, departureInput, replacementRequestInput, contractInput, grantInput, reversalInput, screeningRequestInput, screeningCompleteInput, adjustmentInput, workLogInput, answerInput, preferencesInput } from './services/inputs';
 import { prepFor, savePrep } from './services/prep';
 import { runAi, aiMode } from './ai';
-import { questionOutput } from './ai/schemas';
+import { questionOutput, assessmentOutput } from './ai/schemas';
+import { validateAssessment } from './ai/validate';
+import { assessmentInput, applyAssessment } from './services/matching';
 import { TOPIC_BANK } from './ai/prompts';
 import { db } from './db/client';
 import { recomputeRole } from './services/matching';
@@ -179,8 +181,29 @@ export const ROUTES: R[] = [
       await c.tx.insert(S.organisationAliases).values({ datasetId: c.datasetId, organisationId: org.id, aliasNormalized: b.name.toLowerCase(), aliasType: 'name' }).onConflictDoNothing();
       const [cl] = await c.tx.insert(S.clients).values({ datasetId: c.datasetId, organisationId: org.id, consultantUserId: b.consultantUserId, contactName: b.contactName, contactEmail: b.contactEmail, status: 'onboarding' }).returning();
       await c.tx.insert(S.clientOnboarding).values({ datasetId: c.datasetId, clientId: cl.id });
+      // The client contact gets a fictional login that uses the shared demo password.
+      const email = b.contactEmail.trim().toLowerCase();
+      const [taken] = await c.tx.select({ id: S.users.id }).from(S.users).where(and(eq(S.users.datasetId, c.datasetId), eq(S.users.emailNormalized, email)));
+      if (taken) throw new AppError('EMAIL_IN_USE', 409, 'That contact email already has an account in this demo.', { contactEmail: 'Already in use' });
+      const pw = process.env.DEMO_LOGIN_PASSWORD;
+      if (!pw) throw new AppError('CONFIG', 503, 'The demo login password is not configured.');
+      const argon2 = await import('argon2');
+      const [u] = await c.tx.insert(S.users).values({ datasetId: c.datasetId, emailNormalized: email, passwordHash: await argon2.hash(pw, { type: argon2.argon2id }), userType: 'client', displayName: b.contactName }).returning();
+      await c.tx.insert(S.clientMemberships).values({ datasetId: c.datasetId, clientId: cl.id, userId: u.id, membershipRole: 'owner' });
+      await c.tx.insert(S.wallets).values({ datasetId: c.datasetId, clientId: cl.id }).onConflictDoNothing();
       await logActivity(c, { subjectType: 'client', subjectId: cl.id, action: 'client.created', clientId: cl.id });
       return { id: cl.id };
+    });
+  } },
+  { method: 'POST', path: 'consultant/organisations', types: ['consultant'], h: ({ base, body }) => {
+    const b = parse(z.object({ name: z.string().trim().min(2).max(120), domain: z.string().trim().max(120).optional() }), body);
+    return T(base, async (c) => {
+      const [dup] = await c.tx.select({ id: S.organisationAliases.id }).from(S.organisationAliases).where(and(eq(S.organisationAliases.datasetId, c.datasetId), eq(S.organisationAliases.aliasNormalized, b.name.toLowerCase())));
+      if (dup) throw new AppError('ORG_EXISTS', 409, 'An organisation with that name already exists.');
+      const [org] = await c.tx.insert(S.organisations).values({ datasetId: c.datasetId, legalName: b.name, displayName: b.name, canonicalDomain: b.domain?.toLowerCase() || null, isClient: false }).returning();
+      await c.tx.insert(S.organisationAliases).values({ datasetId: c.datasetId, organisationId: org.id, aliasNormalized: b.name.toLowerCase(), aliasType: 'name' });
+      if (b.domain) await c.tx.insert(S.organisationAliases).values({ datasetId: c.datasetId, organisationId: org.id, aliasNormalized: b.domain.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, ''), aliasType: 'domain' }).onConflictDoNothing();
+      return { id: org.id };
     });
   } },
   { method: 'POST', path: 'consultant/onboarding/:id', types: ['consultant'], h: ({ base, body, p }) => {
@@ -204,6 +227,22 @@ export const ROUTES: R[] = [
       await logActivity(c, { subjectType: 'role', subjectId: b.roleId, action: 'ranking.adjusted', metadata: { adjustment: b.adjustment } });
       return {};
     });
+  } },
+  { method: 'POST', path: 'consultant/matches/review', types: ['consultant'], h: async ({ base, body, viewer }) => {
+    const b = parse(z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid() }), body);
+    await roles.roleForActor(readCtx(base), b.roleId);
+    const prepared = await assessmentInput(readCtx(base), b.roleId, b.candidateId);
+    if (!prepared || !prepared.input.evidence.length) throw new AppError('NO_EVIDENCE', 409, 'This candidate has no approved evidence to review.');
+    const res = await runAi({ task: 'assess', datasetId: base.datasetId, userId: viewer.actor.userId, roleId: b.roleId, candidateId: b.candidateId, input: prepared.input }, (p) => p.assessCriteria(prepared.input, { review: true }));
+    const v = validateAssessment(res.output, prepared.input.criteria.map((c) => c.criterionId), prepared.input.evidence.map((e) => e.id));
+    if (!v.ok) throw new AppError('REVIEW_INVALID', 422, `The review did not pass validation (${v.reason.replace(/_/g, ' ')}). Nothing was changed.`);
+    return { proposal: res.output, provider: res.provider, model: res.usage.modelId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion };
+  } },
+  { method: 'POST', path: 'consultant/matches/apply-review', types: ['consultant'], h: async ({ base, body }) => {
+    const b = parse(z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid(), profileVersionId: z.string().uuid().nullable(), roleVersion: z.number().int(), proposal: assessmentOutput }), body);
+    const r = await T(base, async (c) => { await roles.roleForActor(c, b.roleId); const out = await applyAssessment(c, { roleId: b.roleId, candidateId: b.candidateId, profileVersionId: b.profileVersionId, roleVersion: b.roleVersion, output: b.proposal }); if (out.applied) await logActivity(c, { subjectType: 'role', subjectId: b.roleId, action: 'ranking.ai_review_applied' }); return out; });
+    if (!r.applied) throw new AppError('REVIEW_NOT_APPLIED', 409, r.reason === 'stale_discarded' ? 'The profile or role changed since the review. Run it again.' : `Not applied: ${String(r.reason).replace(/_/g, ' ')}.`);
+    return { applied: true };
   } },
   { method: 'POST', path: 'consultant/work-logs', types: ['consultant'], h: ({ base, body, viewer }) => { const b = parse(workLogInput, body); return T(base, (c) => c.tx.insert(S.workLogs).values({ datasetId: c.datasetId, consultantUserId: viewer.actor.userId, clientId: b.clientId, roleId: b.roleId ?? null, category: b.category, minutes: b.minutes, workDate: b.workDate, note: b.note ?? null }).then(() => ({}))); } },
   { method: 'POST', path: 'consultant/jobs/:id/retry', types: ['consultant'], h: ({ base, p }) => T(base, async (c) => { const [j] = await c.tx.select().from(S.jobs).where(and(eq(S.jobs.id, p.id), eq(S.jobs.datasetId, c.datasetId))); if (!j) throw new AppError('NOT_FOUND', 404, 'Not found.'); await enqueue(c, j.kind, j.subjectId, j.dedupeKey); return {}; }) },

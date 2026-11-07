@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import { candidates, evidenceItems, profileVersions } from '../db/schema';
 import { fixtureProvider } from '../ai/providers/fixture';
 import { recomputeCandidate } from './matching';
+import { aiMode } from '../ai';
+import { enqueue } from './jobs';
 import type { Ctx } from './context';
 
 const TAG_LABEL = (t: string) => t.replace(/_/g, ' ');
@@ -45,5 +47,6 @@ export async function rebuildProfile(ctx: Ctx, candidateId: string, opts: { head
   }).returning();
   await ctx.tx.update(candidates).set({ latestProfileVersionId: pv.id, updatedAt: new Date() }).where(eq(candidates.id, candidateId));
   await recomputeCandidate(ctx, candidateId);
+  if (aiMode() === 'live') await enqueue(ctx, 'generate_feedback', candidateId, `feedback:${pv.id}`, { profileVersionId: pv.id });
   return pv;
 }

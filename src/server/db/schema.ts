@@ -73,7 +73,7 @@ export const replacementStatus = pgEnum('replacement_status', ['requested', 'app
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
-export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo']);
+export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
 export const aiOutcome = pgEnum('ai_outcome', ['succeeded', 'failed', 'refused', 'stale_discarded']);
 export const reservationState = pgEnum('reservation_state', ['reserved', 'reconciled', 'released']);
@@ -316,6 +316,8 @@ export const profileVersions = pgTable('profile_versions', {
   feedback: jsonb('feedback').notNull(),
   reviewState: profileReview('review_state').notNull().default('draft'),
   approvalAt: ts('approval_at'),
+  /** Live-AI developmental feedback for the candidate. Separate from the immutable approved content. */
+  feedbackLive: jsonb('feedback_live'),
   profileHash: text('profile_hash').notNull(),
 }, (t) => [uniqueIndex('profile_version_uq').on(t.candidateId, t.versionNumber)]);
 

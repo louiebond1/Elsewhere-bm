@@ -21,7 +21,7 @@ export async function loadScenario(page: Page, code: string | null) {
 export async function switchTo(page: Page, label: string) {
   await page.goto('/demo/personas');
   if (/^CAND-/.test(label)) {
-    await page.locator('summary', { hasText: 'All 40' }).click();
+    await page.locator('summary', { hasText: 'All fictional candidates' }).click();
     await page.getByRole('button', { name: new RegExp(label) }).click();
   } else {
     await page.getByRole('button', { name: new RegExp(label) }).first().click();

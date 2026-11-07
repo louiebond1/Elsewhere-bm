@@ -52,11 +52,21 @@ export function Personas({ people, scenarios, activeScenario }: { people: P[]; s
   return (
     <div className="mt-6 space-y-8">
       <ErrorText error={err} />
+      <section className="rounded-xl border border-line bg-surface p-4">
+        <h2 className="text-[20px]">Test it yourself from scratch</h2>
+        <p className="mt-1 text-[15px] text-muted">{activeScenario === 'EMPTY' ? 'You are in the empty workspace. Sign in as Alex Morgan to create a client, a contract and a role, then create candidates from the sign-up page.' : 'Replace the shared demo with an empty workspace: only the two consultant accounts, no clients, candidates or roles.'}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" className={buttonClass(activeScenario === 'EMPTY' ? 'secondary' : 'primary')} disabled={!!busy} onClick={() => load('EMPTY')}>{busy === 'EMPTY' ? 'Preparing…' : activeScenario === 'EMPTY' ? 'Start empty again' : 'Start empty workspace'}</button>
+          <a className={buttonClass('secondary')} href="/candidate/start">Create a fictional candidate</a>
+          <button type="button" className={buttonClass('ghost')} onClick={() => setReset(true)}>Back to full demo data</button>
+        </div>
+      </section>
       <section>
         <h2 className="mb-3 text-[20px]">Client</h2>
         <div className="grid gap-3 md:grid-cols-3">
-          {people.filter((p) => p.type === 'client').map((p) => card(p, p.email.includes('alder') ? 'Alder Works' : p.email.includes('beacon') ? 'Beacon Studio' : 'Cedar Labs'))}
+          {people.filter((p) => p.type === 'client').map((p) => card(p, p.email))}
         </div>
+        {!people.some((p) => p.type === 'client') && <p className="text-[15px] text-muted">No client accounts yet. Create one as a consultant on the Clients page.</p>}
       </section>
       <section>
         <h2 className="mb-3 text-[20px]">Consultant</h2>
@@ -64,9 +74,10 @@ export function Personas({ people, scenarios, activeScenario }: { people: P[]; s
       </section>
       <section>
         <h2 className="mb-3 text-[20px]">Candidate</h2>
+        {!people.some((p) => p.type === 'candidate') && <p className="mb-3 text-[15px] text-muted">No candidates yet. Use Create a fictional candidate above.</p>}
         <div className="grid gap-3 md:grid-cols-4">{HIGHLIGHT.map((r) => card(byRef(r), `${r}${r === 'CAND-001' ? ' · stronger after conversation' : r === 'CAND-005' ? ' · hidden from current employer' : r === 'CAND-025' ? ' · screened, at offer' : ' · new graduate, onboarding'}`))}</div>
         <details className="mt-3 rounded-xl border border-line bg-surface p-4">
-          <summary className="cursor-pointer font-medium">All 40 fictional candidates</summary>
+          <summary className="cursor-pointer font-medium">All fictional candidates ({people.filter((p) => p.type === 'candidate').length})</summary>
           <input className={cx(inputClass, 'mt-3')} placeholder="Search name or reference" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search candidates" />
           <ul className="mt-3 grid gap-2 md:grid-cols-2">
             {candidates.map((p) => (

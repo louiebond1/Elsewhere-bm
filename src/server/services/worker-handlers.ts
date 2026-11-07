@@ -13,6 +13,9 @@ import { notify } from './audit';
 import { releaseHoldIfUnneeded } from './roles';
 import { londonDateOf } from '../lib/dates';
 import { reconcileWallet } from './ledger';
+import { assessmentInput, applyAssessment, pairsAwaitingAssessment } from './matching';
+import { profileVersions } from '../db/schema';
+import { aiRuns } from '../db/schema';
 
 type JobRow = NonNullable<Awaited<ReturnType<typeof claimJob>>>;
 
@@ -92,12 +95,53 @@ async function handleExpiry(base: BaseCtx) {
   });
 }
 
+/** Live assessment for a role: one model call per pair awaiting it, outside any lock, then a validated write. */
+async function handleAssessRole(base: BaseCtx, job: JobRow) {
+  const roleId = job.subject_id!;
+  const pending = await pairsAwaitingAssessment({ tx: db() }, roleId);
+  let failures = 0;
+  for (const candidateId of pending.slice(0, 40)) {
+    const prepared = await assessmentInput({ tx: db() }, roleId, candidateId);
+    if (!prepared || !prepared.input.evidence.length) continue;
+    try {
+      const res = await runAi({ task: 'assess', datasetId: base.datasetId, roleId, candidateId, jobId: job.id, input: prepared.input }, (p) => p.assessCriteria(prepared.input));
+      const out = await withTx(base, (ctx) => applyAssessment(ctx, { roleId, candidateId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion, output: res.output }));
+      if (!out.applied && out.reason === 'stale_discarded') await db().insert(aiRuns).values({ datasetId: base.datasetId, jobId: job.id, roleId, candidateId, task: 'assess', provider: res.provider, modelId: res.usage.modelId, promptVersion: 'prompts-v1', outcome: 'stale_discarded' });
+    } catch (e) {
+      failures++;
+      // Budget or authentication problems stop the job; the deterministic result stays in place.
+      if (e instanceof AiFailure && ['daily_budget', 'auth', 'model_unavailable'].includes(e.code)) throw e;
+    }
+  }
+  if (failures && failures === pending.length) throw new AiFailure('assessment_failed', 'No assessments could be completed.', true);
+}
+
+/** Live developmental feedback, stored separately from the immutable approved profile content. */
+async function handleFeedback(base: BaseCtx, job: JobRow) {
+  const pvId = String(job.payload.profileVersionId ?? '');
+  const [pv] = await db().select().from(profileVersions).where(eq(profileVersions.id, pvId));
+  if (!pv || pv.reviewState !== 'approved') return;
+  const ev = (await db().select().from(evidenceItems).where(and(eq(evidenceItems.candidateId, pv.candidateId), inArray(evidenceItems.id, pv.evidenceIds)))).filter((e) => e.safeClaim);
+  const input = { evidence: ev.map((e) => ({ id: e.id, safeClaim: e.safeClaim!, tags: e.tags, strength: e.strength })) };
+  const res = await runAi({ task: 'feedback', datasetId: base.datasetId, candidateId: pv.candidateId, jobId: job.id, input }, (p) => p.feedback(input));
+  const ids = new Set(ev.map((e) => e.id));
+  // Every strength must cite this profile's own evidence; anything else is dropped rather than repaired.
+  const strengths = res.output.strengths.filter((x) => x.evidenceIds.length && x.evidenceIds.every((i) => ids.has(i)));
+  await withTx(base, async (ctx) => {
+    const [cur] = await ctx.tx.select({ s: profileVersions.reviewState }).from(profileVersions).where(eq(profileVersions.id, pvId)).for('update');
+    if (cur?.s !== 'approved') return;
+    await ctx.tx.update(profileVersions).set({ feedbackLive: { strengths, gaps: res.output.gaps, nextQuestion: res.output.nextQuestion, provider: res.provider, model: res.usage.modelId } }).where(eq(profileVersions.id, pvId));
+  });
+}
+
 export async function runJob(base: BaseCtx, job: JobRow) {
   switch (job.kind) {
     case 'extract_cv': return handleExtractCv(base, job);
     case 'build_profile': return handleBuildProfile(base, job);
     case 'delete_candidate': return withTx(base, (ctx) => purgeCandidate(ctx, job.subject_id!).then(() => undefined));
     case 'expire_intros': return handleExpiry(base);
+    case 'assess_match': return handleAssessRole(base, job);
+    case 'generate_feedback': return handleFeedback(base, job);
     case 'reconcile_wallet': return withTx(base, (ctx) => reconcileWallet(ctx, job.subject_id!).then(() => undefined));
     default: return;
   }

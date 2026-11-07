@@ -12,7 +12,7 @@ export default async function Profile({ searchParams }: { searchParams: Promise<
   const tab = sp.tab ?? 'overview';
   const o = await candidateOverview(ctx);
   const src = await evidenceSources(ctx, o.candidate.id, o.evidence.map((e) => e.id));
-  const fb = (o.profile?.feedback ?? null) as { strengths: { text: string; evidenceIds: string[] }[]; gaps: { text: string; topic: string }[]; nextQuestion?: string } | null;
+  const fb = (o.profile?.feedbackLive ?? o.profile?.feedback ?? null) as { strengths: { text: string; evidenceIds: string[] }[]; gaps: { text: string; topic: string }[]; nextQuestion?: string } | null;
   const preview = sp.preview === '1' ? await anonymousPreview(ctx, o.candidate.id) : null;
   const tabs = [['overview', 'Overview'], ['evidence', 'Evidence'], ['feedback', 'Feedback']].map(([k, l]) => ({ key: k, label: l, href: `/candidate/profile?tab=${k}` }));
   return (

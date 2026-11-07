@@ -8,7 +8,7 @@ import { date } from '@/lib/format';
 export default async function CheckIns() {
   const { ctx } = await pageViewer('candidate');
   const o = await candidateOverview(ctx);
-  const gaps = ((o.profile?.feedback as { gaps?: { text: string; topic: string }[] } | null)?.gaps ?? []);
+  const gaps = (((o.profile?.feedbackLive ?? o.profile?.feedback) as { gaps?: { text: string; topic: string }[] } | null)?.gaps ?? []);
   const active = o.conversations.find((c) => c.status !== 'completed');
   const initialDone = o.conversations.some((c) => c.kind === 'initial_screening' && c.status === 'completed');
   return (

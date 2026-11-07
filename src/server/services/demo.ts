@@ -34,6 +34,7 @@ const DEFAULT_OFFER = '2026-11-06';
 const DEFAULT_START = '2026-11-20';
 
 export const SCENARIOS: Scenario[] = [
+  { code: 'EMPTY', title: 'Empty workspace', persona: 'Alex Morgan (consultant)', personaCode: 'alex', action: 'Create a client (it gets its own login), add and activate a contract, then add a role. Create candidates from the sign-up page.', expected: 'You build everything yourself. Only the two consultant accounts exist at the start.', options: { empty: true } },
   { code: 'S01', title: 'Fair first interview', persona: 'Emma Stone (Alder Works)', personaCode: 'client:A', action: 'Open Assistant Accountant and view the anonymous profile with the reconciliation story.', expected: 'Thin CV duties versus a specific reconciliation story. No name before acceptance.' },
   { code: 'S02', title: 'Standard deposit and hire', persona: 'Maya Ellis (C01), then Emma Stone', personaCode: 'C01', action: 'Accept the Alder introduction as C01, then record the hire as Alder.', expected: '£950 deposit, £2,850 balance, £3,800 total. Wallet A ends at 8.5 credits.',
     setup: async (h) => { await h.request('R1', 'C01', 'A'); } },
@@ -111,6 +112,11 @@ function helpers(ids: SeedIds): Helpers {
 export async function validateDataset(ids: SeedIds, scenario: string | null) {
   const count = async (t: string) => ((await db().execute(sql`select count(*)::int as n from ${sql.identifier(t)} where dataset_id = ${ids.datasetId}`)).rows[0] as { n: number }).n;
   const problems: string[] = [];
+  if (scenario === 'EMPTY') {
+    if ((await count('users')) !== 2) problems.push('expected only the two consultant accounts');
+    if (problems.length) throw new Error(`Seed validation failed: ${problems.join('; ')}`);
+    return;
+  }
   const nRoles = await count('roles');
   if ((await count('candidates')) !== 40) problems.push('expected 40 candidates');
   if ((await count('clients')) !== 3) problems.push('expected 3 clients');
