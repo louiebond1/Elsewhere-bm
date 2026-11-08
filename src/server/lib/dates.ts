@@ -47,3 +47,8 @@ export function withinOutsideHireWindow(acceptedDate: string, offerDate: string,
   if (offerDate < acceptedDate) return false;
   return offerDate <= addMonths(acceptedDate, months);
 }
+
+/** Default contract term for the consultant form: starts on the business date and runs one year (inclusive). */
+export function defaultContractTerm(businessDate: string): { startDate: string; endDate: string } {
+  return { startDate: businessDate, endDate: addDays(addMonths(businessDate, 12), -1) };
+}

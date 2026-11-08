@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { withinReplacementWindow, withinOutsideHireWindow, addMonths, daysBetween, londonDateOf } from '../../src/server/lib/dates';
+import { withinReplacementWindow, withinOutsideHireWindow, addMonths, daysBetween, londonDateOf, defaultContractTerm } from '../../src/server/lib/dates';
 
 describe('dates', () => {
   it('replacement window day 90 eligible, day 91 not, across DST', () => {
@@ -17,5 +17,9 @@ describe('dates', () => {
   it('london date', () => {
     expect(londonDateOf(new Date('2026-07-01T23:30:00Z'))).toBe('2026-07-02');
     expect(londonDateOf(new Date('2026-11-06T12:00:00Z'))).toBe('2026-11-06');
+  });
+  it('default contract term starts on the business date and runs one year inclusive (B4)', () => {
+    expect(defaultContractTerm('2026-11-06')).toEqual({ startDate: '2026-11-06', endDate: '2027-11-05' });
+    expect(defaultContractTerm('2028-02-29')).toEqual({ startDate: '2028-02-29', endDate: '2029-02-27' });
   });
 });
