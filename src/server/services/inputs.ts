@@ -67,6 +67,7 @@ export const contractInput = z.object({
 });
 
 export const grantInput = z.object({ clientId: z.string().uuid(), credits: z.number().positive().max(100).refine((v) => Number.isInteger(v * 8), 'Use multiples of 0.125 credits'), reason: text(300).min(3) });
+export const checkoutInput = z.object({ credits: z.number().int('Use whole credits').min(1, 'Buy at least 1 credit').max(prototype.maxSimulatedPurchaseCredits, `Buy at most ${prototype.maxSimulatedPurchaseCredits} credits at a time`) });
 export const reversalInput = z.object({ transactionId: z.string().uuid(), reason: text(300).min(3) });
 
 export const screeningRequestInput = z.object({ roleId: z.string().uuid(), candidateRef: z.string().min(8).max(80) });

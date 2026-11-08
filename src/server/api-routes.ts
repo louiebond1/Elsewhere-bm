@@ -17,12 +17,13 @@ import * as cands from './services/candidates';
 import * as convs from './services/conversations';
 import * as filesSvc from './services/files';
 import * as contracts from './services/contracts';
+import * as checkout from './services/checkout';
 import { enqueue } from './services/jobs';
 import { roleScopedRef } from './dto/refs';
 import { notify, logActivity, clientUserIds } from './services/audit';
 import * as S from './db/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
-import { activateInput, closeInput, reopenInput, introRequestInput, hireInput, outsideHireInput, departureInput, replacementRequestInput, contractInput, grantInput, reversalInput, screeningRequestInput, screeningCompleteInput, adjustmentInput, workLogInput, answerInput, preferencesInput } from './services/inputs';
+import { activateInput, closeInput, reopenInput, introRequestInput, hireInput, outsideHireInput, departureInput, replacementRequestInput, contractInput, grantInput, reversalInput, checkoutInput, screeningRequestInput, screeningCompleteInput, adjustmentInput, workLogInput, answerInput, preferencesInput } from './services/inputs';
 import { prepFor, savePrep } from './services/prep';
 import { runAi, aiMode } from './ai';
 import { questionOutput, assessmentOutput } from './ai/schemas';
@@ -36,6 +37,8 @@ import { DEFAULT_OFFER } from './services/demo';
 type H = (a: { req: NextRequest; viewer: Viewer; base: BaseCtx; p: Record<string, string>; body: unknown }) => Promise<unknown>;
 type R = { method: 'GET' | 'POST'; path: string; types?: Array<'candidate' | 'client' | 'consultant'>; h: H; raw?: boolean };
 
+/** A replayed idempotent request returns the stored reference; give callers the same shape as the first response. */
+const unwrapRef = async (_c: unknown, r: unknown) => (r && typeof r === 'object' && 'ref' in r ? (r as { ref: unknown }).ref : r);
 const pounds = (n: number) => BigInt(n) * 100n;
 const T = <X>(base: BaseCtx, fn: Parameters<typeof withTx<X>>[1]) => withTx(base, fn);
 
@@ -259,6 +262,11 @@ export const ROUTES: R[] = [
       return { saved: true };
     });
   } },
+  // ---------- demo checkout (no money is taken; no payment provider) ----------
+  { method: 'POST', path: 'credits/checkout', types: ['client'], h: ({ req, base, body }) => { const b = parse(checkoutInput, body); return idempotent(req, base, 'credits/checkout', body, (c) => checkout.createCheckout(c, b).then((r) => ({ id: r.id })), unwrapRef); } },
+  { method: 'POST', path: 'credits/checkout/:id/succeed', types: ['client'], h: ({ req, base, body, p }) => idempotent(req, base, `credits/checkout/${p.id}/succeed`, body, (c) => checkout.simulateSuccess(c, p.id).then((r) => ({ id: r.id })), unwrapRef) },
+  { method: 'POST', path: 'credits/checkout/:id/decline', types: ['client'], h: ({ req, base, body, p }) => idempotent(req, base, `credits/checkout/${p.id}/decline`, body, (c) => checkout.simulateDecline(c, p.id).then((r) => ({ id: r.id })), unwrapRef) },
+  { method: 'POST', path: 'credits/checkout/:id/cancel', types: ['client'], h: ({ req, base, body, p }) => idempotent(req, base, `credits/checkout/${p.id}/cancel`, body, (c) => checkout.cancelCheckout(c, p.id).then((r) => ({ id: r.id })), unwrapRef) },
   { method: 'POST', path: 'notifications/request-credits', types: ['client'], h: ({ base, viewer }) => T(base, async (c) => {
     const [cl] = await c.tx.select().from(S.clients).where(eq(S.clients.id, viewer.actor.clientId!));
     await notify(c, [cl.consultantUserId], { type: 'credit_low', subjectRefType: 'client', subjectRefId: cl.id, safeTitle: 'A client asked for more credits' });

@@ -49,7 +49,8 @@ export const anonymityReview = pgEnum('anonymity_review', ['pending', 'approved'
 export const profileReview = pgEnum('profile_review', ['draft', 'approved', 'superseded']);
 export const planType = pgEnum('plan_type', ['annual', 'monthly']);
 export const contractStatus = pgEnum('contract_status', ['draft', 'active', 'expired', 'suspended']);
-export const txType = pgEnum('tx_type', ['grant', 'deposit_debit', 'hire_balance_debit', 'second_hire_debit', 'outside_hire_debit', 'reversal']);
+export const txType = pgEnum('tx_type', ['grant', 'deposit_debit', 'hire_balance_debit', 'second_hire_debit', 'outside_hire_debit', 'reversal', 'simulated_purchase']);
+export const checkoutStatus = pgEnum('checkout_status', ['open', 'succeeded', 'declined', 'cancelled']);
 export const holdStatus = pgEnum('hold_status', ['active', 'released', 'consumed']);
 export const roleFamily = pgEnum('role_family', ['finance', 'operations', 'commercial']);
 export const workMode = pgEnum('work_mode', ['onsite', 'hybrid', 'remote']);
@@ -435,6 +436,21 @@ export const creditTransactions = pgTable('credit_transactions', {
   index('tx_wallet_idx').on(t.walletId, t.createdAt),
   uniqueIndex('one_deposit_per_order').on(t.orderId).where(sql`type = 'deposit_debit' and reversal_of_id is null`),
 ]);
+
+/** Demo-only checkout. No payment provider, no card data. Success posts one simulated_purchase entry. */
+export const simulatedCheckouts = pgTable('simulated_checkouts', {
+  ...common(),
+  clientId: uuid('client_id').notNull().references(() => clients.id),
+  contractId: uuid('contract_id').notNull().references(() => contracts.id),
+  units: units('units').notNull(),
+  ratePence: integer('rate_pence').notNull(),
+  totalPence: units('total_pence').notNull(),
+  status: checkoutStatus('status').notNull().default('open'),
+  createdByUserId: uuid('created_by_user_id').notNull(),
+  resolvedByUserId: uuid('resolved_by_user_id'),
+  resolvedAt: ts('resolved_at'),
+  transactionId: uuid('transaction_id').unique(),
+}, (t) => [index('checkout_client_idx').on(t.clientId, t.createdAt)]);
 
 export const creditHolds = pgTable('credit_holds', {
   ...common(),

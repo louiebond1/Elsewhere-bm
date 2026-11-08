@@ -59,6 +59,10 @@ export const prototype = Object.freeze({
   automaticRollover: false,
   /** Real top-ups are disabled. Consultants can grant simulated credits. */
   realTopUps: false,
+  /** Demo checkout: clients can simulate buying whole credits at their contract rate. No money is taken. */
+  simulatedCheckout: true,
+  /** Largest simulated purchase in one checkout, in whole credits. */
+  maxSimulatedPurchaseCredits: 20,
   /** VAT treatment to be agreed. No VAT is calculated. */
   taxMode: 'not_configured',
   timezone: 'Europe/London',

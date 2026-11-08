@@ -17,7 +17,7 @@ export async function workQueue(ctx: Ctx) {
   const failed = await ctx.tx.select().from(S.jobs).where(and(eq(S.jobs.datasetId, ds), eq(S.jobs.status, 'failed')));
   const minutes = await ctx.tx.execute(sql`select coalesce(sum(minutes),0)::int as m from work_logs where dataset_id = ${ds}`);
   const activeRoles = await ctx.tx.execute(sql`select count(*)::int as n from roles where dataset_id = ${ds} and status = 'open'`);
-  const consumed = await ctx.tx.execute(sql`select coalesce(-sum(delta_units),0)::bigint as u from credit_transactions where dataset_id = ${ds} and type <> 'grant'`);
+  const consumed = await ctx.tx.execute(sql`select coalesce(-sum(delta_units),0)::bigint as u from credit_transactions where dataset_id = ${ds} and type not in ('grant', 'simulated_purchase')`);
   return { scr, review, unresolved, drafts, expiring, repl, failed, minutes: (minutes.rows[0] as { m: number }).m, activeRoles: (activeRoles.rows[0] as { n: number }).n, consumedUnits: String((consumed.rows[0] as { u: string }).u) };
 }
 

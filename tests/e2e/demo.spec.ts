@@ -94,7 +94,7 @@ test('dialog keyboard support: Escape closes and focus returns @phone', async ({
 test('primary routes have no horizontal page scroll at phone width @phone', async ({ page }) => {
   await enterGate(page);
   await switchTo(page, 'Emma Stone');
-  for (const u of ['/client/home', '/client/roles', '/client/credits', '/client/hires', '/client/onboarding']) {
+  for (const u of ['/client/home', '/client/roles', '/client/credits', '/client/credits/buy', '/client/hires', '/client/onboarding']) {
     await page.goto(u);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(over, u).toBeLessThanOrEqual(1);
@@ -170,4 +170,37 @@ test('B4: in the empty workspace the default contract start allows a role to be 
   await page.getByRole('button', { name: 'Activate role' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Activate' }).click();
   await expect(page.getByText('Open', { exact: true }).first()).toBeVisible();
+});
+
+test('Demo checkout: decline keeps input and balance; success adds credits once and survives reload', async ({ page }) => {
+  await loadScenario(page, null);
+  await switchTo(page, 'Emma Stone');
+  await page.goto('/client/credits');
+  const spendable = page.locator('div').filter({ hasText: /^Spendable/ }).first();
+  const before = await spendable.textContent();
+  await page.getByRole('link', { name: 'Buy credits (demo)' }).click();
+  await expect(page.getByText(/Demo only: no money charged/)).toBeVisible();
+  expect(await page.locator('input[autocomplete^="cc-"], input[name*="card" i]').count()).toBe(0);
+  await page.getByLabel('Credits to buy').fill('2');
+  await page.getByRole('button', { name: 'Continue to demo checkout' }).click();
+  await page.waitForURL(/\/client\/credits\/checkout\/[0-9a-f-]{36}/);
+  await expect(page.getByText(/Demo only: no money charged/)).toBeVisible();
+  await page.getByRole('button', { name: 'Simulate decline' }).click();
+  await expect(page.getByText(/Simulated decline\. Nothing was added or charged/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simulate success' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Try again' }).click();
+  await expect(page.getByLabel('Credits to buy')).toHaveValue('2');
+  await page.goto('/client/credits');
+  expect(await spendable.textContent()).toBe(before);
+  await expect(page.getByRole('link', { name: 'Simulated purchase' })).toHaveCount(0);
+  await page.goto('/client/credits/buy?credits=2');
+  await page.getByRole('button', { name: 'Continue to demo checkout' }).click();
+  await page.waitForURL(/\/client\/credits\/checkout\/[0-9a-f-]{36}/);
+  await page.getByRole('button', { name: 'Simulate success' }).click();
+  await expect(page.getByText(/Simulated success\. 2 credits were added to your balance once/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/Simulated success\. 2 credits were added/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simulate success' })).toHaveCount(0);
+  await page.goto('/client/credits');
+  await expect(page.getByRole('link', { name: 'Simulated purchase' })).toHaveCount(1);
 });

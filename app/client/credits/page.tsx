@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { creditsView } from '@/server/views/client';
-import { PageHeader, Stat, Card, KV, ResponsiveTable, Badge } from '@/components/ui';
+import { PageHeader, Stat, Card, KV, ResponsiveTable, Badge, LinkButton } from '@/components/ui';
 import { ActionButton } from '@/components/client';
 import { creditsLabel, gbp, date, label, credits } from '@/lib/format';
 
@@ -12,7 +12,7 @@ export default async function Credits({ searchParams }: { searchParams: Promise<
   const current = v.contracts.find((c) => c.status === 'active');
   return (
     <>
-      <PageHeader title="Credits" subtitle="Simulated demo entitlements. No real payments are taken." actions={<ActionButton path="notifications/request-credits" label="Request credits" variant="secondary" successText="Your consultant has been notified." />} />
+      <PageHeader title="Credits" subtitle="Simulated demo entitlements. No real payments are taken." actions={<div className="flex flex-wrap gap-2"><LinkButton href="/client/credits/buy">Buy credits (demo)</LinkButton><ActionButton path="notifications/request-credits" label="Request credits" variant="secondary" successText="Your consultant has been notified." /></div>} />
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Balance" value={creditsLabel(v.wallet.posted)} />
         <Stat label="Reserved for pending introductions" value={creditsLabel(v.wallet.held)} hint="Reserved, not charged" />
@@ -22,7 +22,7 @@ export default async function Credits({ searchParams }: { searchParams: Promise<
         <section>
           <h2 className="mb-3 text-[20px]">Ledger</h2>
           <form className="mb-3 flex flex-wrap gap-2">
-            <select name="type" defaultValue={sp.type ?? ''} className="h-11 rounded-lg border border-line bg-surface px-2" aria-label="Transaction type"><option value="">All types</option>{['grant', 'deposit_debit', 'hire_balance_debit', 'second_hire_debit', 'outside_hire_debit', 'reversal'].map((t) => <option key={t} value={t}>{label(t)}</option>)}</select>
+            <select name="type" defaultValue={sp.type ?? ''} className="h-11 rounded-lg border border-line bg-surface px-2" aria-label="Transaction type"><option value="">All types</option>{['grant', 'deposit_debit', 'hire_balance_debit', 'second_hire_debit', 'outside_hire_debit', 'simulated_purchase', 'reversal'].map((t) => <option key={t} value={t}>{label(t)}</option>)}</select>
             <select name="role" defaultValue={sp.role ?? ''} className="h-11 rounded-lg border border-line bg-surface px-2" aria-label="Role"><option value="">All roles</option>{v.roles.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.key})</option>)}</select>
             <button className="h-11 rounded-lg border border-line bg-surface px-4">Filter</button>
           </form>
