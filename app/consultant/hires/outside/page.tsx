@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { clientsList, outsideHireOptions } from '@/server/views/consultant';
 import { PageHeader, Card, Empty, Badge, Notice } from '@/components/ui';
@@ -21,7 +22,7 @@ export default async function OutsideHires({ searchParams }: { searchParams: Pro
           return (
             <Card key={o.introId} title={`${o.name} · ${o.role}`} action={<span className="flex gap-1"><Badge>{label(o.state)}</Badge>{o.hired && <Badge tone="success">Hire recorded</Badge>}</span>}>
               <p className="text-[15px]">Accepted {date(acc)} · Window ends {date(addMonths(acc, 12))}</p>
-              {o.deleted ? <p className="mt-2 text-[14px] text-warning">Profile deleted. Needs manual review outside the prototype.</p> : <div className="mt-3"><RecordHire introId={o.introId} label={o.name} outside clientId={clientId} defaultOffer="2026-10-15" defaultStart="2026-11-01" /></div>}
+              {o.hired ? <p className="mt-2 text-[15px]">Hire recorded{o.hireStart ? ` with start date ${date(o.hireStart)}` : ''}. Nothing more is due on this introduction. <Link href={`/consultant/clients/${clientId}?tab=credits`}>View the client ledger</Link></p> : o.deleted ? <p className="mt-2 text-[14px] text-warning">Profile deleted. Needs manual review outside the prototype.</p> : <div className="mt-3"><RecordHire introId={o.introId} label={o.name} outside clientId={clientId} defaultOffer="2026-10-15" defaultStart="2026-11-01" /></div>}
             </Card>
           );
         })}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eligibilityFor, locationCompatible, combinedScore, compareMatches, autoPicks, type Level } from '../../src/server/lib/matching-rules';
+import { eligibilityFor, locationCompatible, combinedScore, compareMatches, autoPicks, autoPicksDetailed, type Level } from '../../src/server/lib/matching-rules';
 
 const role = { roleFamily: 'finance', salaryPence: 4400000n, locationRegion: 'london', workMode: 'hybrid', workAuthorisationRequired: true };
 const cand = { preferredRoleFamilies: ['finance'], minSalaryPence: 4000000n, region: 'london', workModes: ['hybrid', 'remote'], workAuthorisation: 'confirmed' };
@@ -41,7 +41,10 @@ describe('scoring', () => {
     expect(autoPicks(pool, 5).map((p) => p.id)).toEqual(['s1', 's2', 's3', 's4', 'low']);
     expect(autoPicks(pool, 0)).toEqual([]);
     expect(autoPicks(pool.slice(5), 5).map((p) => p.id).sort()).toEqual(['low', 'none']);
+    expect(autoPicksDetailed(pool, 5).discoveryId).toBe('low');
     const lows = [mk('s1', 90, 'high'), mk('l1', 51, 'low'), mk('l2', 50, 'low'), mk('l3', 39, 'low')];
     expect(autoPicks(lows, 3).map((p) => p.id)).toEqual(['s1', 'l1', 'l2']);
+    // Only the reserved pick is the discovery slot; l1 is an ordinary low-evidence top-up.
+    expect(autoPicksDetailed(lows, 3).discoveryId).toBe('l2');
   });
 });

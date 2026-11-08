@@ -89,7 +89,7 @@ export function AutoPicks({ roleId, slotsLeft }: { roleId: string; slotsLeft: nu
       <button type="button" className={buttonClass('secondary')} disabled={loading} onClick={async () => { setLoading(true); const r = await api<{ picks: Pick[]; shortfall: number }>('screenings/auto-picks/preview', { body: { roleId }, csrf }); setLoading(false); if (r.ok) { setPicks(r.data.picks); setShortfall(r.data.shortfall); } }}>{loading ? 'Choosing…' : `Auto-select ${slotsLeft}`}</button>
       <Dialog open={!!picks} onClose={() => setPicks(null)} title="Proposed screenings">
         {picks && picks.length === 0 ? <p>No suitable profiles to screen yet.</p> : (
-          <ul className="space-y-2 text-[15px]">{picks?.map((p) => <li key={p.ref} className="rounded-lg border border-line px-3 py-2">Candidate {p.ref.slice(0, 9)} · {p.confidence} evidence coverage{p.discoverySlot ? ' · discovery slot: little evidence yet, but relevant' : ''}</li>)}</ul>
+          <ul className="space-y-2 text-[15px]">{picks?.map((p) => <li key={p.ref} className="rounded-lg border border-line px-3 py-2">Candidate {p.ref.slice(0, 9)} · {p.confidence} evidence coverage{p.discoverySlot ? ' · reserved discovery slot: little evidence yet, but relevant' : p.confidence === 'low' ? ' · next highest ranked' : ''}</li>)}</ul>
         )}
         {shortfall > 0 && <p className="mt-2 text-[14px] text-muted">Only {picks?.length} suitable candidates are available, so {shortfall} slot{shortfall > 1 ? 's stay' : ' stays'} free.</p>}
         <p className="mt-3 text-[14px]">Confirming books these within your five included screenings. Nothing is charged.</p>
@@ -114,7 +114,7 @@ export function StageMenu({ introId, stage }: { introId: string; stage: string }
   );
 }
 
-type Preview = { kind: string; totalUnits: string; totalPence: string; paidPence: string; remainingUnits: string; remainingPence: string; salaryPence: string; isNewFullPrice: boolean };
+type Preview = { kind: string; totalUnits: string; totalPence: string; paidPence: string; remainingUnits: string; remainingPence: string; salaryPence: string; isNewFullPrice: boolean; recorded: { offerDate: string; startDate: string; source: string } | null };
 
 export function RecordHire({ introId, label: who, defaultOffer = '2026-11-06', defaultStart = '2026-11-20', outside, clientId }: { introId: string; label: string; defaultOffer?: string; defaultStart?: string; outside?: boolean; clientId?: string }) {
   const csrf = useCsrf();
@@ -131,7 +131,13 @@ export function RecordHire({ introId, label: who, defaultOffer = '2026-11-06', d
     <>
       <button type="button" className={buttonClass('primary')} onClick={openIt}>{outside ? 'Review outside hire' : 'Record hire'}</button>
       <Dialog open={open} onClose={() => setOpen(false)} title={outside ? 'Recover an outside-system hire' : `Record hire: ${who}`}>
-        {!p ? <p>Loading the price…</p> : (
+        {!p ? <p>Loading the price…</p> : p.kind === 'already_recorded' ? (
+          <div className="space-y-2 text-[15px]">
+            <p className="rounded-lg bg-success-tint px-3 py-2 text-success">Already recorded. Nothing more will be charged.</p>
+            <p>This hire was recorded with offer accepted on {p.recorded?.offerDate} and start date {p.recorded?.startDate}. Price {creditsLabel(p.totalUnits)} / {gbp(p.totalPence)}, of which {gbp(p.paidPence)} has been charged.</p>
+            <p className="text-muted">A second hire of the same person needs BondMoran review.</p>
+          </div>
+        ) : (
           <div className="space-y-3 text-[15px]">
             {p.isNewFullPrice ? <p className="rounded-lg bg-warning-tint px-3 py-2 text-warning">New hire, new full price. The first hire on this role is already paid, so this is a separate order and the role&apos;s deposit is not reused.</p> : null}
             <p>Total {creditsLabel(p.totalUnits)} / {gbp(p.totalPence)}. Already paid {gbp(p.paidPence)}.</p>
@@ -148,11 +154,11 @@ export function RecordHire({ introId, label: who, defaultOffer = '2026-11-06', d
         {done && <p role="status" className="mt-2 text-success">{done}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className={buttonClass('secondary')} onClick={() => setOpen(false)}>Cancel</button>
-          <button type="button" className={buttonClass('primary')} disabled={busy || !p} onClick={async () => {
+          {p?.kind !== 'already_recorded' && <button type="button" className={buttonClass('primary')} disabled={busy || !p} onClick={async () => {
             const body = { introductionId: introId, acceptedOfferDate: offer, startDate: start, salaryPounds: Number(salary), ...(outside ? { clientId } : {}) };
             const r = await run(outside ? 'hires/outside' : 'hires/record', body);
             if (r) { setDone(r.existing ? 'This hire was already recorded. Nothing more was charged.' : 'Hire recorded.'); setTimeout(() => { setOpen(false); router.refresh(); }, 900); }
-          }}>{busy ? 'Recording…' : 'Confirm hire'}</button>
+          }}>{busy ? 'Recording…' : 'Confirm hire'}</button>}
         </div>
       </Dialog>
     </>

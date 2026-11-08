@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { screenings, matches, candidates, workLogs, files, consentEvents, evidenceItems, roles } from '../db/schema';
 import { conflict, invalid, notFound } from '../lib/errors';
 import { prototype } from '../../config/prototype';
-import { autoPicks } from '../lib/matching-rules';
+import { autoPicksDetailed } from '../lib/matching-rules';
 import { lockCandidates, requireUser, type Ctx } from './context';
 import { roleForActor, roleCounters, criteriaFor } from './roles';
 import { resolveRoleRef } from './intros';
@@ -80,12 +80,14 @@ async function autoPickCandidates(ctx: Ctx, roleId: string) {
     const ev = await validEvidenceForProfile(ctx, m.candidateId, c.pv);
     pool.push({ id: m.candidateId, eligibility: m.eligibility, score: m.score, coverageBps: m.coverageBps, publicRef: c.ref, confidence: m.confidence, hasRelevantTag: ev.some((e) => e.tags.some((t) => roleTags.has(t))) });
   }
-  return { role, left, picks: autoPicks(pool, left), poolSize: pool.length };
+  const detailed = autoPicksDetailed(pool, left);
+  return { role, left, picks: detailed.picks, discoveryId: detailed.discoveryId, poolSize: pool.length };
 }
 
 export async function previewAutoPicks(ctx: Ctx, roleId: string) {
-  const { role, left, picks } = await autoPickCandidates(ctx, roleId);
-  return { slotsLeft: left, picks: picks.map((p) => ({ ref: roleScopedRef(role.id, p.id), confidence: p.confidence, discoverySlot: p.confidence === 'low' || p.eligibility === 'needs_clarification' })), shortfall: Math.max(0, left - picks.length) };
+  const { role, left, picks, discoveryId } = await autoPickCandidates(ctx, roleId);
+  // Only the one reserved slot is the discovery slot. Other low-evidence picks are ordinary top-ups.
+  return { slotsLeft: left, picks: picks.map((p) => ({ ref: roleScopedRef(role.id, p.id), confidence: p.confidence, discoverySlot: p.id === discoveryId })), shortfall: Math.max(0, left - picks.length) };
 }
 
 export async function confirmAutoPicks(ctx: Ctx, roleId: string, refs: string[]) {

@@ -75,7 +75,7 @@ export const SCENARIOS: Scenario[] = [
     setup: async (h) => { const i = await h.request('R1', 'C01', 'A'); await h.accept(i, 'C01'); } },
   { code: 'S18', title: 'Delete mid-process', persona: 'Maya Ellis (C01)', personaCode: 'C01', action: 'Delete the profile.', expected: 'Both client views lose the profile, the pending request is cancelled and financial references remain without personal data.', options: { c01Operations: true },
     setup: async (h) => { const i = await h.request('R1', 'C01', 'A'); await h.accept(i, 'C01'); await h.request('R4', 'C01', 'B'); } },
-  { code: 'S19', title: 'Auto screening', persona: 'Emma Stone (Alder Works)', personaCode: 'client:A', action: 'Preview automatic picks on Assistant Accountant, then confirm.', expected: 'Four strongest available plus a discovery slot for a low-information candidate. Five requests, no charges.' },
+  { code: 'S19', title: 'Auto screening', persona: 'Emma Stone (Alder Works)', personaCode: 'client:A', action: 'Preview automatic picks on Assistant Accountant, then confirm.', expected: 'Five picks: the four highest-ranked available candidates (only two have medium evidence on this role, so two are low-evidence top-ups) plus one reserved discovery slot for a low-information candidate with relevant evidence. Only that one is labelled as the discovery slot. Five requests, no charges.' },
   { code: 'S20', title: 'Sixth screening', persona: 'Emma Stone (Alder Works)', personaCode: 'client:A', action: 'Request a screening for one more candidate on Assistant Accountant.', expected: 'Blocked by the included limit. No paid upsell and no ledger entry.',
     setup: async (h) => {
       const role = h.ids.roles.R1;

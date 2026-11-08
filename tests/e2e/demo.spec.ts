@@ -100,3 +100,35 @@ test('primary routes have no horizontal page scroll at phone width @phone', asyn
     expect(over, u).toBeLessThanOrEqual(1);
   }
 });
+
+test('B2 + S24: typing in the hire dialog keeps every character, and a changed salary is refused with the review message', async ({ page }) => {
+  await loadScenario(page, 'S24');
+  await switchTo(page, 'Emma Stone');
+  await page.goto('/client/roles');
+  await page.getByRole('link', { name: 'Assistant Accountant' }).click();
+  await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
+  await page.goto(page.url().split('?')[0] + '?tab=pipeline');
+  await page.getByRole('button', { name: 'Record hire' }).first().click();
+  await expect(page.getByText('This records the hire')).toBeVisible();
+  const salary = page.getByLabel(/Agreed annual salary/);
+  await salary.click();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.type('45000', { delay: 80 });
+  await expect(salary).toHaveValue('45000');
+  await expect(salary).toBeFocused();
+  await page.getByRole('button', { name: 'Confirm hire' }).click();
+  await expect(page.getByText('This offer salary differs from the agreed quote. Ask BondMoran to review the pricing before recording the hire.')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.goto('/client/credits');
+  await expect(page.getByText('9.25 credits').first()).toBeVisible();
+});
+
+test('B1: an already-recorded outside hire shows no review button and no charge (S10)', async ({ page }) => {
+  await loadScenario(page, 'S10');
+  await switchTo(page, 'Jamie Patel');
+  await page.goto('/consultant/hires/outside');
+  await page.getByLabel('Client').selectOption({ label: 'Cedar Labs' });
+  await page.getByRole('button', { name: 'Show accepted introductions' }).click();
+  await expect(page.getByText(/Hire recorded with start date/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review outside hire' })).toHaveCount(0);
+});

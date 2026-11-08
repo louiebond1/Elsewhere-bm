@@ -54,15 +54,31 @@ export function useCommand<T = unknown>() {
   return { run, busy, error, setError, resetKey: () => (key.current = crypto.randomUUID()) };
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  acceptedOfferDate: 'Offer accepted on', startDate: 'Start date', salaryPounds: 'Agreed annual salary', leftDate: 'Departure date', reason: 'Reason',
+  password: 'Password', confirm: 'Confirmation', email: 'Email', fullName: 'Full name', contactEmail: 'Contact email', message: 'Message', credits: 'Credits',
+};
+
+/** Shows the error and, when the server returns them, which fields failed and why. */
 export function ErrorText({ error }: { error: ApiError | null }) {
   if (!error) return null;
-  return <p role="alert" className="mt-2 text-[14px] text-danger">{error.message}</p>;
+  const fields = error.fieldErrors ? Object.entries(error.fieldErrors) : [];
+  return (
+    <div role="alert" className="mt-2 text-[14px] text-danger">
+      <p>{error.message}</p>
+      {fields.length > 0 && <ul className="mt-1 list-disc pl-5">{fields.map(([k, v]) => <li key={k}>{FIELD_LABELS[k] ?? k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}: {v}</li>)}</ul>}
+    </div>
+  );
 }
 
 /** Accessible modal with focus trap, Escape to close and focus return. */
 export function Dialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
+  // Callers pass a new onClose on every render. Keep it in a ref so focus is managed only when
+  // the dialog opens or closes, not on every keystroke (which moved focus out of the field being typed in).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
     if (!open) return;
     opener.current = document.activeElement;
@@ -70,7 +86,7 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
     const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ?? []).filter((x) => !x.hasAttribute('disabled'));
     focusables()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
       if (e.key === 'Tab') {
         const f = focusables();
         if (!f.length) return;
@@ -80,7 +96,7 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
     };
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); (opener.current as HTMLElement | null)?.focus?.(); };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 md:items-center md:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>

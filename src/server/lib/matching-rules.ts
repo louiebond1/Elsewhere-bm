@@ -79,19 +79,24 @@ export function compareMatches(a: Rankable, b: Rankable): number {
  * relevant approved tag, the last slot goes to the highest-ranked such candidate
  * not already selected; the other slots fill from medium/high confidence first.
  */
-export function autoPicks<T extends Rankable & { id: string; confidence: string; hasRelevantTag: boolean }>(ranked: T[], slotsLeft: number): T[] {
-  if (slotsLeft <= 0) return [];
+export function autoPicksDetailed<T extends Rankable & { id: string; confidence: string; hasRelevantTag: boolean }>(ranked: T[], slotsLeft: number): { picks: T[]; discoveryId: string | null } {
+  if (slotsLeft <= 0) return { picks: [], discoveryId: null };
   const pool = [...ranked].filter((r) => r.eligibility !== 'incompatible').sort(compareMatches);
   const isDiscovery = (r: T) => (r.confidence === 'low' || r.eligibility === 'needs_clarification') && r.hasRelevantTag;
-  const reserve = pool.some(isDiscovery) && slotsLeft > 0;
+  const reserve = pool.some(isDiscovery);
   const mainSlots = reserve ? slotsLeft - 1 : slotsLeft;
   const picks: T[] = [];
   for (const r of pool) if (picks.length < mainSlots && r.confidence !== 'low') picks.push(r);
   for (const r of pool) if (picks.length < mainSlots && !picks.includes(r)) picks.push(r);
+  let discoveryId: string | null = null;
   if (reserve) {
     const d = pool.find((r) => isDiscovery(r) && !picks.includes(r));
-    if (d) picks.push(d);
+    if (d) { picks.push(d); discoveryId = d.id; }
     else for (const r of pool) if (picks.length < slotsLeft && !picks.includes(r)) picks.push(r);
   }
-  return picks;
+  return { picks, discoveryId };
+}
+
+export function autoPicks<T extends Rankable & { id: string; confidence: string; hasRelevantTag: boolean }>(ranked: T[], slotsLeft: number): T[] {
+  return autoPicksDetailed(ranked, slotsLeft).picks;
 }

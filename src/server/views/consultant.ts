@@ -54,8 +54,8 @@ export async function outsideHireOptions(ctx: Ctx, clientId: string | null) {
   const rows = await ctx.tx.select({ i: S.introductions, title: S.roles.title, key: S.roles.vacancyKey, name: S.candidateIdentity.fullName, ref: S.candidates.publicRef, status: S.candidates.status }).from(S.introductions).innerJoin(S.roles, eq(S.roles.id, S.introductions.roleId)).innerJoin(S.candidates, eq(S.candidates.id, S.introductions.candidateId)).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.candidates.id)).where(and(eq(S.introductions.clientId, clientId), isNotNull(S.introductions.acceptedAt)));
   const out = [];
   for (const r of rows) {
-    const [hire] = await ctx.tx.select({ id: S.hires.id }).from(S.hires).where(eq(S.hires.introductionId, r.i.id));
-    out.push({ introId: r.i.id, role: `${r.title} (${r.key})`, name: r.name ?? 'Deleted profile', ref: r.ref, acceptedAt: r.i.acceptedAt!.toISOString(), state: r.i.state, hired: !!hire, deleted: r.status === 'deleting' || r.status === 'deleted', scoped: roleScopedRef(r.i.roleId, r.i.candidateId) });
+    const [hire] = await ctx.tx.select({ id: S.hires.id, start: S.hires.startDate }).from(S.hires).where(eq(S.hires.introductionId, r.i.id));
+    out.push({ hireStart: hire?.start ?? null, introId: r.i.id, role: `${r.title} (${r.key})`, name: r.name ?? 'Deleted profile', ref: r.ref, acceptedAt: r.i.acceptedAt!.toISOString(), state: r.i.state, hired: !!hire, deleted: r.status === 'deleting' || r.status === 'deleted', scoped: roleScopedRef(r.i.roleId, r.i.candidateId) });
   }
   return out;
 }

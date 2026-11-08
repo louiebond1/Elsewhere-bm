@@ -8,7 +8,7 @@ import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
 export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx: Ctx; roleId: string; candidateRef: string; base: string }) {
-  const { role, dto, introId, introState, counters } = await candidateOnRole(ctx, roleId, candidateRef);
+  const { role, dto, introId, introState, counters, hiredStart } = await candidateOnRole(ctx, roleId, candidateRef);
   const ch = await roleCharges(ctx, roleId);
   const name = dto.identity ? dto.identity.fullName : `Candidate ${dto.roleScopedReference.slice(0, 9)}`;
   return (
@@ -46,7 +46,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx
               <p className="font-semibold">{dto.identity.fullName}</p>
               <p className="text-[15px]">{dto.identity.email}</p>
               <p className="mt-2 text-[13px] text-muted">Shared by the candidate for {role.title} only. No CV, phone number or conversation is shared.</p>
-              {introId && <div className="mt-3 flex flex-wrap gap-2"><LinkButton href={`${base}/introductions/${introId}/prep`} variant="secondary">Interview prep</LinkButton><RecordHire introId={introId} label={dto.identity.fullName} /></div>}
+              {introId && <div className="mt-3 flex flex-wrap gap-2"><LinkButton href={`${base}/introductions/${introId}/prep`} variant="secondary">Interview prep</LinkButton>{hiredStart ? <span className="self-center text-[14px]">Hire recorded, start date {hiredStart}.</span> : <RecordHire introId={introId} label={dto.identity.fullName} />}</div>}
             </Card>
           ) : introState === 'withdrawn' ? <Notice tone="warning">This profile is no longer available for this role.</Notice> : <Card title="Identity"><p className="text-[15px]">Hidden until the candidate accepts an introduction for this role.</p></Card>}
           <p className="text-[13px] text-muted"><Link href={`${base}/roles/${roleId}`}>Back to all matches</Link></p>

@@ -75,7 +75,8 @@ export async function candidateOnRole(ctx: Ctx, roleId: string, ref: string) {
   const [scr] = await ctx.tx.select({ id: S.screenings.id, status: S.screenings.status }).from(S.screenings).where(and(eq(S.screenings.roleId, roleId), eq(S.screenings.candidateId, candidateId)));
   const flags = { canRequestIntro: role.status === 'open' && !intro && counters.accepted + counters.pending < prototype.maxAcceptedIntros && !(m?.stale), canRequestScreening: role.status === 'open' && (!scr || scr.status === 'cancelled') && counters.screeningsUsed < prototype.includedScreenings };
   const dto = await clientCandidateDTO(ctx, { roleId, clientId: role.clientId, candidateId, match: m ?? null, actionFlags: flags });
-  return { role: { id: role.id, title: role.title, status: role.status }, dto, introId: intro && intro.acceptedAt ? intro.id : intro?.state === 'pending' ? intro.id : null, introState: intro?.state ?? null, counters };
+  const [hire] = intro ? await ctx.tx.select({ start: S.hires.startDate }).from(S.hires).where(eq(S.hires.introductionId, intro.id)) : [];
+  return { hiredStart: hire?.start ?? null, role: { id: role.id, title: role.title, status: role.status }, dto, introId: intro && intro.acceptedAt ? intro.id : intro?.state === 'pending' ? intro.id : null, introState: intro?.state ?? null, counters };
 }
 
 export async function pipelineForRole(ctx: Ctx, roleId: string) {

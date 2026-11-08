@@ -41,6 +41,10 @@ async function settleHire(ctx: Ctx, args: HireArgs, source: HireSource, clientId
   const duplicateKey = `${intro.clientId}:${intro.candidateId}:${args.startDate}`;
   const [dup] = await ctx.tx.select().from(hires).where(and(eq(hires.datasetId, ctx.datasetId), eq(hires.duplicateKey, duplicateKey)));
   if (dup) return { hire: dup, existing: true, chargedUnits: 0n, chargedPence: 0n };
+  // One hire per introduction. A second hire of the same person, even with a different start date,
+  // is never charged automatically: it needs BondMoran review.
+  const [already] = await ctx.tx.select({ id: hires.id }).from(hires).where(eq(hires.introductionId, intro.id));
+  if (already) throw conflict('HIRE_ALREADY_RECORDED', 'A hire is already recorded for this introduction. A second hire of the same person needs BondMoran review. Nothing was charged.', { hireId: already.id });
 
   if (!intro.acceptedAt) throw policy('NO_ACCEPTED_INTRO', 'There is no accepted introduction for this candidate and role.');
   const [cand] = await ctx.tx.select().from(candidates).where(eq(candidates.id, intro.candidateId));
@@ -112,18 +116,24 @@ export async function hirePreview(ctx: Ctx, introductionId: string) {
   const [intro] = await ctx.tx.select().from(introductions).where(and(eq(introductions.id, introductionId), eq(introductions.datasetId, ctx.datasetId)));
   if (!intro) throw notFound();
   const role = await roleForActor(ctx, intro.roleId);
+  // Already recorded for this introduction: quote nothing and say so.
+  const [existing] = await ctx.tx.select({ h: hires, o: hireOrders }).from(hires).innerJoin(hireOrders, eq(hireOrders.id, hires.orderId)).where(eq(hires.introductionId, intro.id));
+  if (existing) {
+    const pay = await orderPaymentState(ctx, existing.o);
+    return { kind: 'already_recorded', totalUnits: pay.totalUnits.toString(), totalPence: pay.totalPence.toString(), paidPence: pay.paidPence.toString(), remainingUnits: '0', remainingPence: '0', salaryPence: role.salaryPence.toString(), isNewFullPrice: false, recorded: { offerDate: existing.h.acceptedOfferDate, startDate: existing.h.startDate, source: existing.h.source } };
+  }
   const primary = await primaryOrder(ctx, role.id);
   const [primaryHire] = primary ? await ctx.tx.select({ id: hires.id }).from(hires).where(eq(hires.orderId, primary.id)) : [];
   if (!primary) return null;
   if (!primaryHire) {
     const p = await orderPaymentState(ctx, primary);
-    return { kind: primary.kind, totalUnits: p.totalUnits.toString(), totalPence: p.totalPence.toString(), paidPence: p.paidPence.toString(), remainingUnits: p.remainingUnits.toString(), remainingPence: p.remainingPence.toString(), salaryPence: role.salaryPence.toString(), isNewFullPrice: false };
+    return { kind: primary.kind, totalUnits: p.totalUnits.toString(), totalPence: p.totalPence.toString(), paidPence: p.paidPence.toString(), remainingUnits: p.remainingUnits.toString(), remainingPence: p.remainingPence.toString(), salaryPence: role.salaryPence.toString(), isNewFullPrice: false, recorded: null };
   }
   const active = await activeContractForClient(ctx, role.clientId);
   const contract = active ?? (await ctx.tx.select().from(contracts).where(eq(contracts.id, primary.contractId)))[0];
   const total = priceOrder(BigInt(primary.baseUnits), role.defaultServiceMode, terms(contract).fullSearchBps);
   const tp = penceForUnits(total, contract.creditRatePence!);
-  return { kind: 'additional', totalUnits: total.toString(), totalPence: tp.toString(), paidPence: '0', remainingUnits: total.toString(), remainingPence: tp.toString(), salaryPence: role.salaryPence.toString(), isNewFullPrice: true };
+  return { kind: 'additional', totalUnits: total.toString(), totalPence: tp.toString(), paidPence: '0', remainingUnits: total.toString(), remainingPence: tp.toString(), salaryPence: role.salaryPence.toString(), isNewFullPrice: true, recorded: null };
 }
 
 async function hireForActor(ctx: Ctx, hireId: string) {
