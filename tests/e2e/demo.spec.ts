@@ -204,3 +204,20 @@ test('Demo checkout: decline keeps input and balance; success adds credits once 
   await page.goto('/client/credits');
   await expect(page.getByRole('link', { name: 'Simulated purchase' })).toHaveCount(1);
 });
+
+test('Guided walkthrough: gated, read-only, reachable from demo accounts, labels the unrun hire flow @phone', async ({ page }) => {
+  await page.context().clearCookies();
+  await page.goto('/demo/guide');
+  await expect(page).toHaveURL(/\/demo$/);
+  await enterGate(page);
+  await page.goto('/demo/personas');
+  await page.getByRole('link', { name: 'Read the guided walkthrough' }).click();
+  await expect(page).toHaveURL(/\/demo\/guide$/);
+  await expect(page.getByRole('heading', { name: 'Guided walkthrough (read-only)' })).toBeVisible();
+  await expect(page.getByText(/^NOT RUN END-TO-END/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Requirements coverage' })).toBeVisible();
+  expect(await page.locator('main button, main form, main input').count()).toBe(0);
+  expect(await page.getByText('Explanation only, not performed').count()).toBeGreaterThan(0);
+  const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(over).toBeLessThanOrEqual(1);
+});

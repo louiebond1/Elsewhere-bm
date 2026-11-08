@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { gateOk } from '@/server/page-auth';
 import { getActiveDataset } from '@/server/services/context';
@@ -22,6 +23,7 @@ export default async function PersonasPage() {
         </div>
         <h1>Choose a fictional demo account</h1>
         <p className="mt-1 text-[15px] text-muted">Switching signs you in as that fictional account. Every switch is recorded.</p>
+        <p className="mt-2 text-[15px]"><Link href="/demo/guide">Read the guided walkthrough</Link> <span className="text-muted">(read-only: explains the workflow without changing anything)</span></p>
         <Personas people={people} scenarios={SCENARIOS.map(({ code, title, persona, personaCode, action, expected }) => ({ code, title, persona, personaCode, action, expected }))} activeScenario={ds?.scenarioCode ?? null} />
       </main>
     </>
