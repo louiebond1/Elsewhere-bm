@@ -61,6 +61,8 @@ export const prototype = Object.freeze({
   realTopUps: false,
   /** Demo checkout: clients can simulate buying whole credits at their contract rate. No money is taken. */
   simulatedCheckout: true,
+  /** PROVISIONAL: notification types that also send an email (subject is the safe title plus a sign-in link). */
+  emailNotificationTypes: ['intro_requested', 'intro_accepted', 'hire_recorded'] as readonly string[],
   /** Largest simulated purchase in one checkout, in whole credits. */
   maxSimulatedPurchaseCredits: 20,
   /** VAT treatment to be agreed. No VAT is calculated. */

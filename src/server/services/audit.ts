@@ -1,6 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { activityEvents, clientMemberships, notifications, users } from '../db/schema';
 import { actorUserId, type Ctx } from './context';
+import { queueEmails } from '../email';
 
 type Meta = Record<string, string | number | boolean | null>;
 
@@ -26,6 +27,7 @@ export async function notify(ctx: Ctx, recipientUserIds: string[], n: { type: No
   const ids = [...new Set(recipientUserIds)];
   if (!ids.length) return;
   await ctx.tx.insert(notifications).values(ids.map((r) => ({ datasetId: ctx.datasetId, recipientUserId: r, ...n })));
+  await queueEmails(ctx, ids, n);
 }
 
 export async function clientUserIds(ctx: Ctx, clientId: string): Promise<string[]> {

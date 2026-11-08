@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 const placeholder = 'choose-a-private-demo-password';
 
+/** Treats an empty value (KEY= in a .env file) as unset. */
+const opt = <T extends z.ZodTypeAny>(s: T) => z.preprocess((v) => (v === '' ? undefined : v), s.optional());
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   APP_MODE: z.literal('demo'),
@@ -24,10 +27,22 @@ const schema = z.object({
   SESSION_PEPPER: z.string().min(64, 'must be at least 32 random bytes as hex'),
   PUBLIC_REF_SECRET: z.string().min(64, 'must be at least 32 random bytes as hex'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  EMAIL_DRIVER: z.enum(['fixture', 'resend']).default('fixture'),
+  RESEND_API_KEY: opt(z.string()),
+  EMAIL_FROM: opt(z.string()),
+  EMAIL_REPLY_TO: opt(z.string().email()),
+  EMAIL_ALLOWLIST: opt(z.string()),
+  SENTRY_DSN: opt(z.string().url()),
+  SENTRY_ENVIRONMENT: opt(z.string()),
 }).superRefine((v, ctx) => {
   if (v.SESSION_PEPPER === v.PUBLIC_REF_SECRET) ctx.addIssue({ code: 'custom', path: ['PUBLIC_REF_SECRET'], message: 'must differ from SESSION_PEPPER' });
   if (v.DEMO_ACCESS_PASSWORD === v.DEMO_LOGIN_PASSWORD) ctx.addIssue({ code: 'custom', path: ['DEMO_ACCESS_PASSWORD'], message: 'must differ from DEMO_LOGIN_PASSWORD' });
   if (v.AI_PROVIDER === 'live' && !v.ANTHROPIC_API_KEY) ctx.addIssue({ code: 'custom', path: ['ANTHROPIC_API_KEY'], message: 'required when AI_PROVIDER=live' });
+  if (v.EMAIL_DRIVER === 'resend') {
+    if (!v.RESEND_API_KEY) ctx.addIssue({ code: 'custom', path: ['RESEND_API_KEY'], message: 'required when EMAIL_DRIVER=resend' });
+    if (!v.EMAIL_FROM) ctx.addIssue({ code: 'custom', path: ['EMAIL_FROM'], message: 'required when EMAIL_DRIVER=resend' });
+    if (!v.EMAIL_ALLOWLIST?.trim()) ctx.addIssue({ code: 'custom', path: ['EMAIL_ALLOWLIST'], message: 'required when EMAIL_DRIVER=resend in demo mode (only listed addresses or @domains receive email)' });
+  }
   if (v.STORAGE_DRIVER === 's3') {
     for (const k of ['S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
       if (!v[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'required when STORAGE_DRIVER=s3' });

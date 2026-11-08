@@ -74,7 +74,8 @@ export const replacementStatus = pgEnum('replacement_status', ['requested', 'app
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
-export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback']);
+export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email']);
+export const emailStatus = pgEnum('email_status', ['queued', 'recorded', 'sent', 'suppressed', 'failed']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
 export const aiOutcome = pgEnum('ai_outcome', ['succeeded', 'failed', 'refused', 'stale_discarded']);
 export const reservationState = pgEnum('reservation_state', ['reserved', 'reconciled', 'released']);
@@ -633,6 +634,25 @@ export const idempotencyRecords = pgTable('idempotency_records', {
   state: idemState('state').notNull().default('processing'),
   expiresAt: ts('expires_at').notNull(),
 }, (t) => [uniqueIndex('idem_uq').on(t.datasetId, t.actorScope, t.endpoint, t.key)]);
+
+/**
+ * Email outbox. Holds no address and no personal data: the recipient is resolved from users at send time,
+ * and the subject is the notification's safe title. The fixture driver records and sends nothing.
+ */
+export const emailOutbox = pgTable('email_outbox', {
+  ...common(),
+  recipientUserId: uuid('recipient_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  notificationType: notificationType('notification_type').notNull(),
+  subject: text('subject').notNull(),
+  linkPath: text('link_path').notNull(),
+  status: emailStatus('status').notNull().default('queued'),
+  driver: text('driver'),
+  providerMessageId: text('provider_message_id'),
+  suppressedReason: text('suppressed_reason'),
+  lastError: text('last_error'),
+  attempts: integer('attempts').notNull().default(0),
+  processedAt: ts('processed_at'),
+}, (t) => [index('email_outbox_created_idx').on(t.datasetId, t.createdAt)]);
 
 export const jobs = pgTable('jobs', {
   ...common(),

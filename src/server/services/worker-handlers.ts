@@ -16,6 +16,7 @@ import { reconcileWallet } from './ledger';
 import { assessmentInput, applyAssessment, pairsAwaitingAssessment } from './matching';
 import { profileVersions } from '../db/schema';
 import { aiRuns } from '../db/schema';
+import { handleSendEmail } from '../email';
 
 type JobRow = NonNullable<Awaited<ReturnType<typeof claimJob>>>;
 
@@ -142,6 +143,7 @@ export async function runJob(base: BaseCtx, job: JobRow) {
     case 'expire_intros': return handleExpiry(base);
     case 'assess_match': return handleAssessRole(base, job);
     case 'generate_feedback': return handleFeedback(base, job);
+    case 'send_email': return handleSendEmail(base, job.subject_id!);
     case 'reconcile_wallet': return withTx(base, (ctx) => reconcileWallet(ctx, job.subject_id!).then(() => undefined));
     default: return;
   }
