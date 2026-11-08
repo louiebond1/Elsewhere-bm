@@ -7,6 +7,7 @@ import { db, closeDb } from './db/client';
 import { processOne } from './services/worker-handlers';
 import { enqueue } from './services/jobs';
 import { getActiveDataset } from './services/context';
+import { sentryOptions, setErrorReporter, reportError } from './monitoring';
 
 const workerId = `worker-${randomUUID().slice(0, 8)}`;
 let stopping = false;
@@ -27,7 +28,17 @@ async function tickExpiry() {
   await enqueue({ tx: db(), datasetId: ds.id }, 'expire_intros', null, `expire:${bucket}`);
 }
 
+async function initMonitoring() {
+  const opts = sentryOptions('worker');
+  if (!opts) return;
+  const Sentry = await import('@sentry/node');
+  Sentry.init(opts);
+  setErrorReporter((err, tags) => Sentry.captureException(err, { tags }));
+  console.log('[worker] error monitoring enabled');
+}
+
 async function main() {
+  await initMonitoring();
   if (!process.env.DATABASE_URL) {
     console.error('[worker] DATABASE_URL is not set');
     process.exit(1);
@@ -46,6 +57,7 @@ async function main() {
       if (!did) await new Promise((r) => setTimeout(r, 1000));
     } catch (e) {
       console.error('[worker] loop error', (e as Error).message);
+      reportError(e, { where: 'worker_loop' });
       await new Promise((r) => setTimeout(r, 2000));
     }
   }

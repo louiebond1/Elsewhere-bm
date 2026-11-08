@@ -17,6 +17,7 @@ import { assessmentInput, applyAssessment, pairsAwaitingAssessment } from './mat
 import { profileVersions } from '../db/schema';
 import { aiRuns } from '../db/schema';
 import { handleSendEmail } from '../email';
+import { reportError } from '../monitoring';
 
 type JobRow = NonNullable<Awaited<ReturnType<typeof claimJob>>>;
 
@@ -165,6 +166,7 @@ export async function processOne(workerId: string): Promise<boolean> {
     const again = retryable && job.attempts < 3;
     await db().update(jobs).set({ status: again ? 'queued' : 'failed', availableAt: new Date(Date.now() + job.attempts * 5000 + Math.floor(Math.random() * 1000)), lockedBy: null, leaseExpiresAt: null, errorCode: code, updatedAt: new Date() }).where(eq(jobs.id, job.id));
     if (process.env.LOG_LEVEL === 'debug') console.error(`[worker] job ${job.kind} failed: ${code}`);
+    if (!again) reportError(new Error(`job_failed:${job.kind}:${code}`), { where: 'job', kind: job.kind, code });
   }
   return true;
 }

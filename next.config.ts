@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ['argon2', 'pdfjs-dist', 'pg', 'mammoth'],
+  serverExternalPackages: ['argon2', 'pdfjs-dist', 'pg', 'mammoth', '@sentry/nextjs', '@sentry/node'],
   async headers() {
     return [{ source: '/:path*', headers: [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
