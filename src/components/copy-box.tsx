@@ -9,8 +9,8 @@ export function CopyBox({ text, label }: { text: string; label: string }) {
     try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopied(false); }
   };
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-line bg-page p-3 sm:flex-row sm:items-center">
-      <code className="min-w-0 flex-1 break-all text-[15px]" aria-label={label}>{text}</code>
+    <div className="flex flex-col gap-3 rounded-2xl bg-page p-4 sm:flex-row sm:items-center">
+      <p className="min-w-0 flex-1 break-words text-[15px] leading-relaxed" aria-label={label}>{text}</p>
       <button type="button" className={cx(buttonClass(copied ? 'secondary' : 'primary'), 'shrink-0')} onClick={copy} aria-live="polite">{copied ? 'Copied ✓' : 'Copy'}</button>
     </div>
   );

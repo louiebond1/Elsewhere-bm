@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCommand, ErrorText, ActionButton, Dialog, api, type ApiError } from './client';
 import { buttonClass, cx } from './ui';
+import { PasteFromAi } from './ai-task';
 import { previewUnits } from './role-form';
 import { creditsLabel } from '../lib/format';
 import { MIN_ITEMS, QUICK_ANSWERS, REGION_LABEL, MODE_LABEL, FAMILY_LABEL, readyToSave, missingSlots, type Understanding, type Slot } from '../lib/hiring';
@@ -18,7 +19,7 @@ const STILL_NEEDED: Record<Slot, string> = {
 };
 
 /** Chat with the hiring assistant, plus a live "Your role so far" card. Nothing is charged here. */
-export function HiringAssistant({ conversationId, messages, understanding: u, lastAsked, facts, demo }: Props) {
+export function HiringAssistant({ conversationId, messages, understanding: u, lastAsked, facts, demo, autoAi = false }: Props & { autoAi?: boolean }) {
   const router = useRouter();
   const send = useCommand<{ id: string }>();
   const save = useCommand<{ id: string }>();
@@ -101,6 +102,11 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
             <button type="submit" className={buttonClass('primary')} disabled={send.busy || !text.trim()}>Send</button>
           </form>
           <ErrorText error={send.error} />
+          <div className="mt-3">
+            <PasteFromAi autoOpen={autoAi} placeLabel="Put it in my message" note="Your AI drafts the brief. You check and send."
+              prompt="Help me write a short hiring brief for a role I’m filling. Ask me about: the job title, what they’ll do day to day, what they must already be able to do, what would be nice to have, what they should own after six months, the salary, where they’ll work and whether it’s office, hybrid or remote. Don’t invent anything I haven’t told you. Then give me the brief as one short paragraph I can paste."
+              onPaste={(t) => { setText(t); setTimeout(() => box.current?.focus(), 50); }} />
+          </div>
         </div>
       </section>
 

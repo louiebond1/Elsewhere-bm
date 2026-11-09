@@ -268,7 +268,7 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await page.getByRole('link', { name: 'Interview', exact: true }).click();
   await expect(page.getByText('Their simulated interview')).toBeVisible();
   await page.goto('/client/home');
-  await expect(page.getByRole('link', { name: /Finance Assistant/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^Finance Assistant/ })).toBeVisible();
   await page.goto('/client/roles/new');
   await expect(page.getByText(/Welcome back, Emma/)).toBeVisible();
   await page.getByText(/What I’ve learned about how you hire/).click();

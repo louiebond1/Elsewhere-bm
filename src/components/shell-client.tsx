@@ -73,8 +73,8 @@ export function SignOut() {
 
 export function SwitchPersona() {
   return (
-    <a href="/demo/personas" aria-label="Switch demo account" title="Switch demo account" className="inline-flex h-9 items-center gap-1.5 rounded-full bg-page px-3 text-[14px] font-medium text-ink no-underline hover:bg-line">
-      <Repeat size={14} aria-hidden /> Demo
+    <a href="/demo/personas" aria-label="Switch demo account" title="Switch demo account" className="inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-4 text-[15px] font-medium text-ink no-underline hover:bg-page">
+      <Repeat size={14} aria-hidden /> <span className="hidden sm:inline">Demo</span>
     </a>
   );
 }
@@ -110,7 +110,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
   const rest = items.slice(3);
   return (
     <>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
         {main.map((i) => {
           const active = path === i.href || path.startsWith(i.href + '/');
           const Icon = ICONS[i.icon] ?? Home;
@@ -119,7 +119,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
         <button type="button" className="flex h-16 flex-col items-center justify-center gap-1 text-[13px] text-muted" onClick={() => setMore(true)} aria-label="More pages"><Menu size={22} strokeWidth={1.6} aria-hidden /> More</button>
       </nav>
       {more && (
-        <div className="fixed inset-0 z-50 bg-black/35 md:hidden" onClick={() => setMore(false)}>
+        <div className="fixed inset-0 z-50 bg-black/35 lg:hidden" onClick={() => setMore(false)}>
           <div className="absolute inset-x-0 bottom-0 rounded-t-[28px] bg-surface p-5 pb-8" onClick={(e) => e.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between"><span className="font-display text-[20px] font-extrabold">More</span><button type="button" aria-label="Close" className="h-11 w-11" onClick={() => setMore(false)}><X size={20} aria-hidden /></button></div>
             <NavLinks items={rest} onNavigate={() => setMore(false)} />
@@ -128,5 +128,22 @@ export function MobileNav({ items }: { items: NavItem[] }) {
         </div>
       )}
     </>
+  );
+}
+
+/** Desktop: the main pages as a row of pills in the top bar. */
+export function TopNav({ items }: { items: NavItem[] }) {
+  const path = usePathname();
+  return (
+    <ul className="flex items-center gap-1">
+      {items.map((i) => {
+        const active = path === i.href || path.startsWith(i.href + '/');
+        return (
+          <li key={i.href}>
+            <Link href={i.href} aria-current={active ? 'page' : undefined} className={cx('inline-flex h-11 items-center whitespace-nowrap rounded-full px-5 text-[16px] font-medium no-underline transition-colors', active ? 'bg-[#E3E9DC] text-ink' : 'text-ink hover:bg-surface')}>{i.label}</Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

@@ -1,5 +1,5 @@
 import { pageViewer } from '@/server/page-auth';
-import { AppShell } from '@/components/shell';
+import { AppShell, candidateAiBar } from '@/components/shell';
 import { candidateSelf } from '@/server/services/candidates';
 import { draftsWaiting, connectedAi } from '@/server/connectors/drafts';
 
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function CandidateLayout({ children }: { children: React.ReactNode }) {
   const { ctx, csrf } = await pageViewer('candidate');
   const self = await candidateSelf(ctx);
-  const aiBar = { drafts: await draftsWaiting(ctx), connected: await connectedAi(ctx), href: '/candidate/ai' };
+  const aiBar = candidateAiBar(await draftsWaiting(ctx), await connectedAi(ctx));
   const nav = [
     { href: '/candidate/home', label: 'Home', icon: 'home' },
     { href: '/candidate/profile', label: 'Profile', icon: 'profile' },

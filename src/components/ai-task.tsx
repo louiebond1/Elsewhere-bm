@@ -188,3 +188,35 @@ export function QuestionAi({ questionId, questionText, initialDraft, connected: 
     </div>
   );
 }
+
+/**
+ * "Let my AI do this" where the app has no connector for this person yet: copy a ready-made
+ * message to ChatGPT or Claude, paste back what it wrote, and it goes into the box (not sent).
+ */
+export function PasteFromAi({ prompt, onPaste, autoOpen = false, note = 'Your AI drafts. You check and send.', placeLabel = 'Put it in my answer' }: { prompt: string; onPaste: (text: string) => void; autoOpen?: boolean; note?: string; placeLabel?: string }) {
+  const [open, setOpen] = useState(autoOpen);
+  const [text, setText] = useState('');
+  if (!open) return <LetMyAiButton connected={null} note={note} onClick={() => setOpen(true)} />;
+  return (
+    <section aria-label="Let my AI do this" className="rounded-[24px] border border-line bg-surface p-5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-display text-[20px] font-extrabold">Let your AI do this</p>
+        <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="-mr-2 -mt-2 flex h-11 w-11 items-center justify-center rounded-full text-[24px] leading-none hover:bg-page">&times;</button>
+      </div>
+      <ol className="mt-3 space-y-4 text-[15px]">
+        <li><span className="font-semibold">1. Copy this message</span><div className="mt-2"><CopyBox text={prompt} label="Message for your AI" /></div></li>
+        <li><span className="font-semibold">2. Paste it into your AI</span>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a className={buttonClass('secondary')} href={AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open ChatGPT</a>
+            <a className={buttonClass('secondary')} href={AI_APPS.claude.open} target="_blank" rel="noreferrer">Open Claude</a>
+          </div>
+        </li>
+        <li><label htmlFor="ai-paste" className="font-semibold">3. Paste what it wrote</label>
+          <textarea id="ai-paste" rows={5} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Paste here…" className="mt-2 w-full rounded-2xl border border-line bg-page px-4 py-3 text-[16px]" />
+        </li>
+      </ol>
+      <button type="button" className={cx(buttonClass('primary', true), 'mt-3')} disabled={!text.trim()} onClick={() => { onPaste(text.trim()); setText(''); setOpen(false); }}>{placeLabel}</button>
+      <p className="mt-2 text-center text-[13px] text-muted">Nothing is sent until you press Send. Check every detail is true.</p>
+    </section>
+  );
+}

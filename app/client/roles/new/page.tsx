@@ -6,7 +6,7 @@ import { PageHeader, Notice } from '@/components/ui';
 import { RoleForm } from '@/components/role-form';
 import { HiringAssistant } from '@/components/hiring-assistant';
 
-export default async function NewRole({ searchParams }: { searchParams: Promise<{ form?: string }> }) {
+export default async function NewRole({ searchParams }: { searchParams: Promise<{ form?: string; ai?: string }> }) {
   const { viewer, ctx } = await pageViewer('client');
   const sp = await searchParams;
   const c = await activeContractForClient(ctx, viewer.actor.clientId!);
@@ -23,7 +23,7 @@ export default async function NewRole({ searchParams }: { searchParams: Promise<
   return (
     <>
       <PageHeader title="Add a role" back={{ href: '/client/roles', label: 'Roles' }} subtitle="Tell your hiring assistant who you need. It sets up the role for you." />
-      <HiringAssistant conversationId={v.conversationId} messages={v.messages} understanding={v.understanding} lastAsked={v.lastAsked} facts={v.facts.map((f) => ({ id: f.id, text: f.text }))} ratePence={c.creditRatePence ?? 380000} demo={aiMode() !== 'live'} />
+      <HiringAssistant conversationId={v.conversationId} messages={v.messages} understanding={v.understanding} lastAsked={v.lastAsked} facts={v.facts.map((f) => ({ id: f.id, text: f.text }))} ratePence={c.creditRatePence ?? 380000} demo={aiMode() !== 'live'} autoAi={sp.ai === '1'} />
     </>
   );
 }
