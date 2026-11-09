@@ -31,13 +31,9 @@ export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waitin
     </>
   );
   return (
-    <section aria-label="Let your AI fill it in" className="rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:p-6">
-      <h2 className="text-[22px] leading-7">Let your {connected} do the talking</h2>
-      <ol className="mt-3 space-y-3 text-[16px]">
-        <li><span className="font-semibold">1.</span> Copy this message:<div className="mt-2"><CopyBox text={CHECKLIST_PROMPT} label="Message for your AI" /></div></li>
-        <li><span className="font-semibold">2.</span> <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open {connected}</a> and paste it. It fills in what it knows and asks you the rest. Type or just talk to it.</li>
-        <li><span className="font-semibold">3.</span> Its answers pop up here as it goes. It’ll ask you follow-ups too, and if you’ve got more to share, great: it all helps in your interviews.</li>
-      </ol>
+    <section aria-label="Let your AI fill it in" className="flex flex-col gap-3 rounded-3xl bg-surface p-4 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:flex-row lg:items-center lg:gap-5 lg:p-5">
+      <p className="text-[16px] lg:w-[250px] lg:shrink-0"><span className="block font-semibold">Let your {connected} do the talking</span><span className="text-muted">Paste this into <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">{connected}</a>. It asks follow-ups too.</span></p>
+      <div className="min-w-0 flex-1"><CopyBox text={CHECKLIST_PROMPT} label="Message for your AI" /></div>
     </section>
   );
 }
@@ -135,6 +131,32 @@ export function Extras({ extras }: { extras: Q[] }) {
           <ErrorText error={error} />
         </form>
       ) : <button type="button" className={cx(buttonClass('secondary'), 'mt-4')} onClick={() => setOpen(true)}>Add something else</button>}
+    </section>
+  );
+}
+
+/** One question at a time: big card, dots for where you are, back and next. No wall of questions. */
+export function QuestionDeck({ title, questions, nextHref }: { title: string; questions: Q[]; nextHref: string | null }) {
+  const first = Math.max(0, questions.findIndex((q) => !q.answer || !q.approved));
+  const [i, setI] = useState(first);
+  const q = questions[i];
+  const done = questions.filter((x) => x.approved).length;
+  return (
+    <section aria-label={title} className="rounded-3xl bg-surface p-6 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-[22px] leading-7">{title}</h2>
+        <span className="tnum text-[15px] text-muted">{i + 1} of {questions.length} · {done} checked</span>
+      </div>
+      <div className="mt-3 flex gap-1.5" aria-hidden>
+        {questions.map((x, n) => <button key={x.key} type="button" tabIndex={-1} onClick={() => setI(n)} className={cx('h-1.5 flex-1 rounded-full', n === i ? 'bg-ink' : x.approved ? 'bg-primary' : x.answer ? 'bg-[#E8C27A]' : 'bg-line')} />)}
+      </div>
+      <ul className="mt-2" key={q.key}><Question q={q} /></ul>
+      <div className="mt-2 flex items-center justify-between gap-3 border-t border-line pt-5">
+        <button type="button" className={buttonClass('ghost')} disabled={i === 0} onClick={() => setI(i - 1)}>← Back</button>
+        {i < questions.length - 1
+          ? <button type="button" className={buttonClass('primary')} onClick={() => setI(i + 1)}>Next question →</button>
+          : nextHref ? <a href={nextHref} className={cx(buttonClass('primary'), 'no-underline')}>Next section →</a> : <span className="text-[15px] font-semibold text-primary">That’s every section ✓</span>}
+      </div>
     </section>
   );
 }

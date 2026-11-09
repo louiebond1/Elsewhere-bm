@@ -49,8 +49,8 @@ export default async function CandidateHome() {
     <div className="relative mx-auto max-w-[1080px]">
       <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-[radial-gradient(closest-side,rgba(29,91,63,.12),rgba(29,91,63,0))]" />
       <header className="relative">
-        <h1 className="max-w-[14ch] text-[40px] leading-[1.05] md:text-[56px]">Let your experience speak.</h1>
-        <p className="mt-3 text-[17px] text-muted">Anonymous until you accept an introduction.</p>
+        <h1 className="text-[34px] leading-[1.08] lg:text-[44px]">Let your experience speak.</h1>
+        <p className="mt-2 text-[17px] text-muted">Anonymous until you accept an introduction.</p>
       </header>
 
       {o.pendingIntros > 0 && (
@@ -61,12 +61,12 @@ export default async function CandidateHome() {
         </Link>
       )}
 
-      <div className="relative mt-6 grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:items-start">
+      <div className="relative mt-6 grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-start">
         <section aria-label="Your next step" className="overflow-hidden rounded-[32px] bg-surface p-3 shadow-[0_24px_60px_-28px_rgba(30,40,30,.35)]">
-          <FoldArt className="h-40 w-full rounded-[24px] md:h-52" />
+          <FoldArt className="h-28 w-full rounded-[24px] lg:h-32" />
           <div className="px-3 pb-3 pt-1">
             {!checklistDone ? (<>
-              <h2 className="text-[30px] leading-tight">Build your mini-me.</h2>
+              <h2 className="text-[26px] leading-tight">Build your mini-me.</h2>
               <p className="mt-1 text-[17px] text-muted">{ob.answered ? `It knows you ${Math.round((ob.answered / ob.total) * 100)}% so far. ${ob.approved} answer${ob.approved === 1 ? '' : 's'} checked by you.` : 'No one knows you better than your ChatGPT (not even your family). Let it do the typing.'}</p>
               <div className="mt-5 space-y-3">
                 <Link href="/candidate/onboarding?ai=1" className={cx(buttonClass('primary', true), 'gap-3 text-[17px] no-underline')}><HandHelping aria-hidden size={22} strokeWidth={1.8} /> Let my AI do this</Link>
@@ -86,13 +86,13 @@ export default async function CandidateHome() {
         </section>
 
         <section aria-label="Your profile">
-          <h2 className="text-[30px]">Your profile</h2>
+          <h2 className="text-[26px]">Your profile</h2>
           <p className="mt-1 text-[17px] text-muted">{ready} of {sections.length} sections ready</p>
           <div className="mt-4 grid grid-cols-4 gap-2" aria-hidden>{sections.map((s) => <span key={s.label} className={cx('h-2 rounded-full', s.done ? 'bg-primary' : 'bg-line')} />)}</div>
           <ul className="mt-4">
             {sections.map(({ label, hint, done, href, Icon }) => (
               <li key={label}>
-                <Link href={href} className="-mx-2 flex items-center gap-4 rounded-2xl px-2 py-3.5 text-ink no-underline hover:bg-surface">
+                <Link href={href} className="-mx-2 flex items-center gap-4 rounded-2xl px-2 py-2.5 text-ink no-underline hover:bg-surface">
                   <Icon aria-hidden size={24} strokeWidth={1.6} />
                   <span className="flex-1"><span className="block text-[18px] font-medium">{label}</span><span className={cx('text-[14px]', done ? 'text-primary' : 'text-muted')}>{done ? `✓ ${hint}` : hint}</span></span>
                   <ChevronRight aria-hidden className="text-muted" />

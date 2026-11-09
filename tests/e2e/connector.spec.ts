@@ -108,12 +108,14 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await expect(page.getByText('Subject: Welcome to BondMoran Elsewhere')).toBeVisible();
   await page.getByRole('link', { name: 'I’d rather type it myself' }).click();
   await expect(page.getByRole('heading', { name: 'Your mini-me' })).toBeVisible();
-  // Answer one yourself.
-  const q = page.locator('li', { hasText: 'How much notice do you need to give' });
-  await q.getByRole('button', { name: 'I’ll answer this' }).click();
-  await q.getByRole('textbox').fill('Four weeks.');
-  await q.getByRole('button', { name: 'Save' }).click();
-  await expect(q.getByText('Checked')).toBeVisible();
+  // Answer one yourself: open Practical details, go to the notice question.
+  await page.getByRole('link', { name: /Practical details/ }).click();
+  await page.getByRole('button', { name: 'Next question →' }).click();
+  await expect(page.getByText('How much notice do you need to give')).toBeVisible();
+  await page.getByRole('button', { name: 'I’ll answer this' }).click();
+  await page.getByRole('textbox').fill('Four weeks.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Checked', { exact: true })).toBeVisible();
   // Their AI saves drafts through the connector.
   const reg = await (await page.request.post('/api/oauth/register', { data: { client_name: 'ChatGPT', redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'] } })).json();
   const verifier = randomBytes(32).toString('base64url');
@@ -133,5 +135,5 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();
   await page.getByRole('button', { name: 'All good: approve 2' }).click();
   await expect(page.getByText('Your AI wrote 2 answers.')).toHaveCount(0);
-  await expect(page.getByText('3', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Knows you 6%')).toBeVisible();
 });
