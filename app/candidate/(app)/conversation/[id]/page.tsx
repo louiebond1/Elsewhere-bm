@@ -7,13 +7,17 @@ import { isUuid } from '@/server/lib/ids';
 import { providerLabel } from '@/server/ai';
 import { CANDIDATES } from '../../../../../fixtures/candidates';
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> }) {
   const { ctx } = await pageViewer('candidate');
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const c = await getConversation(ctx, id).catch(() => null);
   if (!c) notFound();
-  const q = c.questions.find((x) => x.state === 'unanswered') ?? null;
+  const asked = (await searchParams).q;
+  const open = c.questions.filter((x) => x.state === 'unanswered');
+  // A chosen question first, then one their AI already drafted, then the next in order.
+  const q = open.find((x) => x.id === asked) ?? open.find((x) => x.draft) ?? open[0] ?? null;
+  const moreDrafts = open.filter((x) => x.draft && x.id !== q?.id).length;
   const answered = c.questions.filter((x) => x.state === 'answered').length;
   const topics = [...new Set(c.questions.filter((x) => x.state === 'answered').map((x) => x.topic))];
   const c40 = CANDIDATES.find((x) => x.code === 'C40')!;
@@ -22,7 +26,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <PageHeader title={c.conversation.kind === 'initial_screening' ? 'Your first conversation' : 'Check-in'} back={{ href: '/candidate/home', label: 'Home' }} subtitle={<span>Low pressure, text only. <Badge>{providerLabel()}</Badge></span>} />
       {c.conversation.status === 'completed' ? <p className="rounded-xl border border-line bg-surface p-5">This conversation is complete. Your draft evidence is being prepared.</p> : (
         <div className="grid gap-6 md:grid-cols-[1fr_200px]">
+          <div>
+          {moreDrafts > 0 && <p className="mb-3 rounded-lg bg-page px-3 py-2 text-[14px]">Your AI also drafted {moreDrafts} more answer{moreDrafts > 1 ? 's' : ''}. They come up next.</p>}
           <Conversation key={q?.id ?? "done"} conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic, draft: q.draft?.body ?? null } : null} answered={answered} canFinish={answered > 0} />
+          </div>
           <aside className="hidden text-[14px] md:block"><h4 className="font-semibold">Topics covered</h4><ul className="mt-1 text-muted">{topics.length ? topics.map((t) => <li key={t}>{t}</li>) : <li>None yet</li>}</ul></aside>
         </div>
       )}
