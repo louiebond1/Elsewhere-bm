@@ -119,3 +119,22 @@ export async function addExtras(ctx: Ctx, items: { topic: string; answer: string
   if (saved.length) { await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.extras_added', metadata: { count: saved.length } }); if (from === 'self') await refreshInterviews(ctx, candidateId); }
   return { saved, skipped };
 }
+
+/**
+ * Always-on mode: whatever their AI picks up in any chat. If it answers a checklist question it goes
+ * there (never over an approved answer); otherwise it becomes an extra. All drafts for them to check.
+ */
+export async function rememberForMiniMe(ctx: Ctx, provider: string, items: { topic: string; detail: string; questionKey?: string | null }[]) {
+  const toChecklist = items.filter((i) => i.questionKey && ONBOARDING_KEYS.has(i.questionKey)).map((i) => ({ key: i.questionKey!, answer: i.detail }));
+  const toExtras = items.filter((i) => !(i.questionKey && ONBOARDING_KEYS.has(i.questionKey))).map((i) => ({ topic: i.topic, answer: i.detail }));
+  const a = toChecklist.length ? await saveAiAnswers(ctx, provider, toChecklist) : { saved: [], skipped: [] };
+  const b = toExtras.length ? await addExtras(ctx, toExtras, { provider }) : { saved: [], skipped: [] };
+  return { savedToChecklist: a.saved.length, savedAsExtras: b.saved.length, skipped: [...a.skipped.map((x) => x.key + ' (' + x.reason + ')'), ...b.skipped.map((x) => x.topic + ' (' + x.reason + ')')] };
+}
+
+/** A few questions not yet answered, for their AI to slip into conversation when it fits. */
+export async function questionsLeft(ctx: Ctx, limit = 3) {
+  const v = await onboardingView(ctx);
+  const left = v.sections.flatMap((s) => s.questions.filter((q) => !q.answer).map((q) => ({ key: q.key, question: q.text, section: s.title })));
+  return { left: left.length, total: v.total, suggestions: left.slice(0, limit) };
+}

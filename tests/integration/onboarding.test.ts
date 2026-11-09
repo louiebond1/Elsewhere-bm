@@ -116,3 +116,27 @@ describe('mini-me: follow-ups and extras, and everyone gets interviewed', () => 
     expect(ev[0].tags).toEqual(expect.arrayContaining(['reconciliations', 'month_end', 'excel', 'process_design']));
   });
 });
+
+describe('always-on mode', () => {
+  it('their AI saves things from any chat to the right place, and gets a few unasked questions to slip in', async () => {
+    const w = await load();
+    const tok = await token(w, 'C01');
+    const next = await call(tok, 'next_mini_me_questions');
+    expect(next.result.structuredContent).toMatchObject({ left: 50, total: 50 });
+    expect((next.result.structuredContent as { suggestions: unknown[] }).suggestions).toHaveLength(3);
+    const r = await call(tok, 'remember_for_my_mini_me', { items: [
+      { topic: 'Current job', detail: 'Finance assistant at a retailer', question_key: 'current_role' },
+      { topic: 'Weekend football coaching', detail: 'Runs a kids’ team every Saturday: kit, rotas and parents.' },
+      { topic: 'Bad key', detail: 'Goes to extras instead', question_key: 'not_a_question' },
+    ] });
+    expect(r.result.structuredContent).toMatchObject({ savedToChecklist: 1, savedAsExtras: 2 });
+    const v = await onboardingView(readCtx(w.cand('C01')));
+    expect(v.answered).toBe(1);
+    expect(v.extras.map((e) => e.text)).toEqual(expect.arrayContaining(['Weekend football coaching', 'Bad key']));
+    expect(((await call(tok, 'next_mini_me_questions')).result.structuredContent as { left: number }).left).toBe(49);
+    // Approved answers are never overwritten by always-on saves.
+    await w.T(w.cand('C01'), (c) => approveAnswers(c, ['current_role']));
+    const again = await call(tok, 'remember_for_my_mini_me', { items: [{ topic: 'Job', detail: 'Something else', question_key: 'current_role' }] });
+    expect(again.result.structuredContent).toMatchObject({ savedToChecklist: 0 });
+  });
+});

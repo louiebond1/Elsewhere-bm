@@ -160,3 +160,25 @@ export function QuestionDeck({ title, questions, nextHref }: { title: string; qu
     </section>
   );
 }
+
+export const ALWAYS_ON = 'I’m building my Elsewhere mini-me. In any of our chats, whenever I mention something about my work, skills, results or what I want next, save it to Elsewhere without interrupting. Now and then, when it fits naturally, ask me one of my unanswered Elsewhere questions. Never invent anything.';
+
+/** Always-on: one sentence for their AI's settings, so it learns about them in every chat. */
+export function AlwaysOn({ provider }: { provider: string }) {
+  return (
+    <details className="group rounded-3xl bg-surface shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-4 lg:px-5">
+        <span><span className="font-semibold">Always-on mode</span> <span className="text-muted">· let your {provider} learn about you in every chat, a little at a time</span></span>
+        <span className="text-[15px] font-semibold text-primary group-open:hidden">Turn it on</span>
+      </summary>
+      <div className="border-t border-line p-4 lg:px-5">
+        <ol className="space-y-3 text-[16px]">
+          <li><span className="font-semibold">1.</span> Copy this:<div className="mt-2"><CopyBox text={ALWAYS_ON} label="Always-on instruction" /></div></li>
+          <li><span className="font-semibold">2.</span> In {provider}, open its settings and paste it where you tell it about yourself or how to respond (personalisation or custom instructions).</li>
+          <li><span className="font-semibold">3.</span> Just chat as normal. Over time it asks every question, and whatever it saves pops up here for you to check.</li>
+        </ol>
+        <p className="mt-3 text-[14px] text-muted">The Elsewhere connector needs to be switched on in those chats. Your AI decides when to use it, and you approve everything here.</p>
+      </div>
+    </details>
+  );
+}
