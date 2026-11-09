@@ -8,7 +8,7 @@ import { activeContractForClient } from '../server/services/contracts';
 import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton } from './ui';
 import { SimplePrice, CompactPrice, MatchCard } from './role';
 import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, RequestIntro, RequestScreening, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
-import { gbp, label, date, relative } from '../lib/format';
+import { gbp, label, date, relative, creditsLabel } from '../lib/format';
 import { prototype } from '../config/prototype';
 
 export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consultant }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean }) {
@@ -51,9 +51,9 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
             <h4 className="mt-3 font-semibold">What matters</h4><ul className="text-[15px]">{crit.map((c) => <li key={c.id}>{c.label} · {c.importance === 'essential' ? 'Must have' : 'Nice to have'}</li>)}</ul>
             {crit.length < 3 && <Notice tone="warning">Add 3 to 6 things that matter before making this role live.</Notice>}
           </Card>
-          <Card title="Your hire price">
-            {q ? <><p className="text-[15px]">Total {Number(q.total) / 10000} credits / {gbp(q.totalPence)}. Deposit {Number(q.deposit) / 10000} credits / {gbp(q.depositPence)}.</p>
-              <p className="mt-2 text-[14px] text-muted">{extra ? `This would be an extra role: ${gbp(q.depositPence)} is charged at activation.` : 'Inside your included open roles: no deposit yet.'}</p>
+          <Card title="What it costs">
+            {q ? <><p className="text-[15px]">{creditsLabel(q.total.toString())} if you hire someone. {creditsLabel(q.deposit.toString())} of that when someone agrees to meet you.</p>
+              <p className="mt-2 text-[14px] text-muted">{extra ? `This is an extra job, so ${creditsLabel(q.deposit.toString())} would be used when you start.` : 'Nothing is used when you start.'}</p>
               <div className="mt-3"><ActivateRole roleId={roleId} willBeExtra={extra} depositUnits={q.deposit.toString()} depositPence={q.depositPence.toString()} base={base} /></div></>
               : <Notice tone="warning">No active contract.</Notice>}
           </Card>

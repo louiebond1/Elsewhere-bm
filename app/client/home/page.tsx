@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { clientSummary, walletView, rolesForClient, hiresForClient } from '@/server/views/client';
-import { activeContractForClient } from '@/server/services/contracts';
 import { Badge, buttonClass, cx } from '@/components/ui';
 import { creditsLabel, gbp, label } from '@/lib/format';
 
@@ -9,10 +8,9 @@ import { creditsLabel, gbp, label } from '@/lib/format';
 export default async function ClientHome() {
   const { viewer, ctx } = await pageViewer('client');
   const id = viewer.actor.clientId!;
-  const [c, w, roles, hires, contract] = await Promise.all([clientSummary(ctx, id), walletView(ctx, id), rolesForClient(ctx, id), hiresForClient(ctx, id), activeContractForClient(ctx, id)]);
+  const [c, w, roles, hires] = await Promise.all([clientSummary(ctx, id), walletView(ctx, id), rolesForClient(ctx, id), hiresForClient(ctx, id)]);
   const first = (viewer.displayName ?? '').split(' ')[0] || 'there';
   const current = roles.filter((r) => r.status !== 'closed');
-  const value = contract?.creditRatePence ? gbp((BigInt(w.spendable) * BigInt(contract.creditRatePence)) / 10000n) : null;
   return (
     <div className="mx-auto max-w-[760px]">
       <h1 className="text-[32px] leading-tight">Hi {first}</h1>
@@ -22,7 +20,6 @@ export default async function ClientHome() {
         <span>
           <span className="block text-[15px] text-muted">You have</span>
           <span className="block text-[28px] font-semibold text-ink">{creditsLabel(w.spendable)}</span>
-          {value && <span className="block text-[14px] text-muted">worth about {value}</span>}
         </span>
         <span className="text-[15px] text-link">See credits →</span>
       </Link>

@@ -224,5 +224,5 @@ export async function startQuote(ctx: Ctx, conversationId: string) {
   const isExtra = (await openOrdinaryRoleCount(ctx, p.clientId)) >= contract.includedOpenRoles;
   const w = await getWallet(ctx, p.clientId);
   const spendable = w ? (await balances(ctx, w.id)).spendable : 0n;
-  return { title: u.title, totalPence: q.totalPence.toString(), depositPence: q.depositPence.toString(), depositUnits: q.deposit.toString(), isExtra, included: contract.includedOpenRoles, enoughForExtra: !isExtra || spendable >= q.deposit };
+  return { title: u.title, totalUnits: q.total.toString(), totalPence: q.totalPence.toString(), depositPence: q.depositPence.toString(), depositUnits: q.deposit.toString(), isExtra, included: contract.includedOpenRoles, enoughForExtra: !isExtra || spendable >= q.deposit };
 }

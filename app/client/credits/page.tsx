@@ -12,9 +12,9 @@ export default async function Credits({ searchParams }: { searchParams: Promise<
   const current = v.contracts.find((c) => c.status === 'active');
   return (
     <>
-      <PageHeader title="Credits" subtitle="You use credits when you hire. This is a demo: no real money is involved." actions={<div className="flex flex-wrap gap-2"><LinkButton href="/client/credits/buy">Buy credits (demo)</LinkButton><ActionButton path="notifications/request-credits" label="Request credits" variant="secondary" successText="Your consultant has been notified." /></div>} />
+      <PageHeader title="Credits" subtitle="Credits are how you pay for hiring here. This is a demo: no real money is involved." actions={<div className="flex flex-wrap gap-2"><LinkButton href="/client/credits/buy">Buy credits (demo)</LinkButton><ActionButton path="notifications/request-credits" label="Request credits" variant="secondary" successText="Your consultant has been notified." /></div>} />
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Credits you can use" value={creditsLabel(v.wallet.spendable)} hint={current?.rate ? `About ${gbp((BigInt(v.wallet.spendable) * BigInt(current.rate)) / 10000n)}` : undefined} />
+        <Stat label="Credits you can use" value={creditsLabel(v.wallet.spendable)} hint="Used when people agree to meet you and when you hire" />
         <Stat label="Set aside" value={creditsLabel(v.wallet.held)} hint="Held while someone decides whether to meet you. Not spent." />
         <Stat label="Total balance" value={creditsLabel(v.wallet.posted)} hint="What you can use plus what is set aside" />
       </div>
@@ -31,7 +31,6 @@ export default async function Credits({ searchParams }: { searchParams: Promise<
             { label: 'What', cell: (r) => <Link href={`/client/credits/${r.id}`}>{txLabel(r.type)}</Link> },
             { label: 'Role', cell: (r) => r.role ?? '' },
             { label: 'Credits', align: 'right', cell: (r) => <span className={r.units.startsWith('-') ? '' : 'text-success'}>{credits(r.units)}</span> },
-            { label: 'Value', align: 'right', cell: (r) => gbp(r.pence) },
             { label: 'Balance after', align: 'right', cell: (r) => credits(r.balanceAfter) },
           ]} />
         </section>

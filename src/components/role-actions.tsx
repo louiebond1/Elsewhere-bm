@@ -5,12 +5,12 @@ import { ActionButton, Dialog, ErrorText, Field, inputClass, useCommand, api, us
 import { buttonClass } from './ui';
 import { credits, gbp, creditsLabel } from '../lib/format';
 
-export function ActivateRole({ roleId, willBeExtra, depositUnits, depositPence, base }: { roleId: string; willBeExtra: boolean; depositUnits: string; depositPence: string; base: string }) {
+export function ActivateRole({ roleId, willBeExtra, depositUnits, base }: { roleId: string; willBeExtra: boolean; depositUnits: string; depositPence: string; base: string }) {
   return (
     <ActionButton path={`roles/${roleId}/activate`} body={{ confirmExtraDeposit: willBeExtra }} label="Find my best people" redirect={`${base}/roles/${roleId}`}
       confirm={willBeExtra
-        ? { title: 'Find your best people?', confirmLabel: `Pay ${gbp(depositPence)} and start`, body: <><p>This client already has its included open roles. This role is an extra role.</p><p className="font-semibold">{creditsLabel(depositUnits)} ({gbp(depositPence)}) will be charged now as this role&apos;s one deposit.</p><p>The deposit is allocated to this role&apos;s first hire. It is not charged again when the first introduction is accepted, and closing the role does not refund it.</p></> }
-        : { title: 'Find your best people?', confirmLabel: 'Find my best people', body: <><p>This role is inside your included open roles. Nothing is charged now.</p><p>The deposit of {creditsLabel(depositUnits)} ({gbp(depositPence)}) is reserved when you request the first introduction and charged when a candidate accepts.</p><p>The salary is locked for pricing once the role is live.</p></> }} />
+        ? { title: 'Find your best people?', confirmLabel: `Use ${creditsLabel(depositUnits)} and start`, body: <><p>This is an extra job on top of the ones included in your plan.</p><p className="font-semibold">{creditsLabel(depositUnits)} {BigInt(depositUnits) === 10000n ? 'is' : 'are'} used now. It counts towards the cost if you hire.</p><p>It isn&apos;t used again when someone agrees to meet you, and it isn&apos;t returned if you close the job.</p></> }
+        : { title: 'Find your best people?', confirmLabel: 'Find my best people', body: <><p>Nothing is used now.</p><p>{creditsLabel(depositUnits)} {BigInt(depositUnits) === 10000n ? 'is' : 'are'} set aside when you ask to meet someone, and used when they say yes.</p><p>The salary can&apos;t change once the search starts.</p></> }} />
   );
 }
 
@@ -59,13 +59,13 @@ export function UpgradeRole({ roleId, ch }: { roleId: string; ch: { fullSearchPr
     <ActionButton path={`roles/${roleId}/upgrade`} label="Ask BondMoran to search for you" variant="secondary"
       confirm={{ title: 'Ask BondMoran to search for you', confirmLabel: 'Yes, no charge now', body: ch.firstHirePaid
         ? <><p>The first hire on this role is already paid and its price does not change.</p><p>Any further hire on this role will be priced as full search at {creditsLabel(ch.fullSearchPreview.totalUnits)}.</p></>
-        : <><p>Full search is 1.5 times the standard credit price.</p><p className="font-semibold">New total: {creditsLabel(ch.fullSearchPreview.totalUnits)} / {gbp(ch.fullSearchPreview.totalPence)}. Already paid: {gbp(ch.paidPence)}. Remaining on hire: {creditsLabel(ch.fullSearchPreview.remainingUnits)} / {gbp(ch.fullSearchPreview.remainingPence)}.</p><p>Nothing is charged when you upgrade. A downgrade is not supported in this prototype.</p></> }} />
+        : <><p>BondMoran does the searching for you. It costs one and a half times as much.</p><p className="font-semibold">New cost if you hire: {creditsLabel(ch.fullSearchPreview.totalUnits)}. Still to use when you hire: {creditsLabel(ch.fullSearchPreview.remainingUnits)}.</p><p>Nothing is used when you switch. You can’t switch back in this demo.</p></> }} />
   );
 }
 
-export function RequestIntro({ roleId, candidateRef, depositPaid, holdExists, depositUnits, depositPence, disabledReason }: { roleId: string; candidateRef: string; depositPaid: boolean; holdExists: boolean; depositUnits: string; depositPence: string; disabledReason?: string | null }) {
+export function RequestIntro({ roleId, candidateRef, depositPaid, holdExists, depositUnits, disabledReason }: { roleId: string; candidateRef: string; depositPaid: boolean; holdExists: boolean; depositUnits: string; depositPence: string; disabledReason?: string | null }) {
   const [msg, setMsg] = useState('We would like to talk to you about this role.');
-  const effect = depositPaid ? 'This role’s deposit is already paid. Nothing more is reserved or charged.' : holdExists ? 'This request shares the role’s existing reservation. Nothing more is reserved or charged.' : `${creditsLabel(depositUnits)} (${gbp(depositPence)}) will be reserved now and charged only when the first candidate accepts. A reservation is not a charge.`;
+  const effect = depositPaid ? 'Nothing more is used: this job’s first payment is already done.' : holdExists ? 'Nothing more is set aside: this job already has credits set aside.' : `${creditsLabel(depositUnits)} will be set aside now and only used if they say yes. Setting aside is not spending.`;
   return (
     <ActionButton path="intros/request" body={{ roleId, candidateRef, message: msg }} label="Ask to meet" disabledReason={disabledReason}
       confirm={{ title: 'Ask to meet this person', confirmLabel: 'Send request', body: <><p>The candidate sees your organisation, the role, salary and work location, then chooses whether to share their name and email for this role only.</p><p className="font-semibold">{effect}</p><p className="text-muted">Requests expire after 7 days. An in-app notification is sent; no email is sent in this demo.</p><label className="block text-[14px] font-medium">Message to the candidate<textarea className="mt-1 w-full rounded-lg border border-line p-2" rows={3} maxLength={600} value={msg} onChange={(e) => setMsg(e.target.value)} /></label></> }} />
@@ -133,15 +133,15 @@ export function RecordHire({ introId, label: who, defaultOffer = '2026-11-06', d
       <Dialog open={open} onClose={() => setOpen(false)} title={outside ? 'Recover an outside-system hire' : `Record hire: ${who}`}>
         {!p ? <p>Loading the price…</p> : p.kind === 'already_recorded' ? (
           <div className="space-y-2 text-[15px]">
-            <p className="rounded-lg bg-success-tint px-3 py-2 text-success">Already recorded. Nothing more will be charged.</p>
-            <p>This hire was recorded with offer accepted on {p.recorded?.offerDate} and start date {p.recorded?.startDate}. Price {creditsLabel(p.totalUnits)} / {gbp(p.totalPence)}, of which {gbp(p.paidPence)} has been charged.</p>
+            <p className="rounded-lg bg-success-tint px-3 py-2 text-success">Already recorded. No more credits will be used.</p>
+            <p>This hire was recorded with offer accepted on {p.recorded?.offerDate} and start date {p.recorded?.startDate}. Cost {creditsLabel(p.totalUnits)}, all already used.</p>
             <p className="text-muted">A second hire of the same person needs BondMoran review.</p>
           </div>
         ) : (
           <div className="space-y-3 text-[15px]">
             {p.isNewFullPrice ? <p className="rounded-lg bg-warning-tint px-3 py-2 text-warning">New hire, new full price. The first hire on this role is already paid, so this is a separate order and the role&apos;s deposit is not reused.</p> : null}
-            <p>Total {creditsLabel(p.totalUnits)} / {gbp(p.totalPence)}. Already paid {gbp(p.paidPence)}.</p>
-            <p className="font-semibold">This records the hire and charges {creditsLabel(p.remainingUnits)} ({gbp(p.remainingPence)}) now.</p>
+            <p>This hire costs {creditsLabel(p.totalUnits)} in total. {creditsLabel((BigInt(p.totalUnits) - BigInt(p.remainingUnits)).toString())} already used.</p>
+            <p className="font-semibold">This records the hire and uses {creditsLabel(p.remainingUnits)} now.</p>
             {outside && <p className="text-muted">This collects the remaining quoted price only. It adds no penalty and never recharges a paid hire.</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Offer accepted on"><input type="date" className={inputClass} value={offer} onChange={(e) => setOffer(e.target.value)} /></Field>

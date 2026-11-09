@@ -17,7 +17,7 @@ test('S01 anonymous match: no name or employer anywhere before acceptance, inclu
   await page.getByRole('link', { name: /Assistant Accountant/ }).first().click();
   const rail = page.locator('aside').filter({ hasText: 'What it costs' });
   await expect(rail).toBeVisible();
-  await expect(rail.getByText('£3,800', { exact: true })).toBeVisible();
+  await expect(rail.getByText('1 credit', { exact: true })).toBeVisible();
   await rail.getByText('See the full breakdown').click();
   await expect(rail.getByText(/£8,800/)).toBeVisible();
   await page.getByRole('link', { name: 'See profile' }).first().click();
@@ -43,7 +43,7 @@ test('S02 deposit on acceptance, balance on hire, reload safe', async ({ page })
   await page.goto(page.url().split('?')[0] + '?tab=pipeline');
   await expect(page.getByText('Maya Ellis').first()).toBeVisible();
   await page.getByRole('button', { name: 'Record hire' }).first().click();
-  await expect(page.getByText(/charges 0.75 credits \(£2,850\) now/)).toBeVisible();
+  await expect(page.getByText(/uses 0.75 credits now/)).toBeVisible();
   await page.getByRole('button', { name: 'Confirm hire' }).click();
   await expect(page.getByText('Hire recorded.')).toBeVisible();
   await page.goto('/client/credits');
@@ -253,7 +253,7 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await expect(page.getByText(/criteri/i)).toHaveCount(0);
   await summary.getByRole('button', { name: 'Find my best people' }).click();
   const start = page.getByRole('dialog');
-  await expect(start.getByText(/It costs £3,800 only if you hire someone/)).toBeVisible();
+  await expect(start.getByText(/It costs 1 credit, only if you hire someone/)).toBeVisible();
   await expect(start.getByText(/extra job on top of the 2 in your plan/)).toBeVisible();
   await start.getByRole('button', { name: 'Find my best people' }).click();
   await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);

@@ -64,15 +64,15 @@ export function ChargesPanel({ ch, replacementOf }: { ch: RoleCharges; replaceme
 
 /** The price in one sentence, with the full breakdown one tap away. */
 export function SimplePrice({ ch, replacementOf }: { ch: RoleCharges; replacementOf?: string | null }) {
-  const remaining = gbp(ch.remainingPence);
+  const dep = creditsLabel(ch.depositUnits);
   const line = ch.isReplacementRole ? `Free: this replaces an earlier hire${replacementOf ? ` (${replacementOf})` : ''}.`
-    : ch.firstHirePaid ? 'Your hire is paid. Hiring another person for this role would be a new full price.'
-    : ch.depositPaid ? `${gbp(ch.depositPence)} already paid. ${remaining} left to pay when you hire.`
-    : ch.holdUnits ? `${gbp(ch.depositPence)} is set aside (not spent) while you wait for an answer.`
-    : `${gbp(ch.depositPence)} of that is paid when someone agrees to meet you. The rest when you hire.`;
+    : ch.firstHirePaid ? 'Your hire is done. Hiring another person for this role would cost the full amount again.'
+    : ch.depositPaid ? `${dep} already used. ${creditsLabel(ch.remainingUnits)} more when you hire.`
+    : ch.holdUnits ? `${dep} set aside (not used) while you wait for an answer.`
+    : `${dep} of that is used when someone agrees to meet you. The rest when you hire.`;
   return (
     <Card title="What it costs">
-      <p className="text-[28px] font-semibold leading-tight">{ch.isReplacementRole ? '£0' : gbp(ch.totalPence)}</p>
+      <p className="text-[28px] font-semibold leading-tight">{ch.isReplacementRole ? 'Free' : creditsLabel(ch.totalUnits)}</p>
       <p className="text-[14px] text-muted">{ch.isReplacementRole ? 'Replacement role' : 'if you hire someone for this role'}</p>
       <p className="mt-3 text-[15px]">{line}</p>
       <dl className="mt-4 space-y-2 border-t border-line pt-3 text-[15px]">
@@ -87,7 +87,7 @@ export function SimplePrice({ ch, replacementOf }: { ch: RoleCharges; replacemen
 
 export function CompactPrice({ ch }: { ch: RoleCharges }) {
   if (ch.isReplacementRole) return <p className="text-[15px]">Free replacement role · {ch.accepted} of {ch.maxIntros} people met</p>;
-  return <p className="text-[15px]"><span className="font-semibold">{gbp(ch.totalPence)}</span> if you hire · {ch.accepted} of {ch.maxIntros} people met · {ch.screeningsUsed} of {ch.includedScreenings} phone screenings</p>;
+  return <p className="text-[15px]"><span className="font-semibold">{creditsLabel(ch.totalUnits)}</span> if you hire · {ch.accepted} of {ch.maxIntros} people met · {ch.screeningsUsed} of {ch.includedScreenings} phone screenings</p>;
 }
 
 export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href: string; actions?: React.ReactNode }) {

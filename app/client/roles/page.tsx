@@ -3,7 +3,7 @@ import { pageViewer } from '@/server/page-auth';
 import { rolesForClient } from '@/server/views/client';
 import { PageHeader, Tabs, LinkButton, Empty, Badge } from '@/components/ui';
 import { ReopenRole } from '@/components/role-actions';
-import { gbp, label } from '@/lib/format';
+import { gbp, label, creditsLabel } from '@/lib/format';
 
 export default async function Roles({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string }> }) {
   const { viewer, ctx } = await pageViewer('client');
@@ -24,7 +24,7 @@ export default async function Roles({ searchParams }: { searchParams: Promise<{ 
               <div>
                 <Link href={`/client/roles/${r.id}`} className="text-[17px] font-semibold no-underline">{r.title}</Link>
                 <div className="mt-1 flex flex-wrap gap-1">{r.isExtra && <Badge>Extra role</Badge>}{r.isReplacement && <Badge tone="success">Replacement</Badge>}{r.mode === 'full_search' && <Badge tone="primary">BondMoran searching for you</Badge>}</div>
-                <p className="mt-1 text-[14px] text-muted">{gbp(r.salaryPence)} · {label(r.workMode)}{r.charges ? ` · ${r.charges.accepted} of ${r.charges.maxIntros} people met · ${r.activePipe} to interview · ${gbp(r.charges.totalPence)} if you hire` : ''}</p>
+                <p className="mt-1 text-[14px] text-muted">{gbp(r.salaryPence)} · {label(r.workMode)}{r.charges ? ` · ${r.charges.accepted} of ${r.charges.maxIntros} people met · ${r.activePipe} to interview · ${creditsLabel(r.charges.totalUnits)} if you hire` : ''}</p>
               </div>
               {r.status === 'closed' && <ReopenRole roleId={r.id} />}
             </div>

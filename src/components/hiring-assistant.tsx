@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCommand, ErrorText, ActionButton, Dialog, api, type ApiError } from './client';
 import { buttonClass, cx } from './ui';
 import { previewUnits } from './role-form';
-import { gbp } from '../lib/format';
+import { creditsLabel } from '../lib/format';
 import { MIN_ITEMS, QUICK_ANSWERS, REGION_LABEL, MODE_LABEL, FAMILY_LABEL, readyToSave, missingSlots, type Understanding, type Slot } from '../lib/hiring';
 
 type Msg = { role: 'assistant' | 'user'; text: string; at: string };
@@ -18,7 +18,7 @@ const STILL_NEEDED: Record<Slot, string> = {
 };
 
 /** Chat with the hiring assistant, plus a live "Your role so far" card. Nothing is charged here. */
-export function HiringAssistant({ conversationId, messages, understanding: u, lastAsked, facts, ratePence, demo }: Props) {
+export function HiringAssistant({ conversationId, messages, understanding: u, lastAsked, facts, demo }: Props) {
   const router = useRouter();
   const send = useCommand<{ id: string }>();
   const save = useCommand<{ id: string }>();
@@ -48,10 +48,10 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
   const needed = missingSlots(u).filter((s) => s !== 'teachable').map((s) => STILL_NEEDED[s]);
   const quick = lastAsked ? QUICK_ANSWERS[lastAsked] : undefined;
   const items = u.mustHaves.length + u.niceToHaves.length;
-  const price = u.salaryPounds ? (() => { const units = previewUnits(u.salaryPounds); return { credits: units / 10000, pence: Math.round((units * ratePence) / 10000) }; })() : null;
+  const price = u.salaryPounds ? previewUnits(u.salaryPounds) : null;
 
   // One tap to start: show the cost in plain words, then save the job and start the search together.
-  type Quote = { title: string; totalPence: string; depositPence: string; isExtra: boolean; included: number; enoughForExtra: boolean };
+  type Quote = { title: string; totalUnits: string; depositUnits: string; isExtra: boolean; included: number; enoughForExtra: boolean };
   const activate = useCommand();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<ApiError | null>(null);
@@ -119,7 +119,7 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
           {items < MIN_ITEMS && <p className="ml-6 mt-1 text-[13px] text-muted">{items} of {MIN_ITEMS} things that matter so far.</p>}
           {u.niceToHaves.length > 0 && <List title="Nice to have" done items={u.niceToHaves.map((x) => x.label)} onRemove={(i) => drop('niceToHaves', i)} busy={remove.busy} />}
           {u.teachable.length > 0 && <List title="You'll teach them" done items={u.teachable} onRemove={(i) => drop('teachable', i)} busy={remove.busy} />}
-          {price && <p className="mt-4 rounded-lg bg-page px-3 py-2 text-[14px]">If you hire someone: {gbp(price.pence)} ({price.credits} {price.credits === 1 ? 'credit' : 'credits'}). Nothing is charged now.</p>}
+          {price && <p className="mt-4 rounded-lg bg-page px-3 py-2 text-[14px]">If you hire someone: {creditsLabel(price)}. Nothing is used now.</p>}
           <button type="button" className={cx(buttonClass('primary', true), 'mt-4 min-h-14 text-[18px]')} disabled={!ready || !conversationId} onClick={openStart}>Find my best people</button>
           <p className="mt-2 text-[13px] text-muted">{ready ? 'You’ll see what it costs before anything starts.' : `Still needed: ${needed.join(', ')}.`}</p>
           <ErrorText error={quoteError ?? remove.error} />
@@ -142,10 +142,10 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
       <Dialog open={!!quote} onClose={() => setQuote(null)} title={`Find your best people for ${quote?.title ?? 'this job'}?`}>
         {quote && (
           <div className="space-y-3 text-[16px]">
-            <p>It costs <span className="font-semibold">{gbp(quote.totalPence)}</span> only if you hire someone.</p>
+            <p>It costs <span className="font-semibold">{creditsLabel(quote.totalUnits)}</span>, only if you hire someone.</p>
             {quote.isExtra
-              ? <p className="rounded-lg bg-warning-tint px-3 py-2 text-warning">This is an extra job on top of the {quote.included} in your plan, so <span className="font-semibold">{gbp(quote.depositPence)}</span> is paid now. It counts towards the price if you hire.</p>
-              : <p>{gbp(quote.depositPence)} of that is paid when someone agrees to meet you. Nothing is paid now.</p>}
+              ? <p className="rounded-lg bg-warning-tint px-3 py-2 text-warning">This is an extra job on top of the {quote.included} in your plan, so <span className="font-semibold">{creditsLabel(quote.depositUnits)}</span> {BigInt(quote.depositUnits) === 10000n ? 'is' : 'are'} used now. It counts towards the cost if you hire.</p>
+              : <p>{creditsLabel(quote.depositUnits)} of that {BigInt(quote.depositUnits) === 10000n ? 'is' : 'are'} used when someone agrees to meet you. Nothing is used now.</p>}
             {quote.isExtra && !quote.enoughForExtra && <p className="text-danger">You don’t have enough credits for this right now. Save it for later, or ask for more credits.</p>}
             <ErrorText error={save.error ?? activate.error} />
             {savedId && activate.error && <p className="text-[14px]"><Link href={`/client/roles/${savedId}`}>Your job is saved. Open it</Link></p>}
