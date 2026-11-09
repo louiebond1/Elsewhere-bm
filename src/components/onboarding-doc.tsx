@@ -49,7 +49,7 @@ export function ApproveAll({ count }: { count: number }) {
 }
 
 /** One question: the answer (or a gap), where it came from, and Looks right / Edit. */
-function Question({ q }: { q: Q }) {
+export function Question({ q }: { q: Q }) {
   const { run, busy, error } = useCommand();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(q.answer ?? '');
@@ -180,5 +180,27 @@ export function AlwaysOn({ provider }: { provider: string }) {
         <p className="mt-3 text-[14px] text-muted">The Elsewhere connector needs to be switched on in those chats. Your AI decides when to use it, and you approve everything here.</p>
       </div>
     </details>
+  );
+}
+
+/** Add something yourself: a heading and a few words. */
+export function AddSomething() {
+  const { run, busy, error } = useCommand();
+  const [open, setOpen] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [answer, setAnswer] = useState('');
+  if (!open) return <button type="button" className={buttonClass('secondary')} onClick={() => setOpen(true)}>+ Add something yourself</button>;
+  return (
+    <form className="w-full space-y-3 rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)]" onSubmit={async (e) => { e.preventDefault(); if (await run('onboarding/extra', { topic, answer }) !== null) { setTopic(''); setAnswer(''); setOpen(false); } }}>
+      <label className="block"><span className="text-[16px] font-semibold">What’s it about?</span>
+        <input className="mt-2 h-12 w-full rounded-xl border border-control/60 bg-surface px-4 text-[17px]" value={topic} maxLength={200} onChange={(e) => setTopic(e.target.value)} placeholder="For example: The audit I helped with" /></label>
+      <label className="block"><span className="text-[16px] font-semibold">Tell us</span>
+        <textarea className={cx(textareaClass, 'mt-2 min-h-[120px]')} value={answer} maxLength={1500} onChange={(e) => setAnswer(e.target.value)} /></label>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className={buttonClass('primary')} disabled={busy || !topic.trim() || !answer.trim()}>{busy ? 'Saving…' : 'Add it'}</button>
+        <button type="button" className={buttonClass('ghost')} onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+      <ErrorText error={error} />
+    </form>
   );
 }

@@ -4,7 +4,7 @@
  * family or caring situation, religion, ethnicity, nationality beyond right to work, and so on.
  * Answers are the candidate's own words; they approve each one before it is used.
  */
-export type OnboardingQuestion = { key: string; text: string; hint?: string };
+export type OnboardingQuestion = { key: string; text: string; hint?: string; label?: string };
 export type OnboardingSection = { key: string; title: string; questions: OnboardingQuestion[] };
 
 export const ONBOARDING: OnboardingSection[] = [
@@ -75,6 +75,9 @@ export const ONBOARDING: OnboardingSection[] = [
     { key: 'questions_for_employers', text: 'What would you most want to ask a new employer?' },
   ] },
 ];
+
+/** Short topic names, so people see "Work travel" rather than a form question. */
+export const TOPIC_LABELS: Record<string, string> = {"current_role": "Current job", "current_duties": "Day to day", "time_in_role": "Time in the job", "why_move": "Why move now", "employment_status": "Work status", "team_size": "Team and manager", "past_roles": "Past jobs", "industries": "Industries", "years_experience": "Years of experience", "qualifications": "Qualifications", "training": "Courses and training", "volunteering": "Outside work", "ex_responsibility": "Taking responsibility", "ex_improvement": "Making things better", "ex_problem": "Solving a problem", "ex_teamwork": "Working with others", "ex_pressure": "Under pressure", "ex_mistake": "Handling a mistake", "ex_learning": "Learning fast", "ex_proud": "Proudest work", "ex_numbers": "Results in numbers", "ex_customer": "Helping people", "top_skills": "Best at", "software": "Software", "excel_level": "Spreadsheets", "numbers": "Numbers and data", "writing": "Writing", "languages": "Languages", "skills_to_grow": "Want to get better at", "work_style": "How they work", "best_environment": "Best environment", "manager_style": "Ideal manager", "independence": "Independence", "feedback": "Taking feedback", "priorities": "Staying organised", "ideal_role": "Ideal next job", "role_types": "Job titles", "six_months": "First six months", "not_interested": "Not interested in", "career_goal": "Three-year goal", "deal_breakers": "Deal-breakers", "salary": "Salary", "notice": "Notice period", "location": "Location", "work_mode": "Office or remote", "hours": "Hours", "right_to_work": "Right to work", "gaps": "Career gaps", "extra": "Anything else", "questions_for_employers": "Questions for employers"};
 
 export const ONBOARDING_QUESTIONS = ONBOARDING.flatMap((s) => s.questions.map((q) => ({ ...q, section: s.key, sectionTitle: s.title })));
 export const ONBOARDING_KEYS = new Set(ONBOARDING_QUESTIONS.map((q) => q.key));

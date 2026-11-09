@@ -6,7 +6,7 @@ import { requireUser, type Ctx } from './context';
 import { invalid } from '../lib/errors';
 import { logActivity } from './audit';
 import { refreshInterviews } from './mini-me';
-import { ONBOARDING, ONBOARDING_KEYS, MAX_ONBOARDING_ANSWER } from '../../config/onboarding';
+import { ONBOARDING, ONBOARDING_KEYS, MAX_ONBOARDING_ANSWER, TOPIC_LABELS } from '../../config/onboarding';
 
 const me = (ctx: Ctx) => {
   const a = requireUser(ctx.actor, 'candidate') as { candidateId?: string };
@@ -33,7 +33,14 @@ export async function onboardingView(ctx: Ctx) {
   const extras = rows.filter((r) => r.questionKey.startsWith(EXTRA)).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
     .map((r) => ({ key: r.questionKey, text: r.questionText ?? 'Something else', hint: null, answer: r.answer, source: r.source as 'ai' | 'self', provider: r.aiProvider, approved: r.status === 'approved' }));
   const all = sections.flatMap((s) => s.questions);
-  return { sections, extras, extrasToCheck: extras.filter((e) => !e.approved).length, total: all.length, answered: all.filter((q) => q.answer).length, approved: all.filter((q) => q.approved).length, toCheck: all.filter((q) => q.answer && !q.approved).length + extras.filter((e) => !e.approved).length };
+  // Everything it knows, newest first, as short topics rather than form questions.
+  const areaOf = new Map(ONBOARDING.flatMap((s) => s.questions.map((q) => [q.key, s.title] as const)));
+  const feed = [...rows].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).map((r) => ({
+    key: r.questionKey, text: r.questionKey.startsWith(EXTRA) ? (r.questionText ?? 'Something else') : (TOPIC_LABELS[r.questionKey] ?? r.questionKey),
+    area: areaOf.get(r.questionKey) ?? 'Extras', areaKey: r.questionKey.startsWith(EXTRA) ? 'extras' : (ONBOARDING.find((s) => s.questions.some((q) => q.key === r.questionKey))?.key ?? 'extras'),
+    hint: null, answer: r.answer, source: r.source as 'ai' | 'self', provider: r.aiProvider, approved: r.status === 'approved',
+  }));
+  return { sections, extras, feed, extrasToCheck: extras.filter((e) => !e.approved).length, total: all.length, answered: all.filter((q) => q.answer).length, approved: all.filter((q) => q.approved).length, toCheck: all.filter((q) => q.answer && !q.approved).length + extras.filter((e) => !e.approved).length };
 }
 
 /** The person writes or edits an answer themselves: it counts as checked. An empty answer removes it. */

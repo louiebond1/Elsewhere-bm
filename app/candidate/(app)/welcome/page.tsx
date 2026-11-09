@@ -31,7 +31,7 @@ export default async function Welcome() {
       </ol>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <Link href="/candidate/onboarding?ai=1" className={cx(buttonClass('primary'), 'rounded-full! px-8 text-[18px] no-underline')}>Build my mini-me</Link>
-        <Link href="/candidate/onboarding" className={cx(buttonClass('secondary'), 'rounded-full! px-8 text-[18px] no-underline')}>I’d rather type it myself</Link>
+        <Link href="/candidate/onboarding?mode=type" className={cx(buttonClass('secondary'), 'rounded-full! px-8 text-[18px] no-underline')}>I’d rather type it myself</Link>
       </div>
 
       <details className="mt-12 rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)]">

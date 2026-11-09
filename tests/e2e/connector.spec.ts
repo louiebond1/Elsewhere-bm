@@ -131,9 +131,9 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await page.goto('/candidate/home');
   await expect(page.getByRole('link', { name: /Your AI: Your AI wrote 2 answers for your mini-me/ })).toBeVisible();
   await page.goto('/candidate/onboarding');
-  await expect(page.getByText('Your AI wrote 2 answers.')).toBeVisible();
+  await expect(page.getByText('Your AI wrote 2 new things.')).toBeVisible();
   await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();
   await page.getByRole('button', { name: 'All good: approve 2' }).click();
-  await expect(page.getByText('Your AI wrote 2 answers.')).toHaveCount(0);
+  await expect(page.getByText('Your AI wrote 2 new things.')).toHaveCount(0);
   await expect(page.getByText('Knows you 6%')).toBeVisible();
 });
