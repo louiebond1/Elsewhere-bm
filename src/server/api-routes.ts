@@ -210,6 +210,10 @@ export const ROUTES: R[] = [
       return { id: cl.id };
     });
   } },
+  { method: 'POST', path: 'consultant/onboard-client', types: ['consultant'], h: async ({ base, body }) => {
+    const { onboardClient, onboardClientInput } = await import('./services/onboard-client');
+    return T(base, (c) => onboardClient(c, parse(onboardClientInput, body)));
+  } },
   { method: 'POST', path: 'consultant/organisations', types: ['consultant'], h: ({ base, body }) => {
     const b = parse(z.object({ name: z.string().trim().min(2).max(120), domain: z.string().trim().max(120).optional() }), body);
     return T(base, async (c) => {

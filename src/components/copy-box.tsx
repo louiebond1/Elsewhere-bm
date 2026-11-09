@@ -10,7 +10,7 @@ export function CopyBox({ text, label }: { text: string; label: string }) {
   };
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-page p-4 sm:flex-row sm:items-center">
-      <p className="min-w-0 flex-1 break-words text-[15px] leading-relaxed" aria-label={label}>{text}</p>
+      <p className="min-w-0 flex-1 whitespace-pre-line break-words text-[15px] leading-relaxed" aria-label={label}>{text}</p>
       <button type="button" className={cx(buttonClass(copied ? 'secondary' : 'primary'), 'shrink-0')} onClick={copy} aria-live="polite">{copied ? 'Copied ✓' : 'Copy'}</button>
     </div>
   );

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { workQueue } from '@/server/views/consultant';
-import { PageHeader, Stat, Card, Empty } from '@/components/ui';
+import { PageHeader, Stat, Card, Empty, buttonClass, cx } from '@/components/ui';
 import { creditsLabel, date, label } from '@/lib/format';
 
 export default async function ConsultantHome() {
@@ -10,6 +10,13 @@ export default async function ConsultantHome() {
   const section = (title: string, items: React.ReactNode[], empty: string) => <Card title={`${title} (${items.length})`}>{items.length ? <ul className="divide-y divide-line">{items}</ul> : <p className="text-[15px] text-muted">{empty}</p>}</Card>;
   return (
     <>
+      <section className="mb-10 flex flex-col gap-6 rounded-3xl bg-surface p-6 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:flex-row lg:items-center lg:justify-between lg:p-8">
+        <div>
+          <h1>Welcome back</h1>
+          <p className="mt-2 text-[17px] text-muted">Bring on a new client, or pick up what’s waiting below.</p>
+        </div>
+        <Link href="/consultant/onboard" className={cx(buttonClass('primary'), 'min-h-14 rounded-full! px-8 text-[18px] no-underline')}>Onboard someone new</Link>
+      </section>
       <PageHeader title="Work queue" subtitle="Everything waiting for BondMoran across all clients." />
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Work logged" value={`${(q.minutes / 60).toFixed(1)} h`} hint={`${q.minutes} minutes, including roles that do not hire`} />
