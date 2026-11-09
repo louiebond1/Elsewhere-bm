@@ -20,7 +20,9 @@ test('S01 anonymous match: no name or employer anywhere before acceptance, inclu
   await expect(rail.getByText('1 credit', { exact: true })).toBeVisible();
   await rail.getByText('See the full breakdown').click();
   await expect(rail.getByText(/£8,800/)).toBeVisible();
-  await page.getByRole('link', { name: 'See profile' }).first().click();
+  await expect(page.getByLabel('Number 1', { exact: true })).toBeVisible({ timeout: 45_000 });
+  await page.getByRole('link', { name: /measured reconciliation improvement/ }).first().click();
+  await expect(page.getByRole('link', { name: 'Interview', exact: true })).toBeVisible();
   await expect(page.getByText(/18 to 4/).first()).toBeVisible();
   const html = await page.content();
   for (const s of ['Maya', 'Ellis', 'Mallow', 'candidate.c01']) expect(html).not.toContain(s);
@@ -262,7 +264,9 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await expect(page.getByRole('heading', { name: /Your best/ })).toBeVisible();
   // The worker runs the simulated interviews; the page fills in by itself.
   await expect(page.getByLabel('Number 1', { exact: true })).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByText('From their simulated interview').first()).toBeVisible();
+  await page.getByRole('link', { name: /^Number 1 / }).click();
+  await page.getByRole('link', { name: 'Interview', exact: true }).click();
+  await expect(page.getByText('Their simulated interview')).toBeVisible();
   await page.goto('/client/home');
   await expect(page.getByRole('link', { name: /Finance Assistant/ })).toBeVisible();
   await page.goto('/client/roles/new');

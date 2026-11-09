@@ -2,23 +2,33 @@ import Link from 'next/link';
 import type { Ctx } from '../server/services/context';
 import { candidateOnRole, simulationForCandidate } from '../server/views/client';
 import { roleCharges } from '../server/services/roles';
-import { PageHeader, Card, Badge, Notice, LinkButton } from './ui';
+import { PageHeader, Card, Badge, Notice, LinkButton, Tabs } from './ui';
 import { LevelBadge, fitLabel } from './role';
 import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
-export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx: Ctx; roleId: string; candidateRef: string; base: string }) {
+export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }: { ctx: Ctx; roleId: string; candidateRef: string; base: string; view?: string }) {
   const { candidateId, role, dto, introId, introState, counters, hiredStart } = await candidateOnRole(ctx, roleId, candidateRef);
   const sim = await simulationForCandidate(ctx, roleId, candidateId);
+  const here = `${base}/roles/${roleId}/candidates/${candidateRef}`;
+  const section = view === 'interview' && sim ? 'interview' : view === 'evidence' ? 'evidence' : 'overview';
   const ch = await roleCharges(ctx, roleId);
   const name = dto.identity ? dto.identity.fullName : dto.safeHeadline;
   return (
     <>
       <PageHeader back={{ href: `${base}/roles/${roleId}`, label: role.title }} title={name} subtitle={<span className="flex flex-wrap gap-2">{dto.identity ? dto.safeHeadline : 'Name hidden until they agree to meet you'} {dto.confidence && <Badge tone={dto.confidence === 'low' ? 'warning' : 'success'}>{dto.confidence === 'low' ? 'Little evidence so far' : 'Good evidence'}</Badge>}{dto.needsClarification && <Badge tone="warning">{dto.needsClarification}</Badge>}</span>} />
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-4">
-          <Card title="About this person"><p className="text-[15px]">{dto.safeSummary || 'We don’t know much yet.'}</p><p className="mt-2 text-[14px] text-muted">{dto.experienceBand} · {dto.broadRegion} · {dto.workModes.join(', ')}</p></Card>
-          {sim && (
+        <div className="min-w-0 space-y-4">
+          <Tabs current={section} tabs={[{ key: 'overview', label: 'Overview', href: `${here}?view=overview` }, ...(sim ? [{ key: 'interview', label: 'Interview', href: `${here}?view=interview` }] : []), { key: 'evidence', label: 'Evidence', href: `${here}?view=evidence` }]} />
+          {section === 'overview' && (
+            <Card>
+              {sim && <div className="mb-3 flex items-start gap-2"><span className="shrink-0 whitespace-nowrap"><Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge></span><span className="text-[15px]">{sim.summary}</span></div>}
+              <p className="text-[16px]">{dto.safeSummary || 'We don’t know much yet.'}</p>
+              <p className="mt-2 text-[14px] text-muted">{dto.experienceBand} · {dto.broadRegion} · {dto.workModes.join(', ')}</p>
+              {dto.unknowns.length > 0 && <p className="mt-3 text-[14px]"><span className="font-medium">Not known yet:</span> {dto.unknowns.join(', ').toLowerCase()}. A phone screening can find out.</p>}
+            </Card>
+          )}
+          {section === 'interview' && sim && (
             <Card title="Their simulated interview" action={<Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge>}>
               <p className="text-[15px]">{sim.summary}</p>
               <p className="mt-2 text-[13px] text-muted">A prediction built only from their real examples, to help you decide who to meet. It isn’t something they said.</p>
@@ -33,6 +43,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx
               {sim.concerns.length > 0 && <p className="mt-3 text-[14px]"><span className="font-medium">Worth asking about:</span> {sim.concerns.join('; ').toLowerCase()}</p>}
             </Card>
           )}
+          {section === 'evidence' && (
           <Card title="How they fit this role">
             <ul className="space-y-4">
               {dto.criteria.map((c) => (
@@ -46,7 +57,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx
               ))}
             </ul>
           </Card>
-          {dto.unknowns.length > 0 && <Card title="What we don’t know yet"><p className="text-[15px]">{dto.unknowns.join(', ')}. That doesn’t mean they can’t do it, only that we haven’t seen evidence. A phone screening can find out.</p></Card>}
+          )}
         </div>
         <aside className="space-y-4">
           <Card title="What would you like to do?">

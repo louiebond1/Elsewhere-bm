@@ -6,9 +6,9 @@ import { roleForActor, roleCharges, criteriaFor, openOrdinaryRoleCount } from '.
 import { bestPeople, pipelineForRole, screeningsForRole, activityForRole } from '../server/views/client';
 import { activeContractForClient } from '../server/services/contracts';
 import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton } from './ui';
-import { SimplePrice, CompactPrice, MatchCard, BestCard } from './role';
+import { SimplePrice, CompactPrice, PersonRow } from './role';
 import { FindingBest } from './finding-best';
-import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, RequestIntro, RequestScreening, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
+import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
 import { gbp, label, date, relative, creditsLabel } from '../lib/format';
 import { prototype } from '../config/prototype';
 
@@ -75,26 +75,19 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   let body: React.ReactNode = null;
   if (tab === 'matches') {
     const { best, rest } = await bestPeople(ctx, roleId);
-    const intoLimit = ch!.accepted >= ch!.maxIntros ? `You’ve met the ${ch!.maxIntros} people included with this job.` : ch!.accepted + ch!.pending >= ch!.maxIntros ? 'Your remaining meetings are waiting for answers.' : role.status !== 'open' ? 'This job is closed.' : null;
-    const scrLimit = ch!.screeningsUsed >= ch!.includedScreenings ? 'All 5 included phone screenings are used.' : null;
-    const actionsFor = (m: (typeof rest)[number]) => <>
-      <LinkButton href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} variant="secondary">See profile</LinkButton>
-      {!m.introState && <RequestIntro roleId={roleId} candidateRef={m.roleScopedReference} depositPaid={ch!.depositPaid} holdExists={!!ch!.holdUnits} depositUnits={ch!.depositUnits} depositPence={ch!.depositPence} disabledReason={m.permittedActionFlags.canRequestIntro ? null : intoLimit ?? 'Not available'} />}
-      {(!m.screeningStatus || m.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={m.roleScopedReference} disabledReason={m.permittedActionFlags.canRequestScreening ? null : scrLimit ?? 'Not available'} />}
-    </>;
+    const href = (ref: string) => `${base}/roles/${roleId}/candidates/${ref}`;
     body = (
-      <div className="space-y-6">
-        <section>
-          <h3 className="mb-1 text-[22px]">Your best {best.length || 10}</h3>
-          <p className="mb-3 text-[15px] text-muted">We ran a short simulated interview with each of your top matches, using only their real examples, and put the best first. It’s a prediction to help you choose, not something they said. Names stay hidden until they agree to meet you.</p>
-          {role.status === 'open' && <div className="mb-3"><FindingBest roleId={roleId} hasResults={best.length > 0} /></div>}
-          {best.length > 0 && <div className="space-y-3">{best.map((b, i) => <BestCard key={b.dto.roleScopedReference} rank={i + 1} m={b.dto} sim={b.sim} href={`${base}/roles/${roleId}/candidates/${b.dto.roleScopedReference}`} actions={actionsFor(b.dto)} />)}</div>}
-        </section>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-[22px]">Your best {best.length || 10}</h3>
+          <p className="text-[15px] text-muted">Ranked by a quick simulated interview. Tap anyone to see more.</p>
+        </div>
+        {role.status === 'open' && <FindingBest roleId={roleId} hasResults={best.length > 0} />}
+        {best.length > 0 && <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} /></li>)}</ul>}
         {rest.length > 0 && (
-          <details className="rounded-2xl border border-line bg-surface p-4">
-            <summary className="cursor-pointer text-[16px] font-medium">Everyone else who fits ({rest.length})</summary>
-            <div className="mt-3 space-y-3">{rest.map((m) => <MatchCard key={m.roleScopedReference} m={m} href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} actions={actionsFor(m)} />)}</div>
-            {role.status === 'open' && <div className="mt-3"><AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} /></div>}
+          <details className="rounded-2xl border border-line bg-surface">
+            <summary className="cursor-pointer px-4 py-3 text-[15px]">Everyone else who fits ({rest.length})</summary>
+            <ul className="divide-y divide-line border-t border-line">{rest.map((m) => <li key={m.roleScopedReference}><PersonRow m={m} href={href(m.roleScopedReference)} /></li>)}</ul>
           </details>
         )}
       </div>
@@ -130,13 +123,14 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
     );
   } else if (tab === 'screenings') {
     const rows = await screeningsForRole(ctx, roleId);
-    body = rows.length === 0 ? <Empty>No phone screenings yet. Five are included with this role: a BondMoran consultant calls the candidate and tells you what they found.</Empty> : (
+    const picker = role.status === 'open' && ch ? <div className="mb-4"><AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch.screeningsUsed} /></div> : null;
+    body = rows.length === 0 ? <>{picker}<Empty>No phone screenings yet. Five are included with this role: a BondMoran consultant calls the candidate and tells you what they found.</Empty></> : (<>{picker}
       <div className="space-y-3">{rows.map((s) => (
         <Card key={s.id} title={`Candidate ${s.ref.slice(0, 9)}`} action={<Badge tone={s.status === 'completed' ? 'success' : 'neutral'}>{label(s.status)}</Badge>}>
           <p className="text-[15px]">{s.status === 'completed' ? s.summarySafe : s.status === 'cancelled' ? 'Cancelled before completion. The slot was released.' : 'Your consultant has this request.'}</p>
           {consultant && <Link href={`/consultant/screenings/${s.id}`} className="text-[14px]">Open screening</Link>}
         </Card>
-      ))}</div>
+      ))}</div></>
     );
   } else if (tab === 'activity') {
     const rows = await activityForRole(ctx, roleId);
