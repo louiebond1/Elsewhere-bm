@@ -17,7 +17,7 @@ export default async function ConsultantHome() {
         </div>
         <Link href="/consultant/onboard" className={cx(buttonClass('primary'), 'min-h-14 rounded-full! px-8 text-[18px] no-underline')}>Onboard someone new</Link>
       </section>
-      <PageHeader title="Work queue" subtitle="Everything waiting for BondMoran across all clients." />
+      <PageHeader plain title="Work queue" subtitle="Everything waiting for BondMoran across all clients." />
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Work logged" value={`${(q.minutes / 60).toFixed(1)} h`} hint={`${q.minutes} minutes, including roles that do not hire`} />
         <Stat label="Active roles" value={q.activeRoles} />

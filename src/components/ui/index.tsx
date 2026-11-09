@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -45,17 +46,36 @@ export function LinkButton({ href, children, variant = 'primary', className }: {
   return <Link href={href} className={cx(buttonClass(variant), 'no-underline', className)}>{children}</Link>;
 }
 
-export function PageHeader({ title, subtitle, actions, back }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: { href: string; label: string } }) {
-  return (
+/**
+ * The page header. With a title it is a photo banner (the brand look on every screen): big white
+ * title, short subtitle, and the page's buttons on the right. Without a title, just the back link.
+ */
+export function PageHeader({ title, subtitle, actions, back, plain }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: { href: string; label: string }; plain?: boolean }) {
+  const backLink = back && <Link href={back.href} className="mb-4 inline-flex items-center gap-2 text-[16px] text-ink no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>;
+  if (!title) return <div className="mb-6">{backLink}</div>;
+  if (plain) return (
     <div className="mb-6">
-      {back && <Link href={back.href} className="mb-4 inline-flex items-center gap-2 text-[16px] text-ink no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>}
-      {(title || actions) && <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          {title && <h1>{title}</h1>}
-          {subtitle && <p className="mt-2 text-[16px] text-muted">{subtitle}</p>}
+      {backLink}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0"><h1>{title}</h1>{subtitle && <div className="mt-2 text-[16px] text-muted">{subtitle}</div>}</div>
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      </div>
+    </div>
+  );
+  return (
+    <div className="mb-8">
+      {backLink}
+      <header className="relative overflow-hidden rounded-[32px] bg-[#1E3A2A] shadow-[0_16px_40px_-20px_rgb(18_37_29/0.5)]">
+        <Image src="/images/mini-me-hills.webp" alt="" fill sizes="(max-width: 1320px) 100vw, 1320px" className="object-cover object-right" />
+        <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,rgb(10_30_20/0.82)_0%,rgb(10_30_20/0.6)_50%,rgb(10_30_20/0.25)_100%)]" />
+        <div className="relative flex min-h-[176px] flex-col justify-end gap-5 p-7 text-white lg:min-h-[208px] lg:flex-row lg:items-end lg:justify-between lg:p-10">
+          <div className="min-w-0">
+            <h1 className="text-white">{title}</h1>
+            {subtitle && <div className="mt-2 max-w-[60ch] text-[16px] text-white/85 lg:text-[17px] [&_a]:text-white [&_a]:underline">{subtitle}</div>}
+          </div>
+          {actions && <div className="shelf -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [&_.press]:shrink-0 [&_.press]:whitespace-nowrap [&_.press]:border-transparent [&_.press]:bg-white [&_.press]:text-ink [&_.press:hover]:bg-white/90 lg:flex-wrap lg:justify-end">{actions}</div>}
         </div>
-        {actions && <div className="shelf -mx-5 flex w-[calc(100%+40px)] gap-2 overflow-x-auto px-5 pb-1 items-center [&_a]:shrink-0 [&_a]:whitespace-nowrap [&_button]:min-h-11 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_a]:min-h-11 sm:mx-0 sm:w-auto sm:flex-wrap sm:px-0">{actions}</div>}
-      </div>}
+      </header>
     </div>
   );
 }
