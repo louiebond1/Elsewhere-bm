@@ -7,10 +7,10 @@ export function cx(...c: Array<string | false | null | undefined>) {
 
 export function Card({ children, className, title, action }: { children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode }) {
   return (
-    <section className={cx('rounded-xl border border-line bg-surface p-4 md:p-5', className)}>
+    <section className={cx('rounded-2xl border border-line bg-surface p-5 md:p-6', className)}>
       {(title || action) && (
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-          {title && <h3 className="text-[18px] font-semibold">{title}</h3>}
+          {title && <h3>{title}</h3>}
           {action}
         </div>
       )}
@@ -33,9 +33,9 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
 
 export const buttonClass = (variant: 'primary' | 'secondary' | 'danger' | 'ghost' = 'primary', full = false) =>
   cx(
-    'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-[15px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55',
+    'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-[16px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45',
     variant === 'primary' && 'bg-primary text-white hover:bg-primary-hover',
-    variant === 'secondary' && 'border border-line bg-surface text-ink hover:bg-page',
+    variant === 'secondary' && 'border border-[#C9C8BF] bg-surface text-ink hover:bg-page',
     variant === 'danger' && 'bg-danger text-white hover:opacity-90',
     variant === 'ghost' && 'text-link hover:bg-page',
     full && 'w-full',
@@ -48,21 +48,21 @@ export function LinkButton({ href, children, variant = 'primary', className }: {
 export function PageHeader({ title, subtitle, actions, back }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: { href: string; label: string } }) {
   return (
     <div className="mb-6">
-      {back && <Link href={back.href} className="mb-2 inline-block text-[14px] no-underline">&larr; {back.label}</Link>}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      {back && <Link href={back.href} className="mb-4 inline-flex items-center gap-2 text-[16px] text-ink no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>}
+      {(title || actions) && <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1>{title}</h1>
-          {subtitle && <p className="mt-1 text-[15px] text-muted">{subtitle}</p>}
+          {title && <h1>{title}</h1>}
+          {subtitle && <p className="mt-2 text-[16px] text-muted">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-      </div>
+      </div>}
     </div>
   );
 }
 
 export function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-line bg-surface p-6 text-center text-[15px] text-muted">
+    <div className="rounded-2xl border border-dashed border-line bg-surface p-6 text-center text-[15px] text-muted">
       <p>{children}</p>
       {action && <div className="mt-3">{action}</div>}
     </div>
@@ -71,9 +71,9 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
+    <div className="rounded-2xl border border-line bg-surface p-5">
       <div className="text-[14px] text-muted">{label}</div>
-      <div className="mt-1 text-[24px] font-semibold">{value}</div>
+      <div className="mt-1 font-display text-[28px] font-extrabold tracking-tight">{value}</div>
       {hint && <div className="mt-1 text-[13px] text-muted">{hint}</div>}
     </div>
   );

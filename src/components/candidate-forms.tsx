@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { QuestionAi } from './ai-task';
+import { QuestionAi, hasGaps } from './ai-task';
 import { api, useCsrf, useCommand, ErrorText, Field, inputClass, textareaClass, Dialog, JobPoller } from './client';
 import { buttonClass, cx } from './ui';
 
@@ -43,31 +43,49 @@ export function CvUpload({ hasCv }: { hasCv: boolean }) {
 export function Conversation({ conversationId, question, answered, canFinish, ai }: { conversationId: string; question: { id: string; text: string; topic: string; draft?: { body: string; provider: string } | null } | null; answered: number; canFinish: boolean; ai: { connected: string | null; connectorUrl: string } }) {
   const { run, busy, error } = useCommand<{ nextQuestionId: string | null; jobId?: string }>();
   const router = useRouter();
+  const box = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState('');
   // Where the text came from: their AI's draft (and whether they changed it since). Shown honestly, never guessed.
   const [fromAi, setFromAi] = useState<string | null>(null);
   const [edited, setEdited] = useState(false);
-  return (
+  const [reviewing, setReviewing] = useState(!!question?.draft);
+  const gaps = hasGaps(body);
+  const finish = async () => { const r = await run(`conversations/${conversationId}/finish`, {}, { refresh: false }); if (r) router.push('/candidate/home'); };
+  if (!question) return (
     <div className="space-y-4">
-      {question ? (
-        <div className="rounded-xl border border-line bg-surface p-5">
-          <p className="text-[13px] text-muted">Topic: {question.topic}</p>
-          <p className="mt-1 text-[18px] font-medium">{question.text}</p>
-          <p className="mt-2 text-[14px] text-muted">An example from work, study, volunteering or everyday responsibility is useful.</p>
-          <textarea className={cx(textareaClass, 'mt-3')} rows={6} maxLength={4000} value={body} onChange={(e) => { setBody(e.target.value); if (fromAi) setEdited(true); }} aria-label="Your answer" />
-          <div className="mt-1 flex justify-between gap-2 text-[12px] text-muted"><span>{fromAi ? `Started with your ${fromAi}${edited ? ' · Edited by you' : ''} · Not sent` : ''}</span><span>{body.length} / 4000</span></div>
-          <QuestionAi questionId={question.id} questionText={question.text} initialDraft={question.draft ?? null} connected={ai.connected} connectorUrl={ai.connectorUrl} hasText={!!body.trim()}
-            onUse={(d, mode) => { setBody((b) => (mode === 'add' && b.trim() ? `${b.trim()}\n\n${d.body}` : d.body)); setFromAi(d.provider); setEdited(false); }} />
+      <h1>That’s all for now</h1>
+      <p className="text-[17px] text-muted">Press Finish to turn your answers into examples for your profile.</p>
+      {canFinish && <button type="button" className={buttonClass('primary', true)} disabled={busy} onClick={finish}>Finish for now</button>}
+    </div>
+  );
+  return (
+    <div>
+      {reviewing ? <p className="mb-4 text-[15px] text-muted">Your question: <span className="text-ink">{question.text}</span></p> : (<>
+        <h1>{question.text}</h1>
+        <p className="mt-3 text-[17px] text-muted">What did you do, and what changed?</p>
+      </>)}
+      <div className={reviewing ? 'hidden' : 'mt-6'}>
+        <textarea ref={box} className={textareaClass} rows={7} maxLength={4000} value={body} placeholder="Write your answer…" onChange={(e) => { setBody(e.target.value); if (fromAi) setEdited(true); }} aria-label="Your answer" />
+        <div className="mt-1 flex justify-between gap-2 text-[13px] text-muted"><span>{fromAi ? `Started with your ${fromAi}${edited ? ' · Edited by you' : ''} · Not sent` : ''}</span><span>{body.length} / 4000</span></div>
+        {gaps && <p role="status" className="mt-2 rounded-xl bg-success-tint px-4 py-2 text-[15px] text-primary">Fill in the gaps in [square brackets] before sending.</p>}
+      </div>
+      <div className={reviewing ? '' : 'mt-5'}>
+        <QuestionAi questionId={question.id} questionText={question.text} initialDraft={question.draft ?? null} connected={ai.connected} connectorUrl={ai.connectorUrl} hasText={!!body.trim()} onReview={setReviewing}
+          onUse={(d, mode, edit) => { setBody((b) => (mode === 'add' && b.trim() ? `${b.trim()}\n\n${d.body}` : d.body)); setFromAi(d.provider); setEdited(false); if (edit) setTimeout(() => box.current?.focus(), 50); }} />
+      </div>
+      {!reviewing && (
+        <div className="mt-5">
           <ErrorText error={error} />
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" className={buttonClass('primary')} disabled={busy || !body.trim()} onClick={async () => { if (await run(`conversations/${conversationId}/answers`, { questionId: question.id, body, usedDraft: !!fromAi }) !== null) { setBody(''); setFromAi(null); } }}>{busy ? 'Sending…' : 'Send answer'}</button>
-            <button type="button" className={buttonClass('secondary')} disabled={busy} onClick={() => run(`conversations/${conversationId}/skip`, { questionId: question.id })}>Skip question</button>
-            <button type="button" className={buttonClass('ghost')} onClick={async () => { await run(`conversations/${conversationId}/pause`, {}, { refresh: false }); router.push('/candidate/home'); }}>Save and leave</button>
+          <button type="button" className={cx(buttonClass('primary', true), 'text-[17px]')} disabled={busy || !body.trim() || gaps} onClick={async () => { if (await run(`conversations/${conversationId}/answers`, { questionId: question.id, body, usedDraft: !!fromAi }) !== null) { setBody(''); setFromAi(null); } }}>{busy ? 'Sending…' : 'Send answer'}</button>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-1 text-[15px]">
+            <button type="button" className={cx(buttonClass('ghost'), 'min-h-11 px-3 text-ink')} disabled={busy} onClick={() => run(`conversations/${conversationId}/skip`, { questionId: question.id })}>Skip question</button>
+            <span aria-hidden className="text-line">|</span>
+            <button type="button" className={cx(buttonClass('ghost'), 'min-h-11 px-3 text-ink')} onClick={async () => { await run(`conversations/${conversationId}/pause`, {}, { refresh: false }); router.push('/candidate/home'); }}>Save and leave</button>
+            {canFinish && <><span aria-hidden className="text-line">|</span><button type="button" className={cx(buttonClass('ghost'), 'min-h-11 px-3 text-ink')} disabled={busy} onClick={finish}>Finish for now</button></>}
           </div>
+          <p className="mt-2 text-center text-[13px] text-muted">{answered} answered. Skipping never counts against you.</p>
         </div>
-      ) : <p className="rounded-xl border border-line bg-surface p-5 text-[15px]">That is all the questions for this session. Choose Finish for now to build your draft evidence.</p>}
-      {canFinish && <button type="button" className={buttonClass(question ? 'secondary' : 'primary')} disabled={busy} onClick={async () => { const r = await run(`conversations/${conversationId}/finish`, {}, { refresh: false }); if (r) router.push('/candidate/home'); }}>Finish for now</button>}
-      <p className="text-[13px] text-muted">{answered} answered. You can stop at any time; skipping never counts against you.</p>
+      )}
     </div>
   );
 }

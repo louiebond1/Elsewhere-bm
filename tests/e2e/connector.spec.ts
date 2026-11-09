@@ -16,6 +16,7 @@ test('Let my AI do this: connect from inside the question, the draft appears, Us
   await page.getByLabel('Your answer').fill('My own start.');
   await page.getByRole('button', { name: 'Let my AI do this' }).click();
   const sheet = page.getByRole('dialog', { name: 'Let your AI help' });
+  await sheet.getByRole('radio', { name: 'Claude' }).click();
   await sheet.getByRole('button', { name: 'Connect Claude' }).click();
   await expect(sheet.getByLabel('Connector address')).toContainText('/mcp');
   await sheet.getByRole('button', { name: 'I’ve connected, check again' }).click();
@@ -55,6 +56,7 @@ test('Let my AI do this: connect from inside the question, the draft appears, Us
   await expect(panel).toBeVisible({ timeout: 15_000 });
   await expect(panel.getByText('Made with your Claude · Not sent')).toBeVisible();
   // Something is already typed, so it asks: replace or add. Nothing is overwritten silently.
+  await panel.getByRole('button', { name: 'Use draft' }).click();
   await panel.getByRole('button', { name: 'Add to answer' }).click();
   await expect(page.getByLabel('Your answer')).toHaveValue(/My own start\.\n\nI rebuilt the supplier reconciliation/);
   await expect(page.getByText('Started with your Claude · Not sent')).toBeVisible();
@@ -62,6 +64,7 @@ test('Let my AI do this: connect from inside the question, the draft appears, Us
   await page.getByLabel('Your answer').pressSequentially(' Done.');
   await expect(page.getByText('Started with your Claude · Edited by you · Not sent')).toBeVisible();
   await page.getByRole('button', { name: 'Send answer' }).click();
+  await page.getByText(/Your answers so far/).click();
   await expect(page.locator('ol li', { hasText: 'supplier reconciliation' })).toBeVisible();
 
   // A second draft shows in the header inbox and opens straight to its question.

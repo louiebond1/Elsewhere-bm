@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { HandHelping, Check } from 'lucide-react';
+import { HandHelping, Check, TriangleAlert } from 'lucide-react';
 import { api, useCsrf, Dialog } from './client';
 import { CopyBox } from './copy-box';
 import { buttonClass, cx } from './ui';
@@ -9,12 +9,27 @@ import { AI_APPS, AI_NOTE, type AiApp } from '@/lib/ai-connect';
 /** The one "Let my AI do this" button, the same everywhere. */
 export function LetMyAiButton({ onClick, connected, note = AI_NOTE, disabled }: { onClick: () => void; connected: string | null; note?: string; disabled?: boolean }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <button type="button" className={cx(buttonClass('secondary'), 'gap-2')} onClick={onClick} disabled={disabled}>
-        <HandHelping aria-hidden size={18} /> Let my AI do this
+    <div>
+      <button type="button" className={cx(buttonClass('secondary', true), 'gap-3 text-[17px]')} onClick={onClick} disabled={disabled}>
+        <HandHelping aria-hidden size={22} strokeWidth={1.8} /> Let my AI do this
       </button>
-      <span className="text-[13px] text-muted">{connected ? <>Using {connected} · </> : null}{note}</span>
+      <p className="mt-2 text-center text-[14px] text-muted">{connected ? <>Using your {connected} · </> : null}{note}</p>
     </div>
+  );
+}
+
+function Steps({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <ol className="mt-4 flex items-center justify-between gap-2 text-[15px]" aria-label="Steps">
+      {['Choose', 'Connect', 'Return'].map((l, i) => {
+        const n = i + 1; const on = step === n; const done = step > n;
+        return (
+          <li key={l} aria-current={on ? 'step' : undefined} className={cx('flex items-center gap-2', on ? 'font-semibold text-ink' : 'text-ink/80')}>
+            <span aria-hidden className={cx('flex h-8 w-8 items-center justify-center rounded-full text-[14px] font-bold', on ? 'bg-primary text-white' : done ? 'bg-success-tint text-primary' : 'bg-page text-ink')}>{done ? <Check size={16} /> : n}</span>{l}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -35,41 +50,50 @@ export function AiConnectSheet({ open, onClose, connectorUrl, onConnected, task 
   };
   return (
     <Dialog open={open} onClose={close} title="Let your AI help">
-      <p className="text-[15px] text-muted">Connect your ChatGPT or Claude to prepare drafts for you. You check everything before it’s sent.</p>
-      <ol className="mt-4 flex gap-2 text-[13px]" aria-label="Steps">
-        {['Choose', 'Connect', 'Done'].map((l, i) => (
-          <li key={l} aria-current={step === i + 1 ? 'step' : undefined} className={cx('flex-1 rounded-full px-2 py-1 text-center', step === i + 1 ? 'bg-ink text-white' : step > i + 1 ? 'bg-success-tint text-success' : 'bg-page text-muted')}>{i + 1}. {l}</li>
-        ))}
-      </ol>
+      <p className="text-[17px] text-muted">Use your ChatGPT or Claude.</p>
+      <Steps step={step} />
       {step === 1 && (
-        <div className="mt-5 grid gap-2 sm:grid-cols-2">
-          {(['chatgpt', 'claude'] as const).map((k) => (
-            <button key={k} type="button" className={cx(buttonClass(k === 'chatgpt' ? 'primary' : 'secondary', true), 'min-h-14 text-[17px]')} onClick={() => { setApp(k); setStep(2); }}>Connect {AI_APPS[k].name}</button>
-          ))}
+        <div className="mt-5">
+          <div role="radiogroup" aria-label="Your AI" className="space-y-3">
+            {(['chatgpt', 'claude'] as const).map((k) => {
+              const on = app === k;
+              return (
+                <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setApp(k)}
+                  className={cx('flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left font-display text-[20px] font-extrabold', on ? 'border-primary bg-info-tint ring-1 ring-primary' : 'border-line bg-surface')}>
+                  {AI_APPS[k].name}
+                  <span aria-hidden className={cx('flex h-6 w-6 items-center justify-center rounded-full border-2', on ? 'border-primary' : 'border-[#BDBCB3]')}>{on && <span className="h-3 w-3 rounded-full bg-primary" />}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-6 font-display text-[20px] font-extrabold">You stay in control</p>
+          <p className="text-[15px] text-muted">Drafts only. You send the final answer.</p>
+          <button type="button" className={cx(buttonClass('primary', true), 'mt-5 text-[17px]')} onClick={() => setStep(2)}>Connect {how.name}</button>
+          <button type="button" className={cx(buttonClass('ghost', true), 'mt-1 text-ink')} onClick={close}>Keep writing myself</button>
         </div>
       )}
       {step === 2 && (
         <div className="mt-5">
           <ol className="space-y-3">
             {how.steps.map((t, i) => (
-              <li key={t} className="flex gap-3 text-[15px]"><span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-page font-semibold">{i + 1}</span><span className="pt-0.5">{t}</span></li>
+              <li key={t} className="flex gap-3 text-[15px]"><span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-page text-[13px] font-bold">{i + 1}</span><span className="pt-0.5">{t}</span></li>
             ))}
           </ol>
           <div className="mt-4"><CopyBox text={connectorUrl} label="Connector address" /></div>
           <p className="mt-2 text-[13px] text-muted">{how.note}</p>
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="mt-5 flex flex-col gap-2">
             <a className={buttonClass('secondary', true)} href={how.open} target="_blank" rel="noreferrer">Open {how.name}</a>
             <button type="button" className={buttonClass('primary', true)} onClick={check} disabled={checking}>{checking ? 'Checking…' : 'I’ve connected, check again'}</button>
-            {notYet && <p role="status" className="text-[14px] text-warning">Not connected yet. Finish the steps in {how.name} and press Allow, then check again.</p>}
-            <button type="button" className={buttonClass('ghost', true)} onClick={() => setStep(1)}>Back</button>
+            {notYet && <p role="status" className="text-center text-[14px] text-warning">Not connected yet. Finish in {how.name} and press Allow, then check again.</p>}
+            <button type="button" className={cx(buttonClass('ghost', true), 'text-ink')} onClick={() => setStep(1)}>Back</button>
           </div>
         </div>
       )}
       {step === 3 && (
-        <div className="mt-5">
-          <p className="flex items-center gap-2 text-[17px] font-medium"><Check aria-hidden className="text-success" /> Connected to {provider}</p>
+        <div className="mt-6">
+          <p className="flex items-center gap-2 font-display text-[20px] font-extrabold"><span aria-hidden className="flex h-8 w-8 items-center justify-center rounded-full bg-success-tint text-primary"><Check size={18} /></span>Connected to {provider}</p>
           {task && <p className="mt-2 text-[15px] text-muted">Next: {task}</p>}
-          <button type="button" className={cx(buttonClass('primary', true), 'mt-4')} onClick={() => { onConnected(provider!); close(); }}>Prepare my draft</button>
+          <button type="button" className={cx(buttonClass('primary', true), 'mt-5 text-[17px]')} onClick={() => { onConnected(provider!); close(); }}>Prepare my draft</button>
         </div>
       )}
     </Dialog>
@@ -78,16 +102,25 @@ export function AiConnectSheet({ open, onClose, connectorUrl, onConnected, task 
 
 type Draft = { body: string; provider: string };
 
+/** Square-bracket gaps the AI left for missing facts, e.g. [Add what changed]. */
+export const GAP = /\[[^\]\n]{2,80}\]/g;
+export const hasGaps = (t: string) => new RegExp(GAP.source).test(t);
+function WithGaps({ text }: { text: string }) {
+  const parts = text.split(/(\[[^\]\n]{2,80}\])/g);
+  return <>{parts.map((p, i) => (i % 2 ? <mark key={i} className="rounded-md bg-success-tint px-1 text-primary">{p.slice(1, -1)}</mark> : <span key={i}>{p}</span>))}</>;
+}
+
 /** The whole "Let my AI do this → check the draft" flow for one question. The person always sends it themselves. */
-export function QuestionAi({ questionId, questionText, initialDraft, connected: initialConnected, connectorUrl, hasText, onUse }: {
+export function QuestionAi({ questionId, questionText, initialDraft, connected: initialConnected, connectorUrl, hasText, onUse, onReview }: {
   questionId: string; questionText: string; initialDraft: Draft | null; connected: string | null; connectorUrl: string; hasText: boolean;
-  onUse: (draft: Draft, mode: 'replace' | 'add') => void;
+  onUse: (draft: Draft, mode: 'replace' | 'add', edit: boolean) => void; onReview: (reviewing: boolean) => void;
 }) {
   const csrf = useCsrf();
   const [state, setState] = useState<'idle' | 'waiting' | 'ready' | 'used'>(initialDraft ? 'ready' : 'idle');
   const [draft, setDraft] = useState<Draft | null>(initialDraft);
   const [connected, setConnected] = useState(initialConnected);
   const [sheet, setSheet] = useState(false);
+  const [choose, setChoose] = useState<null | boolean>(null);
   const [error, setError] = useState<string | null>(null);
   const app = connected ?? 'your AI';
   const prompt = `Help me answer my Elsewhere question: “${questionText}”. Use what you remember about me, ask me anything you’re unsure of, then save it as a draft.`;
@@ -99,46 +132,55 @@ export function QuestionAi({ questionId, questionText, initialDraft, connected: 
     const t = setInterval(async () => {
       if (++tries > 225) { clearInterval(t); return; }
       const r = await api<{ draft: Draft | null; answered: boolean }>(`ai/drafts/${questionId}`);
-      if (r.ok && r.data.draft) { setDraft(r.data.draft); setState('ready'); }
+      if (r.ok && r.data.draft) { setDraft(r.data.draft); setState('ready'); onReview(true); }
     }, 4000);
     return () => clearInterval(t);
-  }, [state, questionId]);
+  }, [state, questionId, onReview]);
 
   const discard = async () => {
     const r = await api(`ai/drafts/${questionId}/discard`, { body: {}, csrf });
     if (!r.ok) { setError(r.error.message); return; }
-    setDraft(null); setState('idle');
+    setDraft(null); setState('idle'); onReview(false);
   };
-  const use = (mode: 'replace' | 'add') => { if (draft) { onUse(draft, mode); setState('used'); } };
+  const apply = (mode: 'replace' | 'add', edit: boolean) => { if (draft) { onUse(draft, mode, edit); setState('used'); onReview(false); } };
+  const start = (edit: boolean) => (hasText ? setChoose(edit) : apply('replace', edit));
 
   if (state === 'used') return null;
   return (
-    <div className="mt-3">
+    <div>
       {state === 'idle' && <LetMyAiButton connected={connected} onClick={() => (connected ? setState('waiting') : setSheet(true))} />}
       {state === 'waiting' && (
-        <div className="rounded-xl border border-line bg-page p-4" role="status">
-          <p className="font-medium">Continue in {app} to prepare your draft</p>
+        <div className="rounded-2xl border border-line bg-page p-5" role="status">
+          <p className="font-display text-[19px] font-extrabold">Continue in {app} to prepare your draft</p>
           <ol className="mt-3 space-y-3 text-[15px]">
-            <li><span className="font-medium">1.</span> Copy this message:<div className="mt-2"><CopyBox text={prompt} label="Message for your AI" /></div></li>
-            <li><span className="font-medium">2.</span> <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open {app}</a>, paste it and chat it through.</li>
-            <li><span className="font-medium">3.</span> When it saves the draft, it appears here. You can keep working meanwhile.</li>
+            <li><span className="font-semibold">1.</span> Copy this message:<div className="mt-2"><CopyBox text={prompt} label="Message for your AI" /></div></li>
+            <li><span className="font-semibold">2.</span> <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open {app}</a>, paste it and chat it through.</li>
+            <li><span className="font-semibold">3.</span> When it saves the draft, it appears here. You can keep writing meanwhile.</li>
           </ol>
-          <button type="button" className={cx(buttonClass('ghost'), 'mt-2')} onClick={() => setState('idle')}>Cancel</button>
+          <button type="button" className={cx(buttonClass('ghost'), 'mt-2 text-ink')} onClick={() => setState('idle')}>Cancel</button>
         </div>
       )}
       {state === 'ready' && draft && (
-        <section aria-label="Draft ready to check" className="rounded-xl border border-ink/20 bg-info-tint p-4">
-          <p className="font-semibold">Draft ready to check</p>
-          <p className="text-[13px] text-muted">Made with your {draft.provider} · Not sent</p>
-          <p className="mt-3 whitespace-pre-wrap rounded-lg bg-surface p-3 text-[15px]">{draft.body}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {hasText ? (<>
-              <button type="button" className={buttonClass('secondary')} onClick={() => use('replace')}>Replace answer</button>
-              <button type="button" className={buttonClass('secondary')} onClick={() => use('add')}>Add to answer</button>
-            </>) : <button type="button" className={buttonClass('secondary')} onClick={() => use('replace')}>Use draft</button>}
-            <button type="button" className={buttonClass('ghost')} onClick={discard}>Discard</button>
-          </div>
-          <p className="mt-2 text-[13px] text-muted">Using it only puts it in your answer box. Nothing is sent until you press Send answer.</p>
+        <section aria-label="Draft ready to check">
+          <h2 className="font-display">Check your draft</h2>
+          <p className="mt-2 inline-flex rounded-full border border-line px-3 py-1 text-[14px] text-ink">Made with your {draft.provider} · Not sent</p>
+          <p className="mt-4 whitespace-pre-wrap rounded-2xl border border-line bg-surface p-5 text-[17px] leading-relaxed"><WithGaps text={draft.body} /></p>
+          <p className="mt-4 flex items-center gap-2 text-[15px] font-semibold"><TriangleAlert aria-hidden size={20} strokeWidth={1.8} /> Check every detail is true.</p>
+          {choose === null ? (<>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button type="button" className={buttonClass('secondary', true)} onClick={() => start(true)}>Edit draft</button>
+              <button type="button" className={buttonClass('secondary', true)} onClick={discard}>Discard</button>
+            </div>
+            <button type="button" className={cx(buttonClass('primary', true), 'mt-3 text-[17px]')} onClick={() => start(false)}>Use draft</button>
+          </>) : (
+            <div className="mt-4 space-y-3" role="group" aria-label="You already wrote something">
+              <p className="text-[15px]">You’ve already written something. What should the draft do?</p>
+              <button type="button" className={buttonClass('primary', true)} onClick={() => apply('replace', choose)}>Replace answer</button>
+              <button type="button" className={buttonClass('secondary', true)} onClick={() => apply('add', choose)}>Add to answer</button>
+              <button type="button" className={cx(buttonClass('ghost', true), 'text-ink')} onClick={() => setChoose(null)}>Back</button>
+            </div>
+          )}
+          <p className="mt-3 text-center text-[14px] text-muted">Nothing is sent until you press Send answer.</p>
           {error && <p role="alert" className="mt-2 text-[14px] text-danger">{error}</p>}
         </section>
       )}

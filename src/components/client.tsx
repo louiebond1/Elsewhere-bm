@@ -99,10 +99,11 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 md:items-center md:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="max-h-[90vh] w-full overflow-y-auto rounded-t-xl bg-surface p-5 md:max-w-lg md:rounded-xl">
-        <h3 className="mb-3 text-[20px] font-semibold">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 md:items-center md:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-surface px-6 pb-7 pt-7 shadow-2xl md:max-w-[520px] md:rounded-[28px]">
+        <h2 className="mb-2 pr-10">{title}</h2>
         {children}
+        <button type="button" aria-label="Close" onClick={onClose} className="absolute right-4 top-5 flex h-11 w-11 items-center justify-center rounded-full text-[26px] leading-none text-ink hover:bg-page">&times;</button>
       </div>
     </div>
   );
@@ -180,8 +181,8 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   );
 }
 
-export const inputClass = 'h-11 w-full rounded-lg border border-line bg-surface px-3 text-[16px]';
-export const textareaClass = 'w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px]';
+export const inputClass = 'h-12 w-full rounded-xl border border-line bg-surface px-4 text-[16px] placeholder:text-muted/80';
+export const textareaClass = 'w-full rounded-2xl border border-line bg-surface px-4 py-3 text-[17px] leading-relaxed placeholder:text-muted/80';
 
 /** Polls a job until it finishes, then refreshes the page. */
 export function JobPoller({ jobId, pendingText = 'Building your profile', failText }: { jobId: string; pendingText?: string; failText?: string }) {

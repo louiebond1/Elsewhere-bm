@@ -73,8 +73,8 @@ export function SignOut() {
 
 export function SwitchPersona() {
   return (
-    <a href="/demo/personas" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-white underline-offset-2 hover:underline">
-      <Repeat size={14} aria-hidden /> Switch demo account
+    <a href="/demo/personas" aria-label="Switch demo account" title="Switch demo account" className="inline-flex h-9 items-center gap-1.5 rounded-full bg-page px-3 text-[14px] font-medium text-ink no-underline hover:bg-line">
+      <Repeat size={14} aria-hidden /> Demo
     </a>
   );
 }
@@ -93,7 +93,7 @@ export function NavLinks({ items, onNavigate, dark }: { items: NavItem[]; onNavi
             <Link href={i.href} onClick={onNavigate} aria-current={active ? 'page' : undefined}
               className={dark
                 ? cx('flex h-[60px] items-center gap-3 border-l-[3px] px-5 text-[16px] no-underline', active ? 'border-accent bg-sidebar-hover text-white' : 'border-transparent text-white/85 hover:bg-sidebar-hover hover:text-white')
-                : cx('flex h-11 items-center gap-3 rounded-lg px-3 text-[15px] no-underline', active ? 'bg-info-tint font-semibold text-ink' : 'text-ink hover:bg-page')}>
+                : cx('flex h-12 items-center gap-3 rounded-xl px-3 text-[16px] no-underline', active ? 'bg-success-tint font-semibold text-primary' : 'text-ink hover:bg-page')}>
               <Icon size={20} strokeWidth={1.6} aria-hidden />{i.label}
             </Link>
           </li>
@@ -110,18 +110,20 @@ export function MobileNav({ items }: { items: NavItem[] }) {
   const rest = items.slice(3);
   return (
     <>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface md:hidden">
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         {main.map((i) => {
           const active = path === i.href || path.startsWith(i.href + '/');
-          return <Link key={i.href} href={i.href} className={cx('flex h-14 items-center justify-center px-1 text-center text-[13px] no-underline', active ? 'font-semibold text-primary' : 'text-muted')}>{i.label}</Link>;
+          const Icon = ICONS[i.icon] ?? Home;
+          return <Link key={i.href} href={i.href} aria-current={active ? 'page' : undefined} className={cx('flex h-16 flex-col items-center justify-center gap-1 px-1 text-center text-[13px] no-underline', active ? 'font-semibold text-primary' : 'text-muted')}><Icon size={22} strokeWidth={active ? 2 : 1.6} aria-hidden />{i.label}</Link>;
         })}
-        <button type="button" className="flex h-14 items-center justify-center gap-1 text-[13px] text-muted" onClick={() => setMore(true)} aria-label="More pages"><Menu size={16} aria-hidden /> More</button>
+        <button type="button" className="flex h-16 flex-col items-center justify-center gap-1 text-[13px] text-muted" onClick={() => setMore(true)} aria-label="More pages"><Menu size={22} strokeWidth={1.6} aria-hidden /> More</button>
       </nav>
       {more && (
-        <div className="fixed inset-0 z-50 bg-black/40 md:hidden" onClick={() => setMore(false)}>
-          <div className="absolute inset-x-0 bottom-0 rounded-t-xl bg-surface p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between"><span className="font-semibold">More</span><button type="button" aria-label="Close" className="h-11 w-11" onClick={() => setMore(false)}><X size={18} aria-hidden /></button></div>
+        <div className="fixed inset-0 z-50 bg-black/35 md:hidden" onClick={() => setMore(false)}>
+          <div className="absolute inset-x-0 bottom-0 rounded-t-[28px] bg-surface p-5 pb-8" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between"><span className="font-display text-[20px] font-extrabold">More</span><button type="button" aria-label="Close" className="h-11 w-11" onClick={() => setMore(false)}><X size={20} aria-hidden /></button></div>
             <NavLinks items={rest} onNavigate={() => setMore(false)} />
+            <div className="mt-2 border-t border-line pt-2"><SignOut /></div>
           </div>
         </div>
       )}

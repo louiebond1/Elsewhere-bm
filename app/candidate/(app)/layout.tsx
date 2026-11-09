@@ -17,5 +17,5 @@ export default async function CandidateLayout({ children }: { children: React.Re
     { href: '/candidate/cv', label: 'CV', icon: 'cv' },
     { href: '/candidate/privacy', label: 'Privacy', icon: 'privacy' },
   ];
-  return <AppShell nav={nav} base="/candidate" csrf={csrf} who={`${self.identity?.fullName ?? ''} · ${self.candidate.publicRef}`} brandSub="Your Elsewhere profile" drafts={drafts}>{children}</AppShell>;
+  return <AppShell nav={nav} base="/candidate" csrf={csrf} who={`${self.identity?.fullName ?? ''} · ${self.candidate.publicRef}`} brandSub="Elsewhere" drafts={drafts}>{children}</AppShell>;
 }

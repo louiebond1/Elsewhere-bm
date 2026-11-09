@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { pageViewer } from '@/server/page-auth';
 import { getConversation } from '@/server/services/conversations';
-import { PageHeader, Badge } from '@/components/ui';
+import { PageHeader } from '@/components/ui';
 import { Conversation } from '@/components/candidate-forms';
 import { isUuid } from '@/server/lib/ids';
 import { providerLabel } from '@/server/ai';
@@ -25,19 +25,19 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const topics = [...new Set(c.questions.filter((x) => x.state === 'answered').map((x) => x.topic))];
   const c40 = CANDIDATES.find((x) => x.code === 'C40')!;
   return (
-    <div className="mx-auto max-w-[760px]">
-      <PageHeader title={c.conversation.kind === 'initial_screening' ? 'Your first conversation' : 'Check-in'} back={{ href: '/candidate/home', label: 'Home' }} subtitle={<span>Low pressure, text only. <Badge>{providerLabel()}</Badge></span>} />
-      {c.conversation.status === 'completed' ? <p className="rounded-xl border border-line bg-surface p-5">This conversation is complete. Your draft evidence is being prepared.</p> : (
-        <div className="grid gap-6 md:grid-cols-[1fr_200px]">
-          <div>
-          {moreDrafts > 0 && <p className="mb-3 rounded-lg bg-page px-3 py-2 text-[14px]">Your AI also drafted {moreDrafts} more answer{moreDrafts > 1 ? 's' : ''}. They come up next.</p>}
-          <Conversation key={q?.id ?? "done"} conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic, draft: q.draft ? { body: q.draft.body, provider: q.draft.aiProvider ?? 'AI' } : null } : null} answered={answered} canFinish={answered > 0} ai={ai} />
-          </div>
-          <aside className="hidden text-[14px] md:block"><h4 className="font-semibold">Topics covered</h4><ul className="mt-1 text-muted">{topics.length ? topics.map((t) => <li key={t}>{t}</li>) : <li>None yet</li>}</ul></aside>
-        </div>
+    <div className="mx-auto max-w-[640px]">
+      <PageHeader title="" back={{ href: '/candidate/check-ins', label: 'Your questions' }} />
+      {c.conversation.status === 'completed' ? <><h1>All done</h1><p className="mt-3 text-[17px] text-muted">This conversation is complete. Your draft examples are being prepared.</p></> : (<>
+        {moreDrafts > 0 && <p className="mb-4 rounded-full bg-success-tint px-4 py-2 text-[14px] font-semibold text-primary">Your AI also drafted {moreDrafts} more answer{moreDrafts > 1 ? 's' : ''}. They come up next.</p>}
+        <Conversation key={q?.id ?? "done"} conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic, draft: q.draft ? { body: q.draft.body, provider: q.draft.aiProvider ?? 'AI' } : null } : null} answered={answered} canFinish={answered > 0} ai={ai} />
+      </>)}
+      {c.questions.some((x) => x.state !== 'unanswered') && (
+        <details className="mt-10 text-[15px]"><summary className="cursor-pointer font-semibold">Your answers so far ({c.questions.filter((x) => x.state !== 'unanswered').length})</summary>
+          <ol className="mt-3 space-y-3">{c.questions.filter((x) => x.state !== 'unanswered').map((x) => <li key={x.id} className="rounded-2xl bg-page p-4"><p className="font-semibold">{x.questionText}</p><p className="mt-1 text-muted">{x.state === 'skipped' ? 'Skipped' : x.answer?.body}</p></li>)}</ol>
+        </details>
       )}
-      <details className="mt-6 rounded-lg bg-warning-tint p-3 text-[14px] text-warning"><summary className="cursor-pointer">Demo helper: fictional answers for Ravi Das (C40)</summary><p className="mt-2">Q1: {c40.q1}</p><p className="mt-1">Q2: {c40.q2}</p></details>
-      <ol className="mt-6 space-y-3">{c.questions.filter((x) => x.state !== 'unanswered').map((x) => <li key={x.id} className="rounded-lg border border-line bg-surface p-3 text-[14px]"><p className="font-medium">{x.questionText}</p><p className="mt-1 text-muted">{x.state === 'skipped' ? 'Skipped' : x.answer?.body}</p></li>)}</ol>
+      <details className="mt-4 text-[13px] text-muted"><summary className="cursor-pointer">Demo helper: fictional answers for Ravi Das (C40)</summary><p className="mt-2">Q1: {c40.q1}</p><p className="mt-1">Q2: {c40.q2}</p></details>
+      <p className="sr-only">{providerLabel()}. Topics covered: {topics.join(', ') || 'none yet'}.</p>
     </div>
   );
 }
