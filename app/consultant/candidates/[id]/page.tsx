@@ -45,7 +45,7 @@ export default async function CandidateRecord({ params, searchParams }: { params
   const base = `/consultant/candidates/${id}`;
   const facts = [r.idn?.currentTitle ?? 'Role unknown', REGION[r.c.region] ?? 'Region unknown', r.c.minSalaryPence ? `£${Math.round(Number(r.c.minSalaryPence) / 100000)}k minimum` : 'Minimum salary not given'];
   const visibleReason = ds.discoverable ? null : ds.reasons.map((x) => REASONS[x] ?? x.replace(/_/g, ' ')).join('; ');
-  const tabs = [['overview', 'Overview'], ['checklist', 'Profile document'], ['evidence', 'Evidence'], ['conversations', 'Conversations'], ['cv', 'CV'], ['activity', 'Activity']].map(([k, l]) => ({ key: k, label: l, href: `${base}?tab=${k}` }));
+  const tabs = [['overview', 'Overview'], ['checklist', 'Mini-me'], ['evidence', 'Evidence'], ['conversations', 'Conversations'], ['cv', 'CV'], ['activity', 'Activity']].map(([k, l]) => ({ key: k, label: l, href: `${base}?tab=${k}` }));
 
   let body: React.ReactNode = null;
   if (tab === 'checklist') {

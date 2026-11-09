@@ -106,11 +106,11 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await expect(page.getByRole('heading', { name: /Welcome, Maya/ })).toBeVisible();
   await page.getByText('Your welcome email').click();
   await expect(page.getByText('Subject: Welcome to BondMoran Elsewhere')).toBeVisible();
-  await page.getByRole('link', { name: 'I’ll type it myself' }).click();
-  await expect(page.getByRole('heading', { name: 'Your profile document' })).toBeVisible();
+  await page.getByRole('link', { name: 'I’d rather type it myself' }).click();
+  await expect(page.getByRole('heading', { name: 'Your mini-me' })).toBeVisible();
   // Answer one yourself.
   const q = page.locator('li', { hasText: 'How much notice do you need to give' });
-  await q.getByRole('button', { name: 'Answer this myself' }).click();
+  await q.getByRole('button', { name: 'I’ll answer this' }).click();
   await q.getByRole('textbox').fill('Four weeks.');
   await q.getByRole('button', { name: 'Save' }).click();
   await expect(q.getByText('Checked')).toBeVisible();
@@ -127,11 +127,11 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await page.request.post('/mcp', { headers: { authorization: `Bearer ${t.access_token}` }, data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'save_onboarding_answers', arguments: { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations and Excel' }] } } } });
   await page.unroute('https://chatgpt.com/**');
   await page.goto('/candidate/home');
-  await expect(page.getByRole('link', { name: /Your AI: 2 answers from your AI to check/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Your AI: Your AI wrote 2 answers for your mini-me/ })).toBeVisible();
   await page.goto('/candidate/onboarding');
-  await expect(page.getByText('2 answers from your AI to check.')).toBeVisible();
+  await expect(page.getByText('Your AI wrote 2 answers.')).toBeVisible();
   await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();
-  await page.getByRole('button', { name: 'They all look right: approve 2' }).click();
-  await expect(page.getByText('answers from your AI to check')).toHaveCount(0);
+  await page.getByRole('button', { name: 'All good: approve 2' }).click();
+  await expect(page.getByText('Your AI wrote 2 answers.')).toHaveCount(0);
   await expect(page.getByText('3', { exact: true }).first()).toBeVisible();
 });

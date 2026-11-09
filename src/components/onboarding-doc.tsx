@@ -11,7 +11,7 @@ import { AI_APPS } from '@/lib/ai-connect';
 type Q = { key: string; text: string; hint: string | null; answer: string | null; source: 'ai' | 'self' | null; provider: string | null; approved: boolean };
 type Section = { key: string; title: string; questions: Q[] };
 
-export const CHECKLIST_PROMPT = 'Do my Elsewhere onboarding checklist. Fill in everything you genuinely know about me, ask me about the rest, then save my answers.';
+export const CHECKLIST_PROMPT = 'Help me build my Elsewhere mini-me. Fill in everything you genuinely know about me, ask me about anything you don’t, then save it.';
 
 /** Ask their AI to fill in the checklist, or connect it first. Refreshes while answers arrive. */
 export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waiting }: { connected: string | null; connectorUrl: string; autoOpen: boolean; waiting: boolean }) {
@@ -26,17 +26,17 @@ export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waitin
   }, [connected, waiting, router]);
   if (!connected) return (
     <>
-      <LetMyAiButton connected={null} note="Your AI fills in your checklist. You check every answer." onClick={() => setSheet(true)} />
-      <AiConnectSheet open={sheet} onClose={() => setSheet(false)} connectorUrl={connectorUrl} task="fill in your onboarding checklist" onConnected={(p) => setConnected(p)} />
+      <LetMyAiButton connected={null} note="No one knows you better than your ChatGPT. Let it do the typing, you check it." onClick={() => setSheet(true)} />
+      <AiConnectSheet open={sheet} onClose={() => setSheet(false)} connectorUrl={connectorUrl} task="build your mini-me" onConnected={(p) => setConnected(p)} />
     </>
   );
   return (
     <section aria-label="Let your AI fill it in" className="rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:p-6">
-      <h2 className="text-[22px] leading-7">Let your {connected} fill it in</h2>
+      <h2 className="text-[22px] leading-7">Let your {connected} do the talking</h2>
       <ol className="mt-3 space-y-3 text-[16px]">
         <li><span className="font-semibold">1.</span> Copy this message:<div className="mt-2"><CopyBox text={CHECKLIST_PROMPT} label="Message for your AI" /></div></li>
-        <li><span className="font-semibold">2.</span> <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open {connected}</a> and paste it. It answers what it knows and asks you the rest. You can type or talk.</li>
-        <li><span className="font-semibold">3.</span> Answers appear below as they’re saved. Check each one.</li>
+        <li><span className="font-semibold">2.</span> <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open {connected}</a> and paste it. It fills in what it knows and asks you the rest. Type or just talk to it.</li>
+        <li><span className="font-semibold">3.</span> Its answers pop up here as it goes. You check them.</li>
       </ol>
     </section>
   );
@@ -46,7 +46,7 @@ export function ApproveAll({ count }: { count: number }) {
   const { run, busy, error } = useCommand();
   return (
     <div>
-      <button type="button" className={buttonClass('primary')} disabled={busy} onClick={() => run('onboarding/approve', { keys: 'all' })}>{busy ? 'Saving…' : `They all look right: approve ${count}`}</button>
+      <button type="button" className={buttonClass('primary')} disabled={busy} onClick={() => run('onboarding/approve', { keys: 'all' })}>{busy ? 'Saving…' : `All good: approve ${count}`}</button>
       <ErrorText error={error} />
     </div>
   );
@@ -82,7 +82,7 @@ function Question({ q }: { q: Q }) {
           </div>
         </>
       ) : (
-        <button type="button" className={cx(buttonClass('ghost'), 'mt-1 min-h-11 px-0 text-primary')} onClick={() => setEditing(true)}>Answer this myself</button>
+        <button type="button" className={cx(buttonClass('ghost'), 'mt-1 min-h-11 px-0 text-primary')} onClick={() => setEditing(true)}>I’ll answer this</button>
       )}
       <ErrorText error={error} />
     </li>

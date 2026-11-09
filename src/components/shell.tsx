@@ -58,7 +58,7 @@ function AiBar({ status, action, href }: AiBarInfo) {
       <HandHelping aria-hidden size={22} strokeWidth={1.7} />
       <span className="font-display text-[17px] font-semibold">Your AI</span>
       <span aria-hidden className="h-5 w-px bg-white/30" />
-      <span className="min-w-0 flex-1 truncate text-[15px] text-white/90">{status}</span>
+      <span className="min-w-0 flex-1 truncate text-[15px] text-white/90"><span className="hidden sm:inline">{status}</span></span>
       <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-4 py-1.5 text-[15px] font-semibold text-primary">{action} <ArrowRight aria-hidden size={16} className="transition-transform group-hover:translate-x-0.5" /></span>
     </Link>
   );
@@ -66,7 +66,7 @@ function AiBar({ status, action, href }: AiBarInfo) {
 
 /** The candidate's AI strip: only when there is something to do (connect, or drafts to check). */
 export function candidateAiBar(drafts: number, connected: string | null, checklistToCheck = 0): AiBarInfo | undefined {
-  if (checklistToCheck) return { status: `${checklistToCheck} answer${checklistToCheck > 1 ? 's' : ''} from your AI to check`, action: 'Check them', href: '/candidate/onboarding' };
+  if (checklistToCheck) return { status: `Your AI wrote ${checklistToCheck} answer${checklistToCheck > 1 ? 's' : ''} for your mini-me`, action: 'Have a look', href: '/candidate/onboarding' };
   if (drafts) return { status: `${drafts} draft${drafts > 1 ? 's' : ''} ready to check`, action: 'Check drafts', href: '/candidate/ai' };
   if (!connected) return { status: 'Not connected yet', action: 'Set up', href: '/candidate/onboarding?ai=1' };
   return undefined;

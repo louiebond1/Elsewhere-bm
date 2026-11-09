@@ -66,11 +66,11 @@ export default async function CandidateHome() {
           <FoldArt className="h-40 w-full rounded-[24px] md:h-52" />
           <div className="px-3 pb-3 pt-1">
             {!checklistDone ? (<>
-              <h2 className="text-[30px] leading-tight">Your profile checklist.</h2>
-              <p className="mt-1 text-[17px] text-muted">{ob.answered ? `${ob.answered} of ${ob.total} answered, ${ob.approved} checked.` : `About ${ob.total} questions. Your AI can answer most of them for you.`}</p>
+              <h2 className="text-[30px] leading-tight">Build your mini-me.</h2>
+              <p className="mt-1 text-[17px] text-muted">{ob.answered ? `It knows you ${Math.round((ob.answered / ob.total) * 100)}% so far. ${ob.approved} answer${ob.approved === 1 ? '' : 's'} checked by you.` : 'No one knows you better than your ChatGPT (not even your family). Let it do the typing.'}</p>
               <div className="mt-5 space-y-3">
                 <Link href="/candidate/onboarding?ai=1" className={cx(buttonClass('primary', true), 'gap-3 text-[17px] no-underline')}><HandHelping aria-hidden size={22} strokeWidth={1.8} /> Let my AI do this</Link>
-                <Link href="/candidate/onboarding" className={cx(buttonClass('secondary', true), 'text-[17px] no-underline')}>{ob.toCheck ? `Check ${ob.toCheck} answer${ob.toCheck > 1 ? 's' : ''}` : 'Open my checklist'}</Link>
+                <Link href="/candidate/onboarding" className={cx(buttonClass('secondary', true), 'text-[17px] no-underline')}>{ob.toCheck ? `Check ${ob.toCheck} answer${ob.toCheck > 1 ? 's' : ''}` : 'See my mini-me'}</Link>
               </div>
             </>) : (<>
             <h2 className="text-[30px] leading-tight">{needsCv ? 'Start with your CV.' : 'One good example.'}</h2>

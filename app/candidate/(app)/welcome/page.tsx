@@ -11,15 +11,15 @@ export default async function Welcome() {
   const self = await candidateSelf(ctx);
   const first = (self.identity?.fullName ?? '').split(' ')[0] || 'there';
   const steps = [
-    { title: 'Your basic details', body: 'Name, email, where you are and what you’re looking for.', done: true },
-    { title: 'Let your AI fill in your profile', body: 'Connect ChatGPT or Claude. It answers about 50 questions from what it knows about you and asks you the rest.', done: false },
-    { title: 'Check every answer', body: 'Read your profile document, change anything, approve it. Then you can be matched to jobs.', done: false },
+    { title: 'The basics', body: 'Name, email, where you are and what you’re after. Done.', done: true },
+    { title: 'Let your ChatGPT spill the beans', body: 'No one knows you better than your ChatGPT (not even your mum). Connect it and it builds your mini-me in minutes. Anything it doesn’t know, it just asks you.', done: false },
+    { title: 'Give it a once-over', body: 'Read what it wrote, tweak anything that’s not quite you, and approve it. Nothing goes anywhere until you do.', done: false },
   ];
   return (
     <div className="mx-auto max-w-[920px]">
       <FoldArt id="welcome" palette="sand" variant={1} className="h-40 w-full rounded-3xl lg:h-56" />
       <h1 className="mt-8 text-[40px] leading-[1.05] lg:text-[60px]">Welcome, {first}.</h1>
-      <p className="mt-4 max-w-[38ch] text-[19px] text-muted lg:text-[21px]">BondMoran Elsewhere finds you jobs that fit, using what you’ve really done. Employers see your experience, never your name, until you say yes.</p>
+      <p className="mt-4 max-w-[38ch] text-[19px] text-muted lg:text-[21px]">Let’s build your mini-me: a version of you that knows your work inside out and speaks up for you with employers. They see what you can do, never your name, until you say yes.</p>
 
       <ol className="mt-10 space-y-4">
         {steps.map((s, i) => (
@@ -30,8 +30,8 @@ export default async function Welcome() {
         ))}
       </ol>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <Link href="/candidate/onboarding?ai=1" className={cx(buttonClass('primary'), 'rounded-full! px-8 text-[18px] no-underline')}>Start my profile</Link>
-        <Link href="/candidate/onboarding" className={cx(buttonClass('secondary'), 'rounded-full! px-8 text-[18px] no-underline')}>I’ll type it myself</Link>
+        <Link href="/candidate/onboarding?ai=1" className={cx(buttonClass('primary'), 'rounded-full! px-8 text-[18px] no-underline')}>Build my mini-me</Link>
+        <Link href="/candidate/onboarding" className={cx(buttonClass('secondary'), 'rounded-full! px-8 text-[18px] no-underline')}>I’d rather type it myself</Link>
       </div>
 
       <details className="mt-12 rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
@@ -40,9 +40,9 @@ export default async function Welcome() {
           <p className="text-[14px] text-muted">From BondMoran · Subject: Welcome to BondMoran Elsewhere</p>
           <div className="mt-3 space-y-3">
             <p>Hi {first},</p>
-            <p>Welcome to BondMoran Elsewhere. We help you find a job that fits, based on what you’ve actually done, not just your CV.</p>
-            <p>Here’s how it works: you build a profile once, your own ChatGPT or Claude can fill most of it in for you, and you check every word. Employers see your experience and skills, never your name or current employer, until you accept an introduction.</p>
-            <p>To get started, sign in and press “Start my profile”.</p>
+            <p>Welcome to BondMoran Elsewhere. We find you jobs that fit what you’ve actually done, not just what’s on your CV.</p>
+            <p>First, we’ll build your mini-me. No one knows you better than your ChatGPT (not even your family), so you can let it do most of the typing. You check every word, and employers never see your name or current employer until you say yes.</p>
+            <p>Sign in and press “Build my mini-me”. It takes a few minutes.</p>
             <p>The BondMoran team</p>
           </div>
           <p className="mt-4 text-[13px] text-muted">This is a demo: the email is recorded, not actually sent.</p>
