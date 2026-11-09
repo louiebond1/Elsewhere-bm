@@ -274,3 +274,55 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await page.getByText(/What I’ve learned about how you hire/).click();
   await expect(page.getByText('Usually hires for hybrid roles in London')).toBeVisible();
 });
+
+test('Start my own test: the whole journey from a clean start, as you would do it yourself', async ({ page }) => {
+  await enterGate(page);
+  await page.getByRole('button', { name: 'Start my own test' }).click();
+  await page.waitForURL(/\/client\/home$/, { timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Hi Emma' })).toBeVisible();
+  await expect(page.getByText('10 credits')).toBeVisible();
+  await expect(page.getByText(/Nothing yet\. Press “Start a new hire”/)).toBeVisible();
+  // 1. Chat with the assistant.
+  await page.getByRole('link', { name: 'Start a new hire' }).click();
+  const box = page.getByLabel('Your answer');
+  const send = async (t: string) => { await box.fill(t); await box.press('Enter'); await expect(page.getByText(t, { exact: true }).last()).toBeVisible(); await expect(page.getByText('Your assistant is thinking…')).toHaveCount(0); };
+  await send('We need an assistant accountant for reconciliations and month-end. Ideally they know Excel.');
+  await send('In six months they should own month-end on their own.');
+  await page.getByRole('button', { name: 'Nothing to teach' }).click();
+  await expect(page.getByText(/What is the salary/).last()).toBeVisible();
+  await send('44k');
+  await page.getByRole('button', { name: 'London', exact: true }).click();
+  await expect(page.getByText('How will they work?').last()).toBeVisible();
+  await page.getByRole('button', { name: 'Hybrid', exact: true }).click();
+  await expect(page.getByText(/That’s everything I need/)).toBeVisible();
+  // 2. One tap to start: inside the plan, so nothing is used now.
+  await page.getByRole('complementary').getByRole('button', { name: 'Find my best people' }).click();
+  await expect(page.getByRole('dialog').getByText(/Nothing is used now/)).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Find my best people' }).click();
+  await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
+  const jobUrl = page.url().split('?')[0];
+  // 3. Your best people, ranked by simulated interview.
+  await expect(page.getByLabel('Number 1', { exact: true })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('link', { name: /^Number 1 / }).click();
+  // 4. Ask to meet.
+  await page.getByRole('button', { name: 'Ask to meet' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Send request' }).click();
+  await expect(page.getByText(/You’ve asked to meet/)).toBeVisible();
+  // 5. Answer as the candidate, found at the top of the demo accounts page.
+  await page.goto('/demo/personas');
+  await page.getByText('To answer a meeting request as the candidate, use:').getByRole('button').first().click();
+  await page.waitForURL(/\/candidate\/home$/);
+  await page.goto('/candidate/introductions');
+  await page.getByRole('button', { name: 'Accept introduction' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Accept introduction' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // 6. Back as Emma: record the hire.
+  await switchTo(page, 'Emma Stone');
+  await page.goto(jobUrl + '?tab=pipeline');
+  await page.getByRole('button', { name: 'Record hire' }).first().click();
+  await expect(page.getByText(/uses 0.75 credits now/)).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm hire' }).click();
+  await expect(page.getByText('Hire recorded.')).toBeVisible();
+  await page.goto('/client/home');
+  await expect(page.getByText('9 credits')).toBeVisible();
+});

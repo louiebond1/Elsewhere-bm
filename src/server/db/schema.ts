@@ -65,7 +65,7 @@ export const confidence = pgEnum('confidence', ['low', 'medium', 'high']);
 export const introState = pgEnum('intro_state', ['pending', 'accepted', 'declined', 'expired', 'cancelled', 'withdrawn']);
 export const revocationReason = pgEnum('revocation_reason', ['candidate_withdrew', 'employer_block', 'deletion']);
 export const selectionMode = pgEnum('selection_mode', ['manual', 'automatic']);
-export const screeningStatus = pgEnum('screening_status', ['requested', 'scheduled', 'completed', 'cancelled']);
+export const screeningStatus = pgEnum('screening_status', ['requested', 'scheduled', 'completed', 'cancelled', 'returned']);
 export const pipelineStage = pgEnum('pipeline_stage', ['introduced', 'interview', 'offer', 'hired', 'rejected', 'withdrawn']);
 export const hireSource = pgEnum('hire_source', ['in_system', 'outside_system', 'replacement']);
 export const hireStatus = pgEnum('hire_status', ['confirmed', 'started', 'left']);
@@ -558,6 +558,8 @@ export const screenings = pgTable('screenings', {
   notesPrivate: text('notes_private'),
   summarySafe: text('summary_safe'),
   criterionAssessments: jsonb('criterion_assessments').notNull().default(sql`'[]'::jsonb`),
+  /** Set when BondMoran decides the person is not right: the client's screening coupon is returned. */
+  returnedReasonSafe: text('returned_reason_safe'),
 }, (t) => [uniqueIndex('screening_uq').on(t.roleId, t.candidateId)]);
 
 export const pipelineEntries = pgTable('pipeline_entries', {

@@ -15,7 +15,8 @@ import { clientMaySeeCandidateOnRole } from '../policies/privacy';
  * approved, anonymised examples, then scored for fit. The result is a prediction to help choose who to meet,
  * never something the person said, and a person always decides.
  */
-export const SIM_LIMIT = 12;
+/** Enough to fill the largest list (20) with a little spare. */
+export const SIM_LIMIT = 22;
 export const NOT_SHARED = 'They haven’t shared an example of this yet.';
 
 type Crit = Awaited<ReturnType<typeof criteriaFor>>[number];

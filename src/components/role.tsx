@@ -77,7 +77,7 @@ export function SimplePrice({ ch, replacementOf }: { ch: RoleCharges; replacemen
       <p className="mt-3 text-[15px]">{line}</p>
       <dl className="mt-4 space-y-2 border-t border-line pt-3 text-[15px]">
         <div className="flex justify-between gap-2"><dt className="text-muted">People you can meet</dt><dd>{ch.accepted} of {ch.maxIntros}</dd></div>
-        <div className="flex justify-between gap-2"><dt className="text-muted">Phone screenings</dt><dd>{ch.screeningsUsed} of {ch.includedScreenings}</dd></div>
+        <div className="flex justify-between gap-2"><dt className="text-muted">Screening coupons left</dt><dd>{Math.max(0, ch.includedScreenings - ch.screeningsUsed)} of {ch.includedScreenings}</dd></div>
         {ch.pending > 0 && <div className="flex justify-between gap-2"><dt className="text-muted">Waiting for an answer</dt><dd>{ch.pending}</dd></div>}
       </dl>
       <details className="mt-4"><summary className="cursor-pointer text-[14px] text-link">See the full breakdown</summary><div className="mt-2"><ChargesPanel ch={ch} replacementOf={replacementOf} /></div></details>
@@ -87,7 +87,7 @@ export function SimplePrice({ ch, replacementOf }: { ch: RoleCharges; replacemen
 
 export function CompactPrice({ ch }: { ch: RoleCharges }) {
   if (ch.isReplacementRole) return <p className="text-[15px]">Free replacement role · {ch.accepted} of {ch.maxIntros} people met</p>;
-  return <p className="text-[15px]"><span className="font-semibold">{creditsLabel(ch.totalUnits)}</span> if you hire · {ch.accepted} of {ch.maxIntros} people met · {ch.screeningsUsed} of {ch.includedScreenings} phone screenings</p>;
+  return <p className="text-[15px]"><span className="font-semibold">{creditsLabel(ch.totalUnits)}</span> if you hire · {ch.accepted} of {ch.maxIntros} people met · {Math.max(0, ch.includedScreenings - ch.screeningsUsed)} screening coupons left</p>;
 }
 
 export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href: string; actions?: React.ReactNode }) {
@@ -103,7 +103,7 @@ export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href:
             {m.confidence && <Badge tone={m.confidence === 'low' ? 'warning' : 'success'}>{m.confidence === 'low' ? 'Little evidence so far' : 'Good evidence'}</Badge>}
             {m.needsClarification && <Badge tone="warning">{m.needsClarification}</Badge>}
             {m.introState && <Badge tone={m.introState === 'accepted' ? 'success' : 'neutral'}>{m.introState === 'accepted' ? 'Agreed to meet you' : m.introState === 'pending' ? 'Asked to meet' : `Meeting request ${m.introState}`}</Badge>}
-            {m.screeningStatus && m.screeningStatus !== 'cancelled' && <Badge>Phone screening {m.screeningStatus}</Badge>}
+            {m.screeningStatus && m.screeningStatus !== 'cancelled' && <Badge>{m.screeningStatus === 'returned' ? 'Screened: not right' : `BondMoran screening ${m.screeningStatus}`}</Badge>}
           </div>
         </div>
       </div>
@@ -117,7 +117,7 @@ export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href:
           ))}
         </ul>
       )}
-      <p className="mt-2 text-[14px] text-muted">{known.length === 0 ? 'Not much known yet. A phone screening could tell you more.' : m.unknowns.length ? `Not known yet: ${m.unknowns.join(', ').toLowerCase()}.` : ''}</p>
+      <p className="mt-2 text-[14px] text-muted">{known.length === 0 ? 'Not much known yet. A BondMoran screening could tell you more.' : m.unknowns.length ? `Not known yet: ${m.unknowns.join(', ').toLowerCase()}.` : ''}</p>
       {actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
     </article>
   );

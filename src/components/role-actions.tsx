@@ -73,7 +73,7 @@ export function RequestIntro({ roleId, candidateRef, depositPaid, holdExists, de
 }
 
 export function RequestScreening({ roleId, candidateRef, disabledReason }: { roleId: string; candidateRef: string; disabledReason?: string | null }) {
-  return <ActionButton path="screenings/request" body={{ roleId, candidateRef }} label="Book phone screening" variant="ghost" disabledReason={disabledReason} confirm={{ title: 'Book a phone screening', confirmLabel: 'Book it', body: <><p>A BondMoran consultant calls this person and tells you what they found. This uses one of the five included with this role. Nothing is charged.</p><p>You can cancel before it is completed to free the slot.</p></> }} />;
+  return <ActionButton path="screenings/request" body={{ roleId, candidateRef }} label="Send to BondMoran screening" variant="ghost" disabledReason={disabledReason} confirm={{ title: 'Send to BondMoran screening?', confirmLabel: 'Send', body: <><p>A BondMoran consultant calls this person and tells you what they found. This uses 1 of your 5 screening coupons for this job. If BondMoran thinks they aren’t right, you get the coupon back.</p><p>You can cancel before it is completed to free the slot.</p></> }} />;
 }
 
 type Pick = { ref: string; confidence: string; discoverySlot: boolean };
@@ -86,8 +86,8 @@ export function AutoPicks({ roleId, slotsLeft }: { roleId: string; slotsLeft: nu
   if (slotsLeft <= 0) return <span className="text-[14px] text-muted">All five included screenings are used or booked. Further screening pricing is not agreed yet, so ask your consultant.</span>;
   return (
     <>
-      <button type="button" className={buttonClass('secondary')} disabled={loading} onClick={async () => { setLoading(true); const r = await api<{ picks: Pick[]; shortfall: number }>('screenings/auto-picks/preview', { body: { roleId }, csrf }); setLoading(false); if (r.ok) { setPicks(r.data.picks); setShortfall(r.data.shortfall); } }}>{loading ? 'Choosing…' : `Pick ${slotsLeft} phone screenings for me`}</button>
-      <Dialog open={!!picks} onClose={() => setPicks(null)} title="Suggested phone screenings">
+      <button type="button" className={buttonClass('secondary')} disabled={loading} onClick={async () => { setLoading(true); const r = await api<{ picks: Pick[]; shortfall: number }>('screenings/auto-picks/preview', { body: { roleId }, csrf }); setLoading(false); if (r.ok) { setPicks(r.data.picks); setShortfall(r.data.shortfall); } }}>{loading ? 'Choosing…' : `Pick ${slotsLeft} for BondMoran screening`}</button>
+      <Dialog open={!!picks} onClose={() => setPicks(null)} title="Suggested for BondMoran screening">
         {picks && picks.length === 0 ? <p>No suitable profiles to screen yet.</p> : (
           <ul className="space-y-2 text-[15px]">{picks?.map((p) => <li key={p.ref} className="rounded-lg border border-line px-3 py-2">Candidate {p.ref.slice(0, 9)} · {p.confidence} evidence coverage{p.discoverySlot ? ' · reserved discovery slot: little evidence yet, but relevant' : p.confidence === 'low' ? ' · next highest ranked' : ''}</li>)}</ul>
         )}

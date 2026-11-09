@@ -25,7 +25,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
               {sim && <div className="mb-3 flex items-start gap-2"><span className="shrink-0 whitespace-nowrap"><Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge></span><span className="text-[15px]">{sim.summary}</span></div>}
               <p className="text-[16px]">{dto.safeSummary || 'We don’t know much yet.'}</p>
               <p className="mt-2 text-[14px] text-muted">{dto.experienceBand} · {dto.broadRegion} · {dto.workModes.join(', ')}</p>
-              {dto.unknowns.length > 0 && <p className="mt-3 text-[14px]"><span className="font-medium">Not known yet:</span> {dto.unknowns.join(', ').toLowerCase()}. A phone screening can find out.</p>}
+              {dto.unknowns.length > 0 && <p className="mt-3 text-[14px]"><span className="font-medium">Not known yet:</span> {dto.unknowns.join(', ').toLowerCase()}. A BondMoran screening can find out.</p>}
             </Card>
           )}
           {section === 'interview' && sim && (
@@ -48,7 +48,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
             <ul className="space-y-4">
               {dto.criteria.map((c) => (
                 <li key={c.key}>
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Checked on a phone screening</Badge>}</div>
+                  <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Checked by BondMoran</Badge>}</div>
                   <p className="text-[14px] text-muted">{c.reasonSafe}</p>
                   {dto.safeEvidence.filter((e) => c.evidenceIds.includes(e.id)).map((e) => (
                     <blockquote key={e.id} className="mt-2 border-l-4 border-line pl-3 text-[15px]">{e.claim}{e.uncertainty && <span className="mt-1 block text-[13px] text-warning">Worth asking about: {e.uncertainty}</span>}<span className="mt-1 block text-[12px] text-muted">In their own words, with names removed. Not checked with an employer.</span></blockquote>
@@ -64,8 +64,9 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
             <div className="flex flex-col gap-2">
               {!introState && <RequestIntro roleId={roleId} candidateRef={candidateRef} depositPaid={ch.depositPaid} holdExists={!!ch.holdUnits} depositUnits={ch.depositUnits} depositPence={ch.depositPence} disabledReason={dto.permittedActionFlags.canRequestIntro ? null : counters.accepted >= 10 ? 'You’ve met the 10 people included with this role.' : 'Not available'} />}
               {introState === 'pending' && <Notice>You’ve asked to meet. Waiting for their answer (they have 7 days).</Notice>}
-              {(!dto.screeningStatus || dto.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={candidateRef} disabledReason={dto.permittedActionFlags.canRequestScreening ? null : 'All 5 included phone screenings are used.'} />}
-              {dto.screeningStatus && dto.screeningStatus !== 'cancelled' && <p className="text-[15px]">Phone screening: {dto.screeningStatus}. {dto.screeningSummary ?? 'Your consultant will call them and let you know.'}</p>}
+              {(!dto.screeningStatus || dto.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={candidateRef} disabledReason={dto.permittedActionFlags.canRequestScreening ? null : 'All 5 screening coupons are in use.'} />}
+              {dto.screeningStatus === 'returned' && <p className="text-[15px]">BondMoran screened this person and didn’t think they were right. Your coupon is back.</p>}
+              {dto.screeningStatus && dto.screeningStatus !== 'cancelled' && dto.screeningStatus !== 'returned' && <p className="text-[15px]">BondMoran screening: {dto.screeningStatus}. {dto.screeningSummary ?? 'Your consultant will call them and let you know.'}</p>}
             </div>
           </Card>
           {dto.identity ? (

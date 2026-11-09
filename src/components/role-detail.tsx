@@ -12,7 +12,7 @@ import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, AutoPicks, StageMenu,
 import { gbp, label, date, relative, creditsLabel } from '../lib/format';
 import { prototype } from '../config/prototype';
 
-export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consultant }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean }) {
+export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consultant, show }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean; show?: number }) {
   let tab = requestedTab;
   const role = await roleForActor(ctx, roleId);
   const crit = await criteriaFor(ctx, roleId);
@@ -66,7 +66,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   const tabs = [
     { key: 'matches', label: 'Candidates', href: `${base}/roles/${roleId}?tab=matches` },
     { key: 'pipeline', label: 'Interviews and hiring', href: `${base}/roles/${roleId}?tab=pipeline` },
-    { key: 'screenings', label: 'Phone screenings', href: `${base}/roles/${roleId}?tab=screenings` },
+    { key: 'screenings', label: 'BondMoran screenings', href: `${base}/roles/${roleId}?tab=screenings` },
     { key: 'activity', label: 'History', href: `${base}/roles/${roleId}?tab=activity` },
     ...(consultant ? [{ key: 'review', label: 'Consultant review', href: `${base}/roles/${roleId}?tab=review` }] : []),
   ];
@@ -74,13 +74,19 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   if (!tabs.some((t) => t.key === tab)) tab = 'matches';
   let body: React.ReactNode = null;
   if (tab === 'matches') {
-    const { best, rest } = await bestPeople(ctx, roleId);
+    const howMany = show === 5 || show === 20 ? show : 10;
+    const { best, rest } = await bestPeople(ctx, roleId, howMany);
     const href = (ref: string) => `${base}/roles/${roleId}/candidates/${ref}`;
     body = (
       <div className="space-y-4">
-        <div>
-          <h3 className="text-[22px]">Your best {best.length || 10}</h3>
-          <p className="text-[15px] text-muted">Ranked by a quick simulated interview. Tap anyone to see more.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-[22px]">Your best {best.length || howMany}</h3>
+            <p className="text-[15px] text-muted">Ranked by a quick simulated interview. Tap anyone to see more.</p>
+          </div>
+          <nav aria-label="How many to show" className="flex rounded-full border border-line bg-surface p-1 text-[14px]">
+            {[5, 10, 20].map((n) => <Link key={n} href={`${base}/roles/${roleId}?tab=matches&show=${n}`} aria-current={n === howMany ? 'true' : undefined} className={n === howMany ? 'rounded-full bg-primary px-3 py-1 text-white no-underline' : 'rounded-full px-3 py-1 text-ink no-underline hover:bg-page'}>{n}</Link>)}
+          </nav>
         </div>
         {role.status === 'open' && <FindingBest roleId={roleId} hasResults={best.length > 0} />}
         {best.length > 0 && <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} /></li>)}</ul>}
@@ -124,10 +130,10 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   } else if (tab === 'screenings') {
     const rows = await screeningsForRole(ctx, roleId);
     const picker = role.status === 'open' && ch ? <div className="mb-4"><AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch.screeningsUsed} /></div> : null;
-    body = rows.length === 0 ? <>{picker}<Empty>No phone screenings yet. Five are included with this role: a BondMoran consultant calls the candidate and tells you what they found.</Empty></> : (<>{picker}
+    body = rows.length === 0 ? <>{picker}<Empty>No screenings yet. You have 5 screening coupons for this job: send someone and a BondMoran consultant calls them and tells you what they found. If BondMoran thinks they aren’t right, you get the coupon back.</Empty></> : (<>{picker}
       <div className="space-y-3">{rows.map((s) => (
         <Card key={s.id} title={`Candidate ${s.ref.slice(0, 9)}`} action={<Badge tone={s.status === 'completed' ? 'success' : 'neutral'}>{label(s.status)}</Badge>}>
-          <p className="text-[15px]">{s.status === 'completed' ? s.summarySafe : s.status === 'cancelled' ? 'Cancelled before completion. The slot was released.' : 'Your consultant has this request.'}</p>
+          <p className="text-[15px]">{s.status === 'completed' ? s.summarySafe : s.status === 'returned' ? 'BondMoran didn’t think this person was right. Your coupon is back.' : s.status === 'cancelled' ? 'Cancelled. Your coupon is back.' : 'Your consultant has this request.'}</p>
           {consultant && <Link href={`/consultant/screenings/${s.id}`} className="text-[14px]">Open screening</Link>}
         </Card>
       ))}</div></>

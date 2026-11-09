@@ -1,9 +1,9 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, Dialog, ErrorText, inputClass, type ApiError } from '@/components/client';
 import { buttonClass, cx } from '@/components/ui';
 
-type P = { userId: string; type: string; label: string; ref: string | null; email: string; status: string | null };
+type P = { userId: string; type: string; label: string; ref: string | null; email: string; status: string | null; hasRequest?: boolean };
 type Sc = { code: string; title: string; persona: string; personaCode: string; action: string; expected: string };
 
 const HIGHLIGHT = ['CAND-001', 'CAND-005', 'CAND-025', 'CAND-040'];
@@ -37,12 +37,28 @@ export function Personas({ people, scenarios, activeScenario }: { people: P[]; s
     window.location.reload();
   };
   const byRef = (ref: string) => people.find((p) => p.ref === ref);
+  const waiting = people.filter((p) => p.type === 'candidate' && p.hasRequest);
+  // "Start my own test": load the clean start, then sign in as its hiring manager.
+  const startOwnTest = async () => {
+    setBusy('FRESH');
+    const r = await api('demo/scenario/FRESH/load', { body: {} });
+    if (!r.ok) { setBusy(null); return setErr(r.error); }
+    window.location.replace('/demo/personas#go-emma');
+    window.location.reload();
+  };
+  useEffect(() => {
+    if (activeScenario !== 'FRESH' || window.location.hash !== '#go-emma') return;
+    const emma = people.find((p) => p.type === 'client' && p.email.includes('alder'));
+    history.replaceState(null, '', '/demo/personas');
+    if (emma) void api<{ userType: string }>('demo/switch-persona', { body: { userId: emma.userId } }).then((r) => { if (r.ok) window.location.replace(`/${r.data.userType}/home`); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const personaFor = (code: string) => {
     if (code.startsWith('client:')) return people.find((p) => p.type === 'client' && p.email.includes({ A: 'alder', B: 'beacon', C: 'cedar' }[code.slice(7)]!));
     if (code === 'jamie' || code === 'alex') return people.find((p) => p.email.startsWith(code));
     return byRef(`CAND-0${code.slice(1)}`);
   };
-  const candidates = useMemo(() => people.filter((p) => p.type === 'candidate' && (!q || `${p.label} ${p.ref}`.toLowerCase().includes(q.toLowerCase()))).sort((a, b) => (a.ref ?? '').localeCompare(b.ref ?? '')), [people, q]);
+  const candidates = useMemo(() => people.filter((p) => p.type === 'candidate' && (!q || `${p.label} ${p.ref}`.toLowerCase().includes(q.toLowerCase()))).sort((a, b) => Number(!!b.hasRequest) - Number(!!a.hasRequest) || (a.ref ?? '').localeCompare(b.ref ?? '')), [people, q]);
   const card = (p: P | undefined, sub: string) => p && (
     <button key={p.userId} type="button" onClick={() => switchTo(p.userId)} disabled={!!busy} className="flex w-full items-center justify-between rounded-xl border border-line bg-surface p-4 text-left hover:border-primary">
       <span><span className="block font-semibold">{p.label}</span><span className="text-[14px] text-muted">{sub}</span></span>
@@ -52,14 +68,22 @@ export function Personas({ people, scenarios, activeScenario }: { people: P[]; s
   return (
     <div className="mt-6 space-y-8">
       <ErrorText error={err} />
-      <section className="rounded-xl border border-line bg-surface p-4">
-        <h2 className="text-[20px]">Test it yourself from scratch</h2>
-        <p className="mt-1 text-[15px] text-muted">{activeScenario === 'EMPTY' ? 'You are in the empty workspace. Sign in as Alex Morgan to create a client, a contract and a role, then create candidates from the sign-up page.' : 'Replace the shared demo with an empty workspace: only the two consultant accounts, no clients, candidates or roles.'}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className={buttonClass(activeScenario === 'EMPTY' ? 'secondary' : 'primary')} disabled={!!busy} onClick={() => load('EMPTY')}>{busy === 'EMPTY' ? 'Preparing…' : activeScenario === 'EMPTY' ? 'Start empty again' : 'Start empty workspace'}</button>
-          <a className={buttonClass('secondary')} href="/candidate/start">Create a fictional candidate</a>
-          <button type="button" className={buttonClass('ghost')} onClick={() => setReset(true)}>Back to full demo data</button>
+      <section className="rounded-2xl border-2 border-primary bg-surface p-5">
+        <h2 className="text-[22px]">Test it yourself</h2>
+        <p className="mt-1 text-[15px] text-muted">A clean start: Alder Works with 10 credits and no jobs yet, plus 40 fictional candidates ready to be matched. You’ll be signed in as the hiring manager, Emma. Press “Start a new hire” and go from there.</p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button type="button" className={buttonClass('primary')} disabled={!!busy} onClick={startOwnTest}>{busy === 'FRESH' ? 'Getting it ready…' : 'Start my own test'}</button>
+          <span className="text-[13px] text-muted">This replaces the shared demo data for everyone using it.</span>
         </div>
+        {waiting.length > 0 && <p className="mt-4 rounded-lg bg-info-tint px-3 py-2 text-[15px]">To answer a meeting request as the candidate, use: {waiting.map((p, i) => <button key={p.userId} type="button" className="mx-1 text-link underline" onClick={() => switchTo(p.userId)}>{p.label}{i < waiting.length - 1 ? ',' : ''}</button>)}</p>}
+        <details className="mt-4 text-[14px]">
+          <summary className="cursor-pointer text-muted">More options</summary>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" className={buttonClass('secondary')} disabled={!!busy} onClick={() => load('EMPTY')}>{busy === 'EMPTY' ? 'Preparing…' : 'Completely empty workspace'}</button>
+            <a className={buttonClass('secondary')} href="/candidate/start">Create a fictional candidate</a>
+            <button type="button" className={buttonClass('ghost')} onClick={() => setReset(true)}>Back to full demo data</button>
+          </div>
+        </details>
       </section>
       <section>
         <h2 className="mb-3 text-[20px]">Client</h2>

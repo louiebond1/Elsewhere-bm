@@ -64,6 +64,23 @@ export async function cancelScreening(ctx: Ctx, screeningId: string) {
   return u;
 }
 
+/**
+ * BondMoran decides this person is not right for the job: the screening no longer counts, so the client's
+ * screening coupon comes back and they can send someone else. Consultants only.
+ */
+export async function returnScreening(ctx: Ctx, screeningId: string, reason: string) {
+  requireUser(ctx.actor, 'consultant');
+  const [s] = await ctx.tx.select().from(screenings).where(and(eq(screenings.id, screeningId), eq(screenings.datasetId, ctx.datasetId))).for('update');
+  if (!s) throw notFound();
+  if (s.status === 'returned') return s;
+  if (s.status === 'cancelled') throw conflict('SCREENING_CANCELLED', 'This screening was already cancelled, so its coupon is already back.');
+  const role = await roleForActor(ctx, s.roleId);
+  const [u] = await ctx.tx.update(screenings).set({ status: 'returned', returnedReasonSafe: reason.trim().slice(0, 300) || 'Not right for this job', updatedAt: new Date() }).where(eq(screenings.id, s.id)).returning();
+  await notify(ctx, await clientUserIds(ctx, role.clientId), { type: 'screening_updated', subjectRefType: 'role', subjectRefId: role.id, safeTitle: `Your screening coupon is back for ${role.title}: BondMoran didn't think one person was right` });
+  await logActivity(ctx, { subjectType: 'screening', subjectId: s.id, action: 'screening.returned', clientId: role.clientId });
+  return u;
+}
+
 async function autoPickCandidates(ctx: Ctx, roleId: string) {
   const role = await roleForActor(ctx, roleId);
   const left = await slotsLeft(ctx, roleId);

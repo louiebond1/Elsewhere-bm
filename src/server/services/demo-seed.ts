@@ -35,6 +35,8 @@ export type SeedOptions = {
   r1FullSearchDraft?: boolean;
   /** Empty workspace: only the two consultant accounts. No clients, candidates or roles. */
   empty?: boolean;
+  /** Fresh test: clients, contracts with credits and the full candidate pool, but no jobs, meetings, hires or screenings. */
+  fresh?: boolean;
 };
 
 export async function generateCvPdf(text: string): Promise<Buffer> {
@@ -169,6 +171,7 @@ export async function seedDataset(opts: SeedOptions & { name?: string; scenarioC
 
     // ---- candidates ----
     for (const [i, fx] of CANDIDATES.entries()) await seedCandidate(ctx, id, ids, fx, i, opts, cvBytes.get(fx.code) ?? null, alex);
+    if (opts.fresh) return;
 
     // ---- roles ----
     for (const r of ROLE_FX) {

@@ -34,6 +34,7 @@ const DEFAULT_OFFER = '2026-11-06';
 const DEFAULT_START = '2026-11-20';
 
 export const SCENARIOS: Scenario[] = [
+  { code: 'FRESH', title: 'Start my own test', persona: 'Emma Stone (Alder Works)', personaCode: 'client:A', action: 'Press “Start a new hire”, chat with the assistant, then “Find my best people”. Ask to meet someone, switch to that candidate (they’re at the top of the candidate list) and accept, then switch back and record the hire.', expected: 'A clean start: Alder Works has 10 credits and no jobs yet. 40 fictional candidates are ready to be matched.', options: { fresh: true } },
   { code: 'EMPTY', title: 'Empty workspace', persona: 'Alex Morgan (consultant)', personaCode: 'alex', action: 'Create a client (it gets its own login), add and activate a contract, then add a role. Create candidates from the sign-up page.', expected: 'You build everything yourself. Only the two consultant accounts exist at the start.', options: { empty: true } },
   { code: 'S01', title: 'Fair first interview', persona: 'Emma Stone (Alder Works)', personaCode: 'client:A', action: 'Open Assistant Accountant and view the anonymous profile with the reconciliation story.', expected: 'Thin CV duties versus a specific reconciliation story. No name before acceptance.' },
   { code: 'S02', title: 'Standard deposit and hire', persona: 'Maya Ellis (C01), then Emma Stone', personaCode: 'C01', action: 'Accept the Alder introduction as C01, then record the hire as Alder.', expected: '£950 deposit, £2,850 balance, £3,800 total. Wallet A ends at 8.5 credits.',
@@ -201,7 +202,9 @@ export async function personaDirectory(datasetId: string) {
   const rows = await db().select({ id: S.users.id, email: S.users.emailNormalized, type: S.users.userType, displayName: S.users.displayName, ref: S.candidates.publicRef, name: S.candidateIdentity.fullName, status: S.candidates.status })
     .from(S.users).leftJoin(S.candidates, eq(S.candidates.userId, S.users.id)).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.candidates.id))
     .where(and(eq(S.users.datasetId, datasetId), eq(S.users.status, 'active')));
-  return rows.map((r) => ({ userId: r.id, type: r.type, label: r.displayName ?? r.name ?? r.email, ref: r.ref, email: r.email, status: r.status }));
+  const waiting = await db().execute(sql`select distinct c.user_id as u from introductions i join candidates c on c.id = i.candidate_id where i.dataset_id = ${datasetId} and i.state = 'pending'`);
+  const has = new Set((waiting.rows as { u: string }[]).map((w) => w.u));
+  return rows.map((r) => ({ userId: r.id, type: r.type, label: r.displayName ?? r.name ?? r.email, ref: r.ref, email: r.email, status: r.status, hasRequest: has.has(r.id) }));
 }
 
 export { DEFAULT_OFFER, DEFAULT_START };
