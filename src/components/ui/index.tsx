@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { PhotoBackdrop } from '../photo-backdrop';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -63,18 +63,15 @@ export function PageHeader({ title, subtitle, actions, back, plain }: { title: R
     </div>
   );
   return (
-    <div className="mb-8">
-      {backLink}
-      <header className="relative overflow-hidden rounded-[32px] bg-[#1E3A2A] shadow-[0_16px_40px_-20px_rgb(18_37_29/0.5)]">
-        <Image src="/images/mini-me-hills.webp" alt="" fill sizes="(max-width: 1320px) 100vw, 1320px" className="object-cover object-right" />
-        <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,rgb(10_30_20/0.82)_0%,rgb(10_30_20/0.6)_50%,rgb(10_30_20/0.25)_100%)]" />
-        <div className="relative flex min-h-[176px] flex-col justify-end gap-5 p-7 text-white lg:min-h-[208px] lg:flex-row lg:items-end lg:justify-between lg:p-10">
-          <div className="min-w-0">
-            <h1 className="text-white">{title}</h1>
-            {subtitle && <div className="mt-2 max-w-[60ch] text-[16px] text-white/85 lg:text-[17px] [&_a]:text-white [&_a]:underline">{subtitle}</div>}
-          </div>
-          {actions && <div className="shelf -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [&_.press]:shrink-0 [&_.press]:whitespace-nowrap [&_.press]:border-transparent [&_.press]:bg-white [&_.press]:text-ink [&_.press:hover]:bg-white/90 lg:flex-wrap lg:justify-end">{actions}</div>}
+    <div className="relative -mt-4 mb-8 pt-8 lg:-mt-6 lg:pt-12">
+      <PhotoBackdrop height={400} />
+      {back && <Link href={back.href} className="mb-5 inline-flex items-center gap-2 text-[16px] text-white/90 no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>}
+      <header className="flex flex-col gap-5 pb-6 text-white lg:flex-row lg:items-end lg:justify-between lg:pb-10">
+        <div className="min-w-0">
+          <h1 className="text-[40px] leading-[1.05] text-white lg:text-[60px]">{title}</h1>
+          {subtitle && <div className="mt-3 max-w-[60ch] text-[17px] text-white/90 lg:text-[19px] [&_a]:text-white [&_a]:underline">{subtitle}</div>}
         </div>
+        {actions && <div className="shelf -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [&_.press]:shrink-0 [&_.press]:whitespace-nowrap [&_.press]:rounded-full [&_.press]:border-transparent [&_.press]:bg-white [&_.press]:text-ink [&_.press:hover]:bg-white/90 lg:flex-wrap lg:justify-end">{actions}</div>}
       </header>
     </div>
   );
@@ -91,7 +88,7 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5">
+    <div className="rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
       <div className="text-[14px] text-muted">{label}</div>
       <div className="mt-1 font-display text-[28px] font-extrabold tracking-tight">{value}</div>
       {hint && <div className="mt-1 text-[13px] text-muted">{hint}</div>}

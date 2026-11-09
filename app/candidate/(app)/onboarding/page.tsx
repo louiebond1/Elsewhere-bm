@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { onboardingView } from '@/server/services/onboarding';
-import { connectedAi } from '@/server/connectors/drafts';
+import { connectedAi, draftsWaiting } from '@/server/connectors/drafts';
 import { issuer } from '@/server/connectors/oauth';
 import { cx } from '@/components/ui';
-import Image from 'next/image';
+import { PhotoBackdrop } from '@/components/photo-backdrop';
 import { MapPin, Briefcase, Trophy, Wrench, Users, Target, FileText, MoreHorizontal, LayoutGrid } from 'lucide-react';
 import { ApproveAll, Extras, QuestionDeck, AddSomething, ConnectBanner, AlwaysOnRow, KnowsCard } from '@/components/onboarding-doc';
 
@@ -19,7 +19,7 @@ const PAGE = 12;
  */
 export default async function Onboarding({ searchParams }: { searchParams: Promise<{ ai?: string; s?: string; mode?: string; a?: string; n?: string }> }) {
   const { ctx } = await pageViewer('candidate');
-  const [v, connected, sp] = await Promise.all([onboardingView(ctx), connectedAi(ctx), searchParams]);
+  const [v, connected, sp, questionDrafts] = await Promise.all([onboardingView(ctx), connectedAi(ctx), searchParams, draftsWaiting(ctx)]);
   const pct = Math.round((v.answered / v.total) * 100);
   const typing = sp.mode === 'type';
 
@@ -73,10 +73,9 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
   const href = (q: Record<string, string | null>) => `/candidate/onboarding?${new URLSearchParams(Object.entries(q).filter(([, x]) => x) as [string, string][]).toString()}`;
   return (
     <div>
-      <section className="relative left-1/2 -mt-4 w-screen -translate-x-1/2 overflow-hidden lg:-mt-6">
-        <Image src="/images/mini-me-hills.webp" alt="" fill priority sizes="100vw" className="object-cover object-right" />
-        <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,rgb(10_30_20/0.72)_0%,rgb(10_30_20/0.45)_45%,rgb(10_30_20/0.1)_100%)]" />
-        <div className="relative mx-auto flex max-w-[1320px] flex-col gap-6 px-5 pb-24 pt-10 text-white lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:pb-28 lg:pt-14">
+      <section className="relative -mt-4 lg:-mt-6">
+        <PhotoBackdrop height={600} />
+        <div className="flex flex-col gap-6 pb-8 pt-10 text-white lg:flex-row lg:items-center lg:justify-between lg:pb-10 lg:pt-14">
           <div>
             <h1 className="text-[44px] leading-[1.05] text-white lg:text-[64px]">Your mini-me</h1>
             <p className="mt-3 max-w-[46ch] text-[17px] text-white/90 lg:text-[19px]">The more it knows, the better your interviews go. Your name stays hidden until you say yes.</p>
@@ -92,9 +91,15 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
-      <div className="relative mx-auto -mt-16 max-w-[1240px] space-y-4 lg:-mt-20">
+      <div className="relative mx-auto max-w-[1320px] space-y-4">
         <ConnectBanner connected={connected} connectorUrl={`${issuer()}/mcp`} autoOpen={sp.ai === '1'} waiting={v.answered < v.total || v.toCheck > 0} />
         <AlwaysOnRow provider={connected} />
+        {questionDrafts > 0 && (
+          <Link href="/candidate/ai" className="flex items-center justify-between gap-3 rounded-3xl bg-warning-tint px-5 py-4 text-ink no-underline">
+            <span className="text-[17px]"><span className="font-semibold">Your AI also drafted {questionDrafts} answer{questionDrafts > 1 ? 's' : ''} to a check-in question.</span></span>
+            <span className="whitespace-nowrap font-semibold text-primary">Check {questionDrafts > 1 ? 'them' : 'it'} →</span>
+          </Link>
+        )}
         {v.toCheck > 0 && (
           <div className="flex flex-col gap-3 rounded-3xl bg-warning-tint px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-[17px]"><span className="font-display text-[19px] font-semibold">Your AI wrote {v.toCheck} new thing{v.toCheck > 1 ? 's' : ''}.</span> Have a look, or if you trust it:</p>

@@ -72,7 +72,8 @@ test('Let my AI do this: connect from inside the question, the draft appears, Us
   const qid2 = list2.result.structuredContent.questions[0].question_id;
   await mcp({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'save_draft_answer', arguments: { question_id: qid2, answer: 'Second draft.' } } });
   await page.goto('/candidate/home');
-  await page.getByRole('link', { name: '1 draft ready' }).click();
+  await page.getByRole('link', { name: /Mini-me.*1 waiting/ }).click();
+  await page.getByRole('link', { name: /also drafted 1 answer/ }).click();
   await page.getByRole('link', { name: 'Check and send' }).click();
   await expect(page.getByRole('region', { name: 'Draft ready to check' })).toContainText('Second draft.');
   await page.getByRole('button', { name: 'Discard' }).click();
@@ -129,7 +130,7 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await page.request.post('/mcp', { headers: { authorization: `Bearer ${t.access_token}` }, data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'save_onboarding_answers', arguments: { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations and Excel' }] } } } });
   await page.unroute('https://chatgpt.com/**');
   await page.goto('/candidate/home');
-  await expect(page.getByRole('link', { name: /Your AI: Your AI wrote 2 answers for your mini-me/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Mini-me.*2 waiting/ })).toBeVisible();
   await page.goto('/candidate/onboarding');
   await expect(page.getByText('Your AI wrote 2 new things.')).toBeVisible();
   await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();

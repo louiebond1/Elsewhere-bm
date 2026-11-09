@@ -29,7 +29,7 @@ export type AiBarInfo = { status: string; action: string; href: string };
 export function AppShell({ children, nav, base, csrf, who, brandSub, aiBar, pill, person }: { children: ReactNode; nav: NavItem[]; base: string; csrf: string; who: string; brandSub?: string; aiBar?: AiBarInfo; pill?: ReactNode; person?: string }) {
   return (
     <CsrfProvider token={csrf}>
-      <div className="min-h-screen overflow-x-clip bg-page">
+      <div className="isolate min-h-screen overflow-x-clip bg-page">
         <DemoStrip who={who} />
         <header className="sticky top-0 z-30 bg-page/85 backdrop-blur-md">
           <div className="mx-auto flex min-h-[72px] max-w-[1320px] items-center justify-between gap-4 px-5 lg:px-10">
