@@ -18,6 +18,7 @@ import { profileVersions } from '../db/schema';
 import { aiRuns } from '../db/schema';
 import { handleSendEmail } from '../email';
 import { reportError } from '../monitoring';
+import { handleSimulateJob } from './simulation';
 
 type JobRow = NonNullable<Awaited<ReturnType<typeof claimJob>>>;
 
@@ -145,6 +146,7 @@ export async function runJob(base: BaseCtx, job: JobRow) {
     case 'assess_match': return handleAssessRole(base, job);
     case 'generate_feedback': return handleFeedback(base, job);
     case 'send_email': return handleSendEmail(base, job.subject_id!);
+    case 'simulate_interviews': return handleSimulateJob(base, job.subject_id!);
     case 'reconcile_wallet': return withTx(base, (ctx) => reconcileWallet(ctx, job.subject_id!).then(() => undefined));
     default: return;
   }

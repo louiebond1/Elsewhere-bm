@@ -67,14 +67,29 @@ describe('hiring assistant', () => {
     await w.T(w.client('A'), (c) => hiring.saveAsDraft(c, id));
     const v = await hiring.assistantView(readCtx(w.client('A')));
     expect(v.conversationId).toBeNull();
-    expect(v.messages[0].text).toMatch(/^Welcome back, Emma. Last time we set up Finance Assistant together. I've assumed hybrid in London/);
+    expect(v.messages[0].text).toMatch(/^Welcome back, Emma. Last time we set up Finance Assistant together. I've assumed hybrid in London.*just say “same again”/);
     expect(v.understanding).toMatchObject({ locationRegion: 'london', workMode: 'hybrid', assumed: ['locationRegion', 'workMode'] });
-    expect(v.facts.map((f) => f.text)).toEqual(['Usually hires for hybrid roles in London', 'Tends to prioritise payroll, reconciliations, reporting', 'Happy to teach: our systems']);
+    expect(v.facts.map((f) => f.text)).toEqual(['Usually hires for hybrid roles in London', 'Tends to prioritise payroll, reconciliations, reporting', 'Happy to teach: our systems', 'November 2026: set up Finance Assistant (£38,000, hybrid, London), needing payroll, reconciliations, reporting']);
     const wp = v.facts.find((f) => f.kind === 'work_pattern')!;
     await w.T(w.client('A'), (c) => hiring.forgetFact(c, wp.id));
     const after = await hiring.assistantView(readCtx(w.client('A')));
     expect(after.facts.map((f) => f.kind)).not.toContain('work_pattern');
     expect(after.understanding.locationRegion).toBeNull();
+  });
+
+  it('"same again" copies the last job so the manager only says what is different', async () => {
+    const w = await load();
+    const first = await converse(w, w.client('A'));
+    await w.T(w.client('A'), (c) => hiring.saveAsDraft(c, first));
+    const id = (await say(w, w.client('A'), null, 'Same again please')).id;
+    const v = await hiring.assistantView(readCtx(w.client('A')));
+    expect(v.conversationId).toBe(id);
+    expect(v.messages.at(-1)!.text).toMatch(/copied your last Finance Assistant job/);
+    expect(v.understanding).toMatchObject({ title: 'Finance Assistant', salaryPounds: 38000, locationRegion: 'london', workMode: 'hybrid' });
+    await say(w, w.client('A'), id, 'actually make it 42k');
+    const after = await hiring.assistantView(readCtx(w.client('A')));
+    expect(after.understanding.salaryPounds).toBe(42000);
+    expect((await hiring.startQuote(readCtx(w.client('A')), id)).title).toBe('Finance Assistant');
   });
 
   it('cannot save until everything needed is there; removing an item updates what is still needed', async () => {

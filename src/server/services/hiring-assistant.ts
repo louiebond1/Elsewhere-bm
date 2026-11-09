@@ -14,8 +14,9 @@ import {
 } from '../../lib/hiring';
 
 export type Msg = { role: 'assistant' | 'user'; text: string; at: string };
-export type Fact = { id: string; kind: 'work_pattern' | 'teaches' | 'priorities' | 'note'; text: string };
-type Defaults = { locationRegion?: Region; workMode?: Mode };
+export type Fact = { id: string; kind: 'work_pattern' | 'teaches' | 'priorities' | 'note' | 'history'; text: string };
+const MAX_HISTORY = 5;
+type Defaults = { locationRegion?: Region; workMode?: Mode; last?: Understanding };
 
 const MAX_MESSAGES = 40;
 const MAX_NOTES = 5;
@@ -46,7 +47,8 @@ function opening(name: string, mem: Awaited<ReturnType<typeof memoryRow>>): { te
   if (d.locationRegion) { u.locationRegion = d.locationRegion; u.assumed.push('locationRegion'); }
   if (d.workMode) { u.workMode = d.workMode; u.assumed.push('workMode'); }
   const assumed = d.locationRegion && d.workMode ? ` I've assumed ${MODE_LABEL[d.workMode].toLowerCase()} in ${REGION_LABEL[d.locationRegion]} like last time; just tell me if this one's different.` : '';
-  return { understanding: u, text: `Welcome back, ${name}. Last time we set up ${mem.lastRoleTitle ?? 'a role'} together.${assumed} What are you hiring for this time?` };
+  const count = mem.rolesCreated > 1 ? ` That’s ${mem.rolesCreated} hires we’ve set up together.` : '';
+  return { understanding: u, text: `Welcome back, ${name}. Last time we set up ${mem.lastRoleTitle ?? 'a role'} together.${count}${assumed} What are you hiring for this time? If it’s another ${mem.lastRoleTitle ?? 'one of those'}, just say “same again”.` };
 }
 
 /** Page model: the active conversation if there is one, otherwise the opening message (nothing is stored until the first reply). */
@@ -60,22 +62,23 @@ export async function assistantView(ctx: Ctx) {
   return { conversationId: null, rowVersion: 0, messages: [{ role: 'assistant', text: o.text, at: ctx.now.toISOString() }] as Msg[], understanding: o.understanding, lastAsked: null as Slot | null, facts };
 }
 
-export type Prepared = { userId: string; clientId: string; conv: typeof hiringConversations.$inferSelect | null; messages: Msg[]; understanding: Understanding; lastAsked: Slot | null; memory: string[] };
+export type Prepared = { userId: string; clientId: string; conv: typeof hiringConversations.$inferSelect | null; messages: Msg[]; understanding: Understanding; lastAsked: Slot | null; memory: string[]; last: Understanding | null };
 
 /** Read-only: everything a turn needs, so any AI call can happen outside a transaction. */
 export async function prepareTurn(ctx: Ctx, conversationId: string | null): Promise<Prepared> {
   const { userId, clientId } = clientUser(ctx);
   const mem = await memoryRow(ctx, userId);
   const memory = ((mem?.facts ?? []) as Fact[]).map((f) => f.text);
+  const last = ((mem?.defaults ?? {}) as Defaults).last ?? null;
   if (!conversationId) {
     const o = opening(await firstName(ctx, userId), mem);
-    return { userId, clientId, conv: null, messages: [{ role: 'assistant', text: o.text, at: ctx.now.toISOString() }], understanding: o.understanding, lastAsked: null, memory };
+    return { userId, clientId, conv: null, messages: [{ role: 'assistant', text: o.text, at: ctx.now.toISOString() }], understanding: o.understanding, lastAsked: null, memory, last };
   }
   if (!isUuid(conversationId)) throw notFound();
   const [conv] = await ctx.tx.select().from(hiringConversations).where(and(eq(hiringConversations.id, conversationId), eq(hiringConversations.datasetId, ctx.datasetId)));
   if (!conv || conv.userId !== userId) throw notFound();
   if (conv.status !== 'active') throw conflict('CONVERSATION_CLOSED', 'This conversation has finished. Start a new one to add another role.');
-  return { userId, clientId, conv, messages: conv.messages as Msg[], understanding: conv.understanding as Understanding, lastAsked: (conv.lastAsked as Slot | null) ?? null, memory };
+  return { userId, clientId, conv, messages: conv.messages as Msg[], understanding: conv.understanding as Understanding, lastAsked: (conv.lastAsked as Slot | null) ?? null, memory, last };
 }
 
 export type TurnResult = { understanding: Understanding; reply: string; asked: Slot | null; learned: string[]; provider: 'fixture' | 'anthropic' };
@@ -83,6 +86,14 @@ export type TurnResult = { understanding: Understanding; reply: string; asked: S
 /** What the live model receives for one turn. */
 export function liveInput(p: Prepared, text: string) {
   return { messages: [...p.messages, { role: 'user' as const, text }].map((m) => ({ role: m.role, text: m.text })), understanding: p.understanding, memory: p.memory, missing: missingSlots(p.lastAsked === 'teachable' ? { ...p.understanding, askedTeachable: true } : p.understanding) };
+}
+
+/** "Same again": copy the last role this manager set up, so they only say what's different. */
+export const isSameAgain = (t: string) => /\b(same (again|as (last time|before))|like last time|copy (the )?last)\b/i.test(t);
+export function sameAgainTurn(p: Prepared): TurnResult | null {
+  if (!p.last) return null;
+  const u: Understanding = { ...structuredClone(p.last), assumed: [], askedTeachable: true };
+  return { understanding: u, reply: `Done. I’ve copied your last ${u.title} job. Check “Your role so far” and tell me anything that’s different, or press “Find my best people”.`, asked: null, learned: [], provider: 'fixture' };
 }
 
 /** Demo mode: keyword reader plus templated wording. */
@@ -174,9 +185,15 @@ export async function saveAsDraft(ctx: Ctx, conversationId: string) {
     put('work_pattern', `Usually hires for ${MODE_LABEL[u.workMode!].toLowerCase()} roles in ${REGION_LABEL[u.locationRegion!]}`);
     put('priorities', u.mustHaves.length ? `Tends to prioritise ${u.mustHaves.slice(0, 3).map((i) => i.label.toLowerCase()).join(', ')}` : null);
     if (u.teachable.length) put('teaches', `Happy to teach: ${u.teachable.slice(0, 3).join('; ')}`);
-    m.defaults = { locationRegion: u.locationRegion!, workMode: u.workMode! };
+    m.defaults = { locationRegion: u.locationRegion!, workMode: u.workMode!, last: { ...u, assumed: [], askedTeachable: true } };
     m.rolesCreated += 1;
     m.lastRoleTitle = u.title;
+    // A short, plain history of past hires so the assistant can say "last time you…". Oldest drops off.
+    const month = ctx.now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Europe/London' });
+    const needs = u.mustHaves.slice(0, 3).map((i) => i.label.toLowerCase()).join(', ');
+    m.facts.push({ id: randomUUID(), kind: 'history', text: `${month}: set up ${u.title} (£${u.salaryPounds!.toLocaleString('en-GB')}, ${MODE_LABEL[u.workMode!].toLowerCase()}, ${REGION_LABEL[u.locationRegion!]})${needs ? `, needing ${needs}` : ''}` });
+    const hist = m.facts.filter((f) => f.kind === 'history').slice(-MAX_HISTORY).map((f) => f.id);
+    m.facts = m.facts.filter((f) => f.kind !== 'history' || hist.includes(f.id));
   });
   await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: 'role.drafted_with_assistant', clientId: p.clientId });
   return role;

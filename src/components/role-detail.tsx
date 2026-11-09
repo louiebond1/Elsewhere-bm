@@ -3,10 +3,11 @@ import { eq, and } from 'drizzle-orm';
 import type { Ctx } from '../server/services/context';
 import * as S from '../server/db/schema';
 import { roleForActor, roleCharges, criteriaFor, openOrdinaryRoleCount } from '../server/services/roles';
-import { roleMatches, pipelineForRole, screeningsForRole, activityForRole } from '../server/views/client';
+import { bestPeople, pipelineForRole, screeningsForRole, activityForRole } from '../server/views/client';
 import { activeContractForClient } from '../server/services/contracts';
 import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton } from './ui';
-import { SimplePrice, CompactPrice, MatchCard } from './role';
+import { SimplePrice, CompactPrice, MatchCard, BestCard } from './role';
+import { FindingBest } from './finding-best';
 import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, RequestIntro, RequestScreening, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
 import { gbp, label, date, relative, creditsLabel } from '../lib/format';
 import { prototype } from '../config/prototype';
@@ -73,21 +74,29 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   if (!tabs.some((t) => t.key === tab)) tab = 'matches';
   let body: React.ReactNode = null;
   if (tab === 'matches') {
-    const { strong, worth } = await roleMatches(ctx, roleId);
-    const intoLimit = ch!.accepted >= ch!.maxIntros ? `This role has used all ${ch!.maxIntros} accepted introductions.` : ch!.accepted + ch!.pending >= ch!.maxIntros ? 'Pending requests reserve the remaining introductions.' : role.status !== 'open' ? 'This role is closed.' : null;
-    const scrLimit = ch!.screeningsUsed >= ch!.includedScreenings ? 'All five included screenings are used or booked.' : null;
-    const card = (m: (typeof strong)[number]) => (
-      <MatchCard key={m.roleScopedReference} m={m} href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} actions={<>
-        <LinkButton href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} variant="secondary">See profile</LinkButton>
-        {!m.introState && <RequestIntro roleId={roleId} candidateRef={m.roleScopedReference} depositPaid={ch!.depositPaid} holdExists={!!ch!.holdUnits} depositUnits={ch!.depositUnits} depositPence={ch!.depositPence} disabledReason={m.permittedActionFlags.canRequestIntro ? null : intoLimit ?? 'Not available'} />}
-        {(!m.screeningStatus || m.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={m.roleScopedReference} disabledReason={m.permittedActionFlags.canRequestScreening ? null : scrLimit ?? 'Not available'} />}
-      </>} />
-    );
+    const { best, rest } = await bestPeople(ctx, roleId);
+    const intoLimit = ch!.accepted >= ch!.maxIntros ? `You’ve met the ${ch!.maxIntros} people included with this job.` : ch!.accepted + ch!.pending >= ch!.maxIntros ? 'Your remaining meetings are waiting for answers.' : role.status !== 'open' ? 'This job is closed.' : null;
+    const scrLimit = ch!.screeningsUsed >= ch!.includedScreenings ? 'All 5 included phone screenings are used.' : null;
+    const actionsFor = (m: (typeof rest)[number]) => <>
+      <LinkButton href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} variant="secondary">See profile</LinkButton>
+      {!m.introState && <RequestIntro roleId={roleId} candidateRef={m.roleScopedReference} depositPaid={ch!.depositPaid} holdExists={!!ch!.holdUnits} depositUnits={ch!.depositUnits} depositPence={ch!.depositPence} disabledReason={m.permittedActionFlags.canRequestIntro ? null : intoLimit ?? 'Not available'} />}
+      {(!m.screeningStatus || m.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={m.roleScopedReference} disabledReason={m.permittedActionFlags.canRequestScreening ? null : scrLimit ?? 'Not available'} />}
+    </>;
     body = (
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[15px]">People who fit this role. Names stay hidden until they agree to meet you. “Not known yet” just means we haven’t seen evidence, not that they can’t do it.</p>{role.status === 'open' && <AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} />}</div>
-        <section><h3 className="mb-3">Best fits</h3>{strong.length ? <div className="space-y-3">{strong.map(card)}</div> : <Empty>No one fits yet. Your consultant can help you adjust the role.</Empty>}</section>
-        <section><h3 className="mb-1">Worth a chat</h3><p className="mb-3 text-[14px] text-muted">We don’t know much about these people yet, but what we know is relevant. A phone screening could tell you more.</p>{worth.length ? <div className="space-y-3">{worth.map(card)}</div> : <Empty>No one else to suggest right now.</Empty>}</section>
+        <section>
+          <h3 className="mb-1 text-[22px]">Your best {best.length || 10}</h3>
+          <p className="mb-3 text-[15px] text-muted">We ran a short simulated interview with each of your top matches, using only their real examples, and put the best first. It’s a prediction to help you choose, not something they said. Names stay hidden until they agree to meet you.</p>
+          {role.status === 'open' && <div className="mb-3"><FindingBest roleId={roleId} hasResults={best.length > 0} /></div>}
+          {best.length > 0 && <div className="space-y-3">{best.map((b, i) => <BestCard key={b.dto.roleScopedReference} rank={i + 1} m={b.dto} sim={b.sim} href={`${base}/roles/${roleId}/candidates/${b.dto.roleScopedReference}`} actions={actionsFor(b.dto)} />)}</div>}
+        </section>
+        {rest.length > 0 && (
+          <details className="rounded-2xl border border-line bg-surface p-4">
+            <summary className="cursor-pointer text-[16px] font-medium">Everyone else who fits ({rest.length})</summary>
+            <div className="mt-3 space-y-3">{rest.map((m) => <MatchCard key={m.roleScopedReference} m={m} href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} actions={actionsFor(m)} />)}</div>
+            {role.status === 'open' && <div className="mt-3"><AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} /></div>}
+          </details>
+        )}
       </div>
     );
   } else if (tab === 'pipeline') {

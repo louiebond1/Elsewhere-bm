@@ -19,6 +19,7 @@ import * as filesSvc from './services/files';
 import * as contracts from './services/contracts';
 import * as checkout from './services/checkout';
 import * as hiring from './services/hiring-assistant';
+import * as simulation from './services/simulation';
 import { enqueue } from './services/jobs';
 import { roleScopedRef } from './dto/refs';
 import { notify, logActivity, clientUserIds } from './services/audit';
@@ -137,6 +138,8 @@ export const ROUTES: R[] = [
     const res = await runAi({ task: 'role', datasetId: base.datasetId, roleId: p.id, input: brief }, (pr) => pr.structureRole(brief));
     return { draft: res.output, provider: res.provider };
   } },
+  { method: 'POST', path: 'roles/:id/simulate', types: ['client', 'consultant'], h: async ({ base, p }) => { await roles.roleForActor(readCtx(base), p.id); return T(base, (c) => simulation.requestSimulations(c, p.id)); } },
+  { method: 'GET', path: 'roles/:id/simulate-status', types: ['client', 'consultant'], h: async ({ base, p }) => { const c = readCtx(base); await roles.roleForActor(c, p.id); return { pending: await simulation.simulationPending(c, p.id), ready: (await simulation.simulationsForRole(c, p.id)).size }; } },
   { method: 'POST', path: 'roles/:id/activate', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/activate`, body, (c, k) => roles.activateRole(c, p.id, { ...parse(activateInput, body), idempotencyKey: k })) },
   { method: 'POST', path: 'roles/:id/close', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/close`, body, (c) => roles.closeRole(c, p.id, parse(closeInput, body).reason)) },
   { method: 'POST', path: 'roles/:id/reopen', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/reopen`, body, (c, k) => roles.reopenRole(c, p.id, { ...parse(reopenInput, body), idempotencyKey: k })) },
@@ -268,7 +271,9 @@ export const ROUTES: R[] = [
     const b = parse(z.object({ conversationId: z.string().uuid().nullable().default(null), text: z.string().trim().min(1, 'Type a message').max(2000) }), body);
     const p = await hiring.prepareTurn(readCtx(base), b.conversationId);
     let r: hiring.TurnResult;
-    if (aiMode() === 'live') {
+    const copied = hiring.isSameAgain(b.text) ? hiring.sameAgainTurn(p) : null;
+    if (copied) r = copied;
+    else if (aiMode() === 'live') {
       const input = hiring.liveInput(p, b.text);
       try {
         const res = await runAi({ task: 'hiring', datasetId: base.datasetId, userId: viewer.actor.userId, input }, (pr) => pr.hiringTurn(input));

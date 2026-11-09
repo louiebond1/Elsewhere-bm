@@ -59,3 +59,12 @@ export const hiringTurnOutput = z.object({
   learned: z.array(z.string().max(200)).max(3),
 });
 export type HiringTurnOutput = z.infer<typeof hiringTurnOutput>;
+
+/** One simulated interview: answers drawn only from the candidate's own approved examples. */
+export const simulationOutput = z.object({
+  answers: z.array(z.object({ questionIndex: z.number().int().min(0).max(9), answer: z.string().max(600), evidenceIds: z.array(z.string()).max(4) })).max(6),
+  fitScore: z.number().int().min(0).max(100),
+  summary: z.string().max(400),
+  concerns: z.array(z.string().max(200)).max(3),
+});
+export type SimulationOutput = z.infer<typeof simulationOutput>;

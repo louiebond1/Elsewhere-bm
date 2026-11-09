@@ -124,3 +124,41 @@ export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href:
 }
 
 export { credits };
+
+export type SimCardView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean }[]; provider: string };
+
+export const fitLabel = (s: number) => (s >= 75 ? { text: 'Great fit', tone: 'success' as const } : s >= 50 ? { text: 'Good fit', tone: 'success' as const } : { text: 'Possible fit', tone: 'neutral' as const });
+
+/** One of "your best 10": rank, who they are, why they fit, and a taste of their simulated interview. */
+export function BestCard({ rank, m, sim, href, actions }: { rank: number; m: AcceptedCandidateDTO; sim: SimCardView; href: string; actions?: React.ReactNode }) {
+  const fit = fitLabel(sim.fitScore);
+  const highlights = sim.answers.filter((a, i, all) => a.grounded && all.findIndex((x) => x.answer === a.answer) === i).slice(0, 2);
+  return (
+    <article className="rounded-2xl border border-line bg-surface p-4 md:p-5">
+      <div className="flex items-start gap-3">
+        <span aria-label={`Number ${rank}`} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-[17px] font-semibold text-white">{rank}</span>
+        <div className="min-w-0 flex-1">
+          <Link href={href} className="text-[17px] font-semibold leading-snug text-ink no-underline hover:underline">{m.identity ? m.identity.fullName : m.safeHeadline}</Link>
+          <p className="mt-0.5 text-[14px] text-muted">{m.identity ? m.safeHeadline : 'Name hidden until they agree to meet you'}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge tone={fit.tone}>{fit.text}</Badge>
+            {m.introState && <Badge tone={m.introState === 'accepted' ? 'success' : 'neutral'}>{m.introState === 'accepted' ? 'Agreed to meet you' : m.introState === 'pending' ? 'Asked to meet' : `Meeting request ${m.introState}`}</Badge>}
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-[15px]">{sim.summary}</p>
+      {highlights.length > 0 && (
+        <div className="mt-3 rounded-xl bg-page px-4 py-3">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">From their simulated interview</p>
+          {highlights.map((h, i) => (
+            <div key={i} className="mt-2 text-[14px]">
+              <p className="text-muted">{h.question}</p>
+              <p className="mt-0.5">“{h.answer}”</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
+    </article>
+  );
+}

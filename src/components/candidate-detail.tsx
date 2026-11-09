@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import type { Ctx } from '../server/services/context';
-import { candidateOnRole } from '../server/views/client';
+import { candidateOnRole, simulationForCandidate } from '../server/views/client';
 import { roleCharges } from '../server/services/roles';
 import { PageHeader, Card, Badge, Notice, LinkButton } from './ui';
-import { LevelBadge } from './role';
+import { LevelBadge, fitLabel } from './role';
 import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
 export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx: Ctx; roleId: string; candidateRef: string; base: string }) {
-  const { role, dto, introId, introState, counters, hiredStart } = await candidateOnRole(ctx, roleId, candidateRef);
+  const { candidateId, role, dto, introId, introState, counters, hiredStart } = await candidateOnRole(ctx, roleId, candidateRef);
+  const sim = await simulationForCandidate(ctx, roleId, candidateId);
   const ch = await roleCharges(ctx, roleId);
   const name = dto.identity ? dto.identity.fullName : dto.safeHeadline;
   return (
@@ -17,6 +18,21 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base }: { ctx
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           <Card title="About this person"><p className="text-[15px]">{dto.safeSummary || 'We don’t know much yet.'}</p><p className="mt-2 text-[14px] text-muted">{dto.experienceBand} · {dto.broadRegion} · {dto.workModes.join(', ')}</p></Card>
+          {sim && (
+            <Card title="Their simulated interview" action={<Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge>}>
+              <p className="text-[15px]">{sim.summary}</p>
+              <p className="mt-2 text-[13px] text-muted">A prediction built only from their real examples, to help you decide who to meet. It isn’t something they said.</p>
+              <ol className="mt-3 space-y-3">
+                {sim.answers.map((a, i) => (
+                  <li key={i} className="text-[15px]">
+                    <p className="font-medium">{a.question}</p>
+                    <p className={a.grounded ? 'mt-1' : 'mt-1 text-muted'}>{a.grounded ? `“${a.answer}”` : a.answer}</p>
+                  </li>
+                ))}
+              </ol>
+              {sim.concerns.length > 0 && <p className="mt-3 text-[14px]"><span className="font-medium">Worth asking about:</span> {sim.concerns.join('; ').toLowerCase()}</p>}
+            </Card>
+          )}
           <Card title="How they fit this role">
             <ul className="space-y-4">
               {dto.criteria.map((c) => (

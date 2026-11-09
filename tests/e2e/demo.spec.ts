@@ -259,6 +259,10 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
   await expect(page.getByRole('heading', { name: 'Finance Assistant' })).toBeVisible();
   await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Your best/ })).toBeVisible();
+  // The worker runs the simulated interviews; the page fills in by itself.
+  await expect(page.getByLabel('Number 1', { exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText('From their simulated interview').first()).toBeVisible();
   await page.goto('/client/home');
   await expect(page.getByRole('link', { name: /Finance Assistant/ })).toBeVisible();
   await page.goto('/client/roles/new');

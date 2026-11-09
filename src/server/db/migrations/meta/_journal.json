@@ -50,6 +50,13 @@
       "when": 1794186046185,
       "tag": "0006_ai_spend_cap",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794225276796,
+      "tag": "0007_simulated_interviews",
+      "breakpoints": true
     }
   ]
 }

@@ -67,6 +67,9 @@ export const fixtureProvider: AiProvider = {
     });
     return { provider: 'fixture', usage, output: { criteria } };
   },
+  async simulateInterview() {
+    throw new AiFailure('not_supported', 'Demo responses: simulated interviews are built directly from approved examples in demo mode.');
+  },
   async hiringTurn() {
     // Demo mode never calls this: the hiring assistant uses the labelled keyword reader instead.
     throw new AiFailure('not_supported', 'Demo responses: the hiring assistant uses keyword matching in demo mode.');

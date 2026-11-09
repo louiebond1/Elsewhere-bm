@@ -74,7 +74,7 @@ export const replacementStatus = pgEnum('replacement_status', ['requested', 'app
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
-export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email']);
+export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews']);
 export const hiringConversationStatus = pgEnum('hiring_conversation_status', ['active', 'saved', 'abandoned']);
 export const emailStatus = pgEnum('email_status', ['queued', 'recorded', 'sent', 'suppressed', 'failed']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
@@ -487,6 +487,23 @@ export const matches = pgTable('matches', {
   stale: boolean('stale').notNull().default(false),
   computedAt: ts('computed_at').notNull(),
 }, (t) => [uniqueIndex('match_uq').on(t.roleId, t.candidateId), index('match_score_idx').on(t.roleId, t.score)]);
+
+/**
+ * A simulated interview: the candidate's own approved, anonymised examples used to answer a few questions
+ * about this role, then scored for fit. Clearly a prediction, never shown as something the person said.
+ */
+export const simulatedInterviews = pgTable('simulated_interviews', {
+  ...common(),
+  roleId: uuid('role_id').notNull().references(() => roles.id, { onDelete: 'cascade' }),
+  candidateId: uuid('candidate_id').notNull().references(() => candidates.id, { onDelete: 'cascade' }),
+  roleVersion: integer('role_version').notNull(),
+  profileVersionId: uuid('profile_version_id').notNull(),
+  answers: jsonb('answers').notNull(),
+  fitScore: integer('fit_score').notNull(),
+  summarySafe: text('summary_safe').notNull(),
+  concernsSafe: text('concerns_safe').array().notNull().default(sql`'{}'::text[]`),
+  provider: aiProvider('provider').notNull().default('fixture'),
+}, (t) => [uniqueIndex('sim_interview_uq').on(t.roleId, t.candidateId), index('sim_interview_rank_idx').on(t.roleId, t.fitScore)]);
 
 export const rankingAdjustments = pgTable('ranking_adjustments', {
   ...appendOnly(),
