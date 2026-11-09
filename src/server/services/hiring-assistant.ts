@@ -4,7 +4,9 @@ import { hiringConversations, hiringManagerMemory, users, roles, clients, organi
 import { conflict, invalid, notFound } from '../lib/errors';
 import { isUuid } from '../lib/ids';
 import { requireUser, type Ctx } from './context';
-import { createDraftRole } from './roles';
+import { createDraftRole, quoteForRole, openOrdinaryRoleCount } from './roles';
+import { requireActiveContract } from './contracts';
+import { getWallet, balances } from './ledger';
 import { logActivity } from './audit';
 import {
   EMPTY, missingSlots, readyToSave, readMessage, demoReply, sanitise, toCriteria, notJobRelated,
@@ -210,4 +212,17 @@ export async function removeItem(ctx: Ctx, conversationId: string, list: 'mustHa
     .where(and(eq(hiringConversations.id, p.conv!.id), eq(hiringConversations.rowVersion, p.conv!.rowVersion))).returning();
   if (!row) throw conflict('CONVERSATION_CHANGED', 'This conversation changed in another window. Refresh to continue.');
   return { id: row.id };
+}
+
+/** What starting the search would cost, in plain terms, before anything is saved or charged. */
+export async function startQuote(ctx: Ctx, conversationId: string) {
+  const p = await prepareTurn(ctx, conversationId);
+  const u = p.understanding;
+  if (!readyToSave(u)) throw invalid('I still need a few details first.');
+  const contract = await requireActiveContract(ctx, p.clientId, false);
+  const q = quoteForRole({ salaryPence: BigInt(u.salaryPounds!) * 100n }, 'standard', contract);
+  const isExtra = (await openOrdinaryRoleCount(ctx, p.clientId)) >= contract.includedOpenRoles;
+  const w = await getWallet(ctx, p.clientId);
+  const spendable = w ? (await balances(ctx, w.id)).spendable : 0n;
+  return { title: u.title, totalPence: q.totalPence.toString(), depositPence: q.depositPence.toString(), depositUnits: q.deposit.toString(), isExtra, included: contract.includedOpenRoles, enoughForExtra: !isExtra || spendable >= q.deposit };
 }

@@ -169,8 +169,8 @@ test('B4: in the empty workspace the default contract start allows a role to be 
   for (const [i, t] of ['Reconciliations', 'Reporting', 'Learning quickly'].entries()) await skills.nth(i).getByText(t, { exact: true }).click();
   await page.getByRole('button', { name: 'Save draft' }).click();
   await page.waitForURL(/consultant\/roles\/[0-9a-f-]{36}/);
-  await page.getByRole('button', { name: 'Make role live' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Make it live' }).click();
+  await page.getByRole('button', { name: 'Find my best people' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Find my best people' }).click();
   await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
 });
 
@@ -227,8 +227,10 @@ test('Guided walkthrough: gated, read-only, reachable from demo accounts, labels
 test('Hiring assistant: a client describes the role in conversation, taps quick answers, creates it and makes it live', async ({ page }) => {
   await loadScenario(page, null);
   await switchTo(page, 'Emma Stone');
-  await page.goto('/client/roles');
-  await page.getByRole('link', { name: /Add (a )?role/ }).first().click();
+  await page.goto('/client/home');
+  await expect(page.getByRole('heading', { name: 'Hi Emma' })).toBeVisible();
+  await expect(page.getByText('9.5 credits')).toBeVisible();
+  await page.getByRole('link', { name: 'Start a new hire' }).click();
   await expect(page).toHaveURL(/\/client\/roles\/new$/);
   await expect(page.getByText(/Hi Emma, I'm your hiring assistant/)).toBeVisible();
   await expect(page.getByText(/Demo mode: the assistant picks out key words/)).toBeVisible();
@@ -249,13 +251,16 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await expect(summary.getByText('£38,000')).toBeVisible();
   await expect(summary.getByText('Excel')).toBeVisible();
   await expect(page.getByText(/criteri/i)).toHaveCount(0);
-  await page.getByRole('button', { name: 'Create role' }).click();
+  await summary.getByRole('button', { name: 'Find my best people' }).click();
+  const start = page.getByRole('dialog');
+  await expect(start.getByText(/It costs £3,800 only if you hire someone/)).toBeVisible();
+  await expect(start.getByText(/extra job on top of the 2 in your plan/)).toBeVisible();
+  await start.getByRole('button', { name: 'Find my best people' }).click();
   await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
-  await expect(page.getByText('Finance Assistant').first()).toBeVisible();
-  await expect(page.getByText('What matters')).toBeVisible();
-  await page.getByRole('button', { name: 'Make role live' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: /make it live/i }).click();
+  await expect(page.getByRole('heading', { name: 'Finance Assistant' })).toBeVisible();
   await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
+  await page.goto('/client/home');
+  await expect(page.getByRole('link', { name: /Finance Assistant/ })).toBeVisible();
   await page.goto('/client/roles/new');
   await expect(page.getByText(/Welcome back, Emma/)).toBeVisible();
   await page.getByText(/What I’ve learned about how you hire/).click();

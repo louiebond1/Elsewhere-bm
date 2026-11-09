@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCommand, ErrorText, ActionButton } from './client';
+import { useCommand, ErrorText, ActionButton, Dialog, api, type ApiError } from './client';
 import { buttonClass, cx } from './ui';
 import { previewUnits } from './role-form';
 import { gbp } from '../lib/format';
@@ -50,10 +50,30 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
   const items = u.mustHaves.length + u.niceToHaves.length;
   const price = u.salaryPounds ? (() => { const units = previewUnits(u.salaryPounds); return { credits: units / 10000, pence: Math.round((units * ratePence) / 10000) }; })() : null;
 
-  const createRole = async () => {
+  // One tap to start: show the cost in plain words, then save the job and start the search together.
+  type Quote = { title: string; totalPence: string; depositPence: string; isExtra: boolean; included: number; enoughForExtra: boolean };
+  const activate = useCommand();
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteError, setQuoteError] = useState<ApiError | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const openStart = async () => {
+    if (!conversationId) return;
+    setQuoteError(null);
+    const r = await api<Quote>(`client/hiring/${conversationId}/quote`);
+    if (r.ok) setQuote(r.data); else setQuoteError(r.error);
+  };
+  const saveOnly = async () => {
     if (!conversationId) return;
     const r = await save.run(`client/hiring/${conversationId}/save`, {}, { refresh: false });
     if (r?.id) router.push(`/client/roles/${r.id}`);
+  };
+  const startSearch = async () => {
+    if (!conversationId || !quote) return;
+    const id = savedId ?? (await save.run(`client/hiring/${conversationId}/save`, {}, { refresh: false }))?.id;
+    if (!id) return;
+    setSavedId(id);
+    const ok = await activate.run(`roles/${id}/activate`, { confirmExtraDeposit: quote.isExtra }, { refresh: false });
+    if (ok !== null) router.push(`/client/roles/${id}`);
   };
   const drop = (list: 'mustHaves' | 'niceToHaves' | 'outcomes' | 'teachable', index: number) => conversationId && remove.run(`client/hiring/${conversationId}/remove`, { list, index });
 
@@ -65,7 +85,7 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
           {messages.map((m, i) => <Bubble key={i} m={m} />)}
           {pending && <Bubble m={{ role: 'user', text: pending, at: '' }} />}
           {pending && <p className="text-[14px] text-muted">Your assistant is thinking…</p>}
-          {ready && !pending && conversationId && <button type="button" className={cx(buttonClass('primary', true), 'lg:hidden')} disabled={save.busy} onClick={createRole}>{save.busy ? 'Creating…' : 'Create role'}</button>}
+          {ready && !pending && conversationId && <button type="button" className={cx(buttonClass('primary', true), 'lg:hidden')} onClick={openStart}>Find my best people</button>}
           <div ref={end} />
         </div>
         <div className="border-t border-line p-3">
@@ -99,10 +119,10 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
           {items < MIN_ITEMS && <p className="ml-6 mt-1 text-[13px] text-muted">{items} of {MIN_ITEMS} things that matter so far.</p>}
           {u.niceToHaves.length > 0 && <List title="Nice to have" done items={u.niceToHaves.map((x) => x.label)} onRemove={(i) => drop('niceToHaves', i)} busy={remove.busy} />}
           {u.teachable.length > 0 && <List title="You'll teach them" done items={u.teachable} onRemove={(i) => drop('teachable', i)} busy={remove.busy} />}
-          {price && <p className="mt-4 rounded-lg bg-page px-3 py-2 text-[14px]">If you hire through us: {price.credits} {price.credits === 1 ? 'credit' : 'credits'} ({gbp(price.pence)}). Nothing is charged now.</p>}
-          <button type="button" className={cx(buttonClass('primary', true), 'mt-4')} disabled={!ready || save.busy || !conversationId} onClick={createRole}>{save.busy ? 'Creating…' : 'Create role'}</button>
-          <p className="mt-2 text-[13px] text-muted">{ready ? 'It is saved as a draft for you to check. Nothing is charged until you make it live.' : `Still needed: ${needed.join(', ')}.`}</p>
-          <ErrorText error={save.error ?? remove.error} />
+          {price && <p className="mt-4 rounded-lg bg-page px-3 py-2 text-[14px]">If you hire someone: {gbp(price.pence)} ({price.credits} {price.credits === 1 ? 'credit' : 'credits'}). Nothing is charged now.</p>}
+          <button type="button" className={cx(buttonClass('primary', true), 'mt-4 min-h-14 text-[18px]')} disabled={!ready || !conversationId} onClick={openStart}>Find my best people</button>
+          <p className="mt-2 text-[13px] text-muted">{ready ? 'You’ll see what it costs before anything starts.' : `Still needed: ${needed.join(', ')}.`}</p>
+          <ErrorText error={quoteError ?? remove.error} />
         </div>
 
         {facts.length > 0 && (
@@ -119,6 +139,24 @@ export function HiringAssistant({ conversationId, messages, understanding: u, la
           <Link href="/client/roles/new?form=1">Prefer a form?</Link>
         </div>
       </aside>
+      <Dialog open={!!quote} onClose={() => setQuote(null)} title={`Find your best people for ${quote?.title ?? 'this job'}?`}>
+        {quote && (
+          <div className="space-y-3 text-[16px]">
+            <p>It costs <span className="font-semibold">{gbp(quote.totalPence)}</span> only if you hire someone.</p>
+            {quote.isExtra
+              ? <p className="rounded-lg bg-warning-tint px-3 py-2 text-warning">This is an extra job on top of the {quote.included} in your plan, so <span className="font-semibold">{gbp(quote.depositPence)}</span> is paid now. It counts towards the price if you hire.</p>
+              : <p>{gbp(quote.depositPence)} of that is paid when someone agrees to meet you. Nothing is paid now.</p>}
+            {quote.isExtra && !quote.enoughForExtra && <p className="text-danger">You don’t have enough credits for this right now. Save it for later, or ask for more credits.</p>}
+            <ErrorText error={save.error ?? activate.error} />
+            {savedId && activate.error && <p className="text-[14px]"><Link href={`/client/roles/${savedId}`}>Your job is saved. Open it</Link></p>}
+            <div className="flex flex-col gap-2 pt-2">
+              <button type="button" className={cx(buttonClass('primary', true), 'min-h-14 text-[18px]')} disabled={save.busy || activate.busy || (quote.isExtra && !quote.enoughForExtra)} onClick={startSearch}>{save.busy || activate.busy ? 'Starting…' : 'Find my best people'}</button>
+              {!savedId && <button type="button" className={buttonClass('secondary', true)} disabled={save.busy || activate.busy} onClick={saveOnly}>Save it for later</button>}
+              <button type="button" className={buttonClass('ghost', true)} onClick={() => setQuote(null)}>Not yet</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

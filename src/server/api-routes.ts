@@ -281,6 +281,7 @@ export const ROUTES: R[] = [
     } else r = hiring.demoTurn(p, b.text);
     return T(base, (c) => hiring.commitTurn(c, p, b.text, r));
   } },
+  { method: 'GET', path: 'client/hiring/:id/quote', types: ['client'], h: ({ base, p }) => hiring.startQuote(readCtx(base), p.id) },
   { method: 'POST', path: 'client/hiring/:id/save', types: ['client'], h: async ({ base, p }) => ({ id: (await T(base, (c) => hiring.saveAsDraft(c, p.id))).id }) },
   { method: 'POST', path: 'client/hiring/:id/start-over', types: ['client'], h: ({ base, p }) => T(base, (c) => hiring.startOver(c, p.id)) },
   { method: 'POST', path: 'client/hiring/:id/remove', types: ['client'], h: ({ base, body, p }) => { const b = parse(z.object({ list: z.enum(['mustHaves', 'niceToHaves', 'outcomes', 'teachable']), index: z.number().int().min(0).max(10) }), body); return T(base, (c) => hiring.removeItem(c, p.id, b.list, b.index)); } },

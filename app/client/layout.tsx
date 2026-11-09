@@ -9,11 +9,9 @@ export default async function ClientLayout({ children }: { children: React.React
   const c = await clientSummary(ctx, viewer.actor.clientId!);
   const nav = [
     { href: '/client/home', label: 'Home', icon: 'home' },
-    { href: '/client/roles', label: 'Roles', icon: 'roles' },
+    { href: '/client/roles', label: 'Your hiring', icon: 'roles' },
     { href: '/client/credits', label: 'Credits', icon: 'credits' },
-    { href: '/client/hires', label: 'Hires', icon: 'hires' },
-    { href: '/client/onboarding', label: 'Training', icon: 'training' },
-    { href: '/client/support', label: 'Support', icon: 'support' },
+    { href: '/client/support', label: 'Help', icon: 'support' },
   ];
   return <AppShell nav={nav} base="/client" csrf={csrf} who={`${viewer.displayName} · ${c.name}`}>{children}</AppShell>;
 }

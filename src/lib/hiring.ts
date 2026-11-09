@@ -288,7 +288,7 @@ export function demoReply(prev: Understanding, next: Understanding, declined: st
   let text = notes.length ? `${notes.join('. ')}. ` : 'Thanks. ';
   if (declined) text += `I’ve left out “${declined}”, as I can only use things to do with the job itself. `;
   const slot = missingSlots(next)[0] ?? null;
-  if (!slot) return { text: `${text}That’s everything I need. Check “Your role so far”, then press Create role.`, asked: null };
+  if (!slot) return { text: `${text}That’s everything I need. Check “Your role so far”, then press “Find my best people”.`, asked: null };
   const q = slot === 'skills' && next.mustHaves.length + next.niceToHaves.length > 0
     ? `What else matters for this job? I have ${next.mustHaves.length + next.niceToHaves.length} so far and need at least ${MIN_ITEMS}.`
     : QUESTIONS[slot];

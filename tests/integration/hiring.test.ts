@@ -49,6 +49,18 @@ describe('hiring assistant', () => {
     await expect(w.T(w.client('A'), (c) => hiring.saveAsDraft(c, id))).rejects.toMatchObject({ code: 'CONVERSATION_CLOSED' });
   });
 
+  it('the start quote states the cost in plain terms before anything is saved or charged', async () => {
+    const w = await load();
+    const id = await converse(w, w.client('A'));
+    const before = await w.txs('A');
+    const q = await hiring.startQuote(readCtx(w.client('A')), id);
+    expect(q).toMatchObject({ title: 'Finance Assistant', totalPence: '380000', depositPence: '95000', isExtra: true, included: 2, enoughForExtra: true });
+    expect(await w.txs('A')).toHaveLength(before.length);
+    expect(await db().select().from(S.roles).where(eq(S.roles.title, 'Finance Assistant'))).toHaveLength(0);
+    const partial = await converse(w, w.client('B'), SCRIPT.slice(0, 2));
+    await expect(hiring.startQuote(readCtx(w.client('B')), partial)).rejects.toMatchObject({ code: 'VALIDATION' });
+  });
+
   it('remembers the manager next time, assumes their usual location and work pattern, and lets them forget', async () => {
     const w = await load();
     const id = await converse(w, w.client('A'));
