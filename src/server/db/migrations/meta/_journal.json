@@ -78,6 +78,13 @@
       "when": 1794234513051,
       "tag": "0010_ai_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794242286239,
+      "tag": "0011_onboarding",
+      "breakpoints": true
     }
   ]
 }

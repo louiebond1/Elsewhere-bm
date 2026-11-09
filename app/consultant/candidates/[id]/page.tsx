@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm';
+import { onboardingAnswers } from '@/server/db/schema';
+import { ONBOARDING, ONBOARDING_QUESTIONS } from '@/config/onboarding';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Lock } from 'lucide-react';
@@ -42,10 +45,27 @@ export default async function CandidateRecord({ params, searchParams }: { params
   const base = `/consultant/candidates/${id}`;
   const facts = [r.idn?.currentTitle ?? 'Role unknown', REGION[r.c.region] ?? 'Region unknown', r.c.minSalaryPence ? `£${Math.round(Number(r.c.minSalaryPence) / 100000)}k minimum` : 'Minimum salary not given'];
   const visibleReason = ds.discoverable ? null : ds.reasons.map((x) => REASONS[x] ?? x.replace(/_/g, ' ')).join('; ');
-  const tabs = [['overview', 'Overview'], ['evidence', 'Evidence'], ['conversations', 'Conversations'], ['cv', 'CV'], ['activity', 'Activity']].map(([k, l]) => ({ key: k, label: l, href: `${base}?tab=${k}` }));
+  const tabs = [['overview', 'Overview'], ['checklist', 'Profile document'], ['evidence', 'Evidence'], ['conversations', 'Conversations'], ['cv', 'CV'], ['activity', 'Activity']].map(([k, l]) => ({ key: k, label: l, href: `${base}?tab=${k}` }));
 
   let body: React.ReactNode = null;
-  if (tab === 'overview') {
+  if (tab === 'checklist') {
+    const rows = await ctx.tx.select().from(onboardingAnswers).where(eq(onboardingAnswers.candidateId, id));
+    const byKey = new Map(rows.map((x) => [x.questionKey, x]));
+    const approved = rows.filter((x) => x.status === 'approved').length;
+    body = (
+      <div className="max-w-[820px]">
+        <p className="text-[16px] text-muted">{approved} of {ONBOARDING_QUESTIONS.length} answers approved by the candidate. Answers they haven’t checked yet are not shown.</p>
+        {ONBOARDING.map((sec) => {
+          const qs = sec.questions.filter((q) => byKey.get(q.key)?.status === 'approved');
+          return qs.length ? (
+            <Section key={sec.key} title={sec.title}>
+              <dl className="space-y-4">{qs.map((q) => { const a = byKey.get(q.key)!; return <div key={q.key}><dt className="font-semibold">{q.text}</dt><dd className="mt-1 whitespace-pre-wrap text-[16px]">{a.answer}</dd>{a.source === 'ai' && <dd className="text-[13px] text-muted">Drafted with their {a.aiProvider ?? 'AI'}, checked by them</dd>}</div>; })}</dl>
+            </Section>
+          ) : null;
+        })}
+      </div>
+    );
+  } else if (tab === 'overview') {
     body = (
       <div className="grid gap-x-14 md:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
         <div className="min-w-0">

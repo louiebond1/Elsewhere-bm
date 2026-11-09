@@ -13,7 +13,7 @@ export function SignupForm() {
       e.preventDefault(); setBusy(true);
       const r = await api('auth/candidate-signup', { body: { ...f, minSalaryPounds: f.minSalaryPounds ? Number(f.minSalaryPounds) : null, noticeWeeks: f.noticeWeeks ? Number(f.noticeWeeks) : null } });
       setBusy(false);
-      if (r.ok) window.location.href = '/candidate/privacy?onboarding=1'; else setErr(r.error);
+      if (r.ok) window.location.href = '/candidate/welcome'; else setErr(r.error);
     }}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name (fictional)" error={err?.fieldErrors?.fullName}><input className={inputClass} value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} required /></Field>

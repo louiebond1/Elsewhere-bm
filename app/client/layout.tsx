@@ -17,6 +17,5 @@ export default async function ClientLayout({ children }: { children: React.React
     { href: '/client/support', label: 'Help', icon: 'support' },
   ];
   const pill = <Link href="/client/credits" className="inline-flex h-11 items-center whitespace-nowrap rounded-full bg-[#DDE5C9] px-4 text-[15px] font-semibold text-ink no-underline sm:px-5 sm:text-[16px]">{creditsLabel(w.spendable)}</Link>;
-  const aiBar = { status: 'Turn your notes into a hiring brief', action: 'Try it', href: '/client/roles/new?ai=1' };
-  return <AppShell nav={nav} base="/client" csrf={csrf} who={`${viewer.displayName} · ${c.name}`} brandSub="Elsewhere" pill={pill} aiBar={aiBar}>{children}</AppShell>;
+  return <AppShell nav={nav} base="/client" csrf={csrf} who={`${viewer.displayName} · ${c.name}`} brandSub="Elsewhere" pill={pill}>{children}</AppShell>;
 }

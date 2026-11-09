@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { CsrfProvider } from './client';
 import { NotificationBell, SignOut, SwitchPersona, TopNav, MobileNav, type NavItem } from './shell-client';
 import { providerLabel } from '../server/ai';
-import { cx } from './ui';
 import { HandHelping, ArrowRight } from 'lucide-react';
 
 export function Brand({ sub, dark }: { sub?: string; dark?: boolean }) {
@@ -44,10 +43,9 @@ export function AppShell({ children, nav, base, csrf, who, brandSub, aiBar, pill
             </div>
           </div>
         </header>
-        <main className={cx('mx-auto max-w-[1320px] px-5 pt-4 lg:px-10 lg:pt-6', aiBar ? 'pb-40 lg:pb-28' : 'pb-28 lg:pb-14')}>{children}</main>
-        <footer className={cx('px-4 text-center text-[12px] text-muted', aiBar ? 'pb-36 lg:pb-24' : 'pb-24 lg:pb-6')}>Powered by Elsewhere</footer>
+        <main className="mx-auto max-w-[1320px] px-5 pb-28 pt-4 lg:px-10 lg:pb-14 lg:pt-6">{aiBar && <AiBar {...aiBar} />}{children}</main>
+        <footer className="px-4 pb-24 text-center text-[12px] text-muted lg:pb-6">Powered by Elsewhere</footer>
       </div>
-      {aiBar && <AiBar {...aiBar} />}
       <MobileNav items={nav} />
     </CsrfProvider>
   );
@@ -56,23 +54,20 @@ export function AppShell({ children, nav, base, csrf, who, brandSub, aiBar, pill
 /** The "Your AI" bar that follows the person around, like a now-playing bar. */
 function AiBar({ status, action, href }: AiBarInfo) {
   return (
-    <Link href={href} aria-label={`Your AI: ${status}. ${action}`} className="group fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-30 block bg-primary text-white no-underline lg:bottom-0 lg:pb-[env(safe-area-inset-bottom)]">
-      <span className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-5 lg:h-16 lg:px-10">
-        <HandHelping aria-hidden size={24} strokeWidth={1.7} />
-        <span className="font-display text-[18px] font-semibold">Your AI</span>
-        <span aria-hidden className="h-6 w-px bg-white/30" />
-        <span className="min-w-0 flex-1 truncate text-[15px] text-white/90 lg:text-[16px]">{status}</span>
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-[15px] font-semibold lg:rounded-full lg:bg-surface lg:px-5 lg:py-2 lg:text-primary">{action} <ArrowRight aria-hidden size={18} className="transition-transform group-hover:translate-x-0.5" /></span>
-      </span>
+    <Link href={href} aria-label={`Your AI: ${status}. ${action}`} className="group mb-6 flex items-center gap-3 rounded-2xl bg-primary px-5 py-3 text-white no-underline lg:mb-8">
+      <HandHelping aria-hidden size={22} strokeWidth={1.7} />
+      <span className="font-display text-[17px] font-semibold">Your AI</span>
+      <span aria-hidden className="h-5 w-px bg-white/30" />
+      <span className="min-w-0 flex-1 truncate text-[15px] text-white/90">{status}</span>
+      <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-4 py-1.5 text-[15px] font-semibold text-primary">{action} <ArrowRight aria-hidden size={16} className="transition-transform group-hover:translate-x-0.5" /></span>
     </Link>
   );
 }
 
-/** What the candidate's AI bar says. */
-export function candidateAiBar(drafts: number, connected: string | null): AiBarInfo {
-  return {
-    status: drafts ? `${drafts} draft${drafts > 1 ? 's' : ''} ready` : connected ? `Using your ${connected}` : 'Not connected',
-    action: drafts ? 'Check drafts' : connected ? 'Open' : 'Set up',
-    href: '/candidate/ai',
-  };
+/** The candidate's AI strip: only when there is something to do (connect, or drafts to check). */
+export function candidateAiBar(drafts: number, connected: string | null, checklistToCheck = 0): AiBarInfo | undefined {
+  if (checklistToCheck) return { status: `${checklistToCheck} answer${checklistToCheck > 1 ? 's' : ''} from your AI to check`, action: 'Check them', href: '/candidate/onboarding' };
+  if (drafts) return { status: `${drafts} draft${drafts > 1 ? 's' : ''} ready to check`, action: 'Check drafts', href: '/candidate/ai' };
+  if (!connected) return { status: 'Not connected yet', action: 'Set up', href: '/candidate/onboarding?ai=1' };
+  return undefined;
 }

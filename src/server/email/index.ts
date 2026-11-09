@@ -61,11 +61,11 @@ function linkPathFor(userType: string) {
 }
 
 /** Called inside the notifying transaction. Queues one outbox row and one send job per eligible recipient. */
-export async function queueEmails(ctx: Ctx, recipientUserIds: string[], n: { type: string; safeTitle: string }) {
+export async function queueEmails(ctx: Ctx, recipientUserIds: string[], n: { type: string; safeTitle: string }, linkPath?: string) {
   if (!prototype.emailNotificationTypes.includes(n.type) || !recipientUserIds.length) return;
   const rs = await ctx.tx.select({ id: users.id, type: users.userType }).from(users).where(and(inArray(users.id, recipientUserIds), eq(users.status, 'active')));
   for (const r of rs) {
-    const [row] = await ctx.tx.insert(emailOutbox).values({ datasetId: ctx.datasetId, recipientUserId: r.id, notificationType: n.type as typeof emailOutbox.$inferInsert.notificationType, subject: n.safeTitle, linkPath: linkPathFor(r.type) }).returning();
+    const [row] = await ctx.tx.insert(emailOutbox).values({ datasetId: ctx.datasetId, recipientUserId: r.id, notificationType: n.type as typeof emailOutbox.$inferInsert.notificationType, subject: n.safeTitle, linkPath: linkPath ?? linkPathFor(r.type) }).returning();
     await enqueue(ctx, 'send_email', row.id, `email:${row.id}`);
   }
 }

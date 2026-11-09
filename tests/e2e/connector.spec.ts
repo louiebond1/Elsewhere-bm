@@ -91,10 +91,47 @@ test('AI helper page fits a phone and shows both apps @phone', async ({ page }) 
   await loadScenario(page, null);
   await switchTo(page, 'Maya Ellis');
   await page.goto('/candidate/ai');
-  await expect(page.getByRole('link', { name: 'ChatGPT' })).toBeVisible();
-  await page.getByRole('link', { name: 'Claude' }).click();
+  await expect(page.getByRole('link', { name: 'ChatGPT', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Claude', exact: true }).click();
   await expect(page.getByText('Choose Add custom connector')).toBeVisible();
   await expect(page.getByLabel('Connector address')).toContainText('/mcp');
   const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(w).toBeLessThanOrEqual(0);
+});
+
+test('Onboarding checklist: welcome page, answer one yourself, your AI fills in others, approve them all', async ({ page }) => {
+  await loadScenario(page, null);
+  await switchTo(page, 'Maya Ellis');
+  await page.goto('/candidate/welcome');
+  await expect(page.getByRole('heading', { name: /Welcome, Maya/ })).toBeVisible();
+  await page.getByText('Your welcome email').click();
+  await expect(page.getByText('Subject: Welcome to BondMoran Elsewhere')).toBeVisible();
+  await page.getByRole('link', { name: 'I’ll type it myself' }).click();
+  await expect(page.getByRole('heading', { name: 'Your profile document' })).toBeVisible();
+  // Answer one yourself.
+  const q = page.locator('li', { hasText: 'How much notice do you need to give' });
+  await q.getByRole('button', { name: 'Answer this myself' }).click();
+  await q.getByRole('textbox').fill('Four weeks.');
+  await q.getByRole('button', { name: 'Save' }).click();
+  await expect(q.getByText('Checked')).toBeVisible();
+  // Their AI saves drafts through the connector.
+  const reg = await (await page.request.post('/api/oauth/register', { data: { client_name: 'ChatGPT', redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'] } })).json();
+  const verifier = randomBytes(32).toString('base64url');
+  const qs = new URLSearchParams({ client_id: reg.client_id, redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect', response_type: 'code', code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256', scope: 'questions:read profile:read drafts:write' });
+  let redirected = '';
+  await page.route('https://chatgpt.com/**', (r) => { redirected = r.request().url(); return r.fulfill({ body: 'ok' }); });
+  await page.goto(`/oauth/authorize?${qs}`);
+  await page.getByRole('button', { name: 'Allow ChatGPT' }).click();
+  await expect.poll(() => redirected).toContain('code=');
+  const t = await (await page.request.post('/api/oauth/token', { form: { grant_type: 'authorization_code', code: new URL(redirected).searchParams.get('code')!, code_verifier: verifier, client_id: reg.client_id, redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect' } })).json();
+  await page.request.post('/mcp', { headers: { authorization: `Bearer ${t.access_token}` }, data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'save_onboarding_answers', arguments: { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations and Excel' }] } } } });
+  await page.unroute('https://chatgpt.com/**');
+  await page.goto('/candidate/home');
+  await expect(page.getByRole('link', { name: /Your AI: 2 answers from your AI to check/ })).toBeVisible();
+  await page.goto('/candidate/onboarding');
+  await expect(page.getByText('2 answers from your AI to check.')).toBeVisible();
+  await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();
+  await page.getByRole('button', { name: 'They all look right: approve 2' }).click();
+  await expect(page.getByText('answers from your AI to check')).toHaveCount(0);
+  await expect(page.getByText('3', { exact: true }).first()).toBeVisible();
 });

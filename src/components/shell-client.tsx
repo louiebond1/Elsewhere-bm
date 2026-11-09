@@ -2,9 +2,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Bell, Menu, X, Repeat, Home, User, Users, Star, Search, ClipboardList, Briefcase, CreditCard, GraduationCap, LifeBuoy, FileText, Shield, MessageSquare, Inbox, Sparkles } from 'lucide-react';
+import { Bell, Menu, X, Repeat, Home, User, Users, Star, Search, ClipboardList, Briefcase, CreditCard, GraduationCap, LifeBuoy, FileText, Shield, MessageSquare, Inbox, Sparkles, ListChecks } from 'lucide-react';
 
-const ICONS: Record<string, typeof Home> = { home: Home, clients: User, candidates: User, hires: Star, ops: Search, demo: ClipboardList, roles: Briefcase, credits: CreditCard, training: GraduationCap, support: LifeBuoy, profile: User, intros: Inbox, checkins: MessageSquare, cv: FileText, privacy: Shield, users: Users, ai: Sparkles };
+const ICONS: Record<string, typeof Home> = { home: Home, clients: User, candidates: User, hires: Star, ops: Search, demo: ClipboardList, roles: Briefcase, credits: CreditCard, training: GraduationCap, support: LifeBuoy, profile: User, intros: Inbox, checkins: MessageSquare, cv: FileText, privacy: Shield, users: Users, ai: Sparkles, checklist: ListChecks };
 import { api, useCsrf, Dialog } from './client';
 import { relative } from '../lib/format';
 import { cx } from './ui';

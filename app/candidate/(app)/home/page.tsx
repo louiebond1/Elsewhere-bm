@@ -8,6 +8,8 @@ import { LinkButton, buttonClass, cx } from '@/components/ui';
 import { ActionButton, JobPoller } from '@/components/client';
 import { FoldArt } from '@/components/fold-art';
 import { HomeAiButton } from '@/components/home-ai';
+import { onboardingView } from '@/server/services/onboarding';
+import { HandHelping } from 'lucide-react';
 
 const REASON: Record<string, string> = {
   discovery_off: 'Discovery is off, so employers can’t find you for new roles.',
@@ -22,6 +24,8 @@ const REASON: Record<string, string> = {
 export default async function CandidateHome() {
   const { ctx } = await pageViewer('candidate');
   const o = await candidateOverview(ctx);
+  const ob = await onboardingView(ctx);
+  const checklistDone = ob.approved >= ob.total;
   const initial = o.conversations.find((c) => c.kind === 'initial_screening');
   const active = o.conversations.find((c) => c.status === 'active');
   const [nextQ] = active ? await ctx.tx.select({ text: checkInQuestions.questionText }).from(checkInQuestions).where(and(eq(checkInQuestions.conversationId, active.id), eq(checkInQuestions.state, 'unanswered'))).orderBy(asc(checkInQuestions.ordinal)).limit(1) : [];
@@ -61,6 +65,14 @@ export default async function CandidateHome() {
         <section aria-label="Your next step" className="overflow-hidden rounded-[32px] bg-surface p-3 shadow-[0_24px_60px_-28px_rgba(30,40,30,.35)]">
           <FoldArt className="h-40 w-full rounded-[24px] md:h-52" />
           <div className="px-3 pb-3 pt-1">
+            {!checklistDone ? (<>
+              <h2 className="text-[30px] leading-tight">Your profile checklist.</h2>
+              <p className="mt-1 text-[17px] text-muted">{ob.answered ? `${ob.answered} of ${ob.total} answered, ${ob.approved} checked.` : `About ${ob.total} questions. Your AI can answer most of them for you.`}</p>
+              <div className="mt-5 space-y-3">
+                <Link href="/candidate/onboarding?ai=1" className={cx(buttonClass('primary', true), 'gap-3 text-[17px] no-underline')}><HandHelping aria-hidden size={22} strokeWidth={1.8} /> Let my AI do this</Link>
+                <Link href="/candidate/onboarding" className={cx(buttonClass('secondary', true), 'text-[17px] no-underline')}>{ob.toCheck ? `Check ${ob.toCheck} answer${ob.toCheck > 1 ? 's' : ''}` : 'Open my checklist'}</Link>
+              </div>
+            </>) : (<>
             <h2 className="text-[30px] leading-tight">{needsCv ? 'Start with your CV.' : 'One good example.'}</h2>
             <p className="mt-1 text-[17px] text-muted">{needsCv ? 'We use it to ask you the right questions.' : question}</p>
             <div className="mt-5 space-y-3">
@@ -69,6 +81,7 @@ export default async function CandidateHome() {
                 : <ActionButton path="conversations/start" body={{ kind: startKind }} label="Answer next question" redirect="/candidate/conversation/{id}" full />}
               {!needsCv && <HomeAiButton conversationId={active?.id ?? null} startKind={startKind} />}
             </div>
+            </>)}
           </div>
         </section>
 

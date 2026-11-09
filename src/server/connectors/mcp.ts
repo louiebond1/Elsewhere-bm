@@ -6,6 +6,8 @@ import { withTx, type BaseCtx, type Ctx } from '../services/context';
 import { logActivity } from '../services/audit';
 import { rateLimitHit } from '../auth';
 import { isUuid } from '../lib/ids';
+import { onboardingView, saveAiAnswers } from '../services/onboarding';
+import { MAX_ONBOARDING_ANSWER } from '../../config/onboarding';
 
 /**
  * The connector endpoint for a candidate's own AI assistant (Claude or ChatGPT), speaking MCP over HTTP
@@ -14,12 +16,15 @@ import { isUuid } from '../lib/ids';
  */
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS = 'You are helping a job seeker answer their Elsewhere questions. You probably know them better than Elsewhere does. For each question, FIRST look at what you already know about this person from your memory and earlier conversations, and prefer a real, specific example from there. Then use get_my_profile only to see what is already on their Elsewhere profile, so you can offer something new or better rather than repeating it. If both have something, say briefly which you are using and why. Write in their own voice: what they did and what happened. Never invent experience, employers, names, numbers or dates; if a detail is missing, ask them, and if they don\'t know yet, leave a short gap in square brackets for them to fill in, like [Add what changed]. Show them the draft and get their OK before calling save_draft_answer. Drafts are not sent: the person checks and sends them in Elsewhere. Do not include anyone else\'s personal details.';
+const CHECKLIST_HOW = 'How to fill it in: answer every question you can from what you genuinely remember about this person, in their own voice, without inventing anything. Then ask them, briefly and in batches, about the ones you don\'t know (they can type or talk). Leave a question out rather than guess. Save with save_onboarding_answers (several at a time is fine) and tell them to check and approve everything in Elsewhere.';
 const MEMORY_FIRST = 'How to help: first check what you remember about this person from earlier chats and use the best real example you know. Use get_my_profile only to avoid repeating what is already on their profile. Ask them for any missing detail (or leave a gap like [Add the result]), show the draft, and save it only once they say OK.';
 
 type Tool = { name: string; description: string; scope: string; inputSchema: Record<string, unknown>; annotations: Record<string, unknown> };
 const TOOLS: Tool[] = [
   { name: 'get_my_unanswered_questions', scope: 'questions:read', description: 'List the questions this person has not answered yet in Elsewhere, with any draft already saved for each.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, title: 'My unanswered questions' } },
   { name: 'get_my_profile', scope: 'profile:read', description: 'Get what is already on this person\'s Elsewhere profile (approved examples and job preferences). Use it to avoid repeating them; prefer a new or better example you know from your own memory of this person.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, title: 'My profile' } },
+  { name: 'get_my_onboarding_checklist', scope: 'questions:read', description: 'Get this person\'s Elsewhere onboarding checklist: about 50 questions in sections, with any answer already saved and whether they have approved it. Use it to fill in the whole checklist in one go on their first day.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, title: 'My onboarding checklist' } },
+  { name: 'save_onboarding_answers', scope: 'drafts:write', description: `Save draft answers to the onboarding checklist, many at once. Each item is a question key from get_my_onboarding_checklist and the answer in the person's own words (up to ${MAX_ONBOARDING_ANSWER} characters). Nothing is sent to employers: the person checks and approves each answer in Elsewhere. Answers they already approved are never overwritten.`, inputSchema: { type: 'object', properties: { answers: { type: 'array', minItems: 1, maxItems: 60, items: { type: 'object', properties: { key: { type: 'string' }, answer: { type: 'string' } }, required: ['key', 'answer'], additionalProperties: false } } }, required: ['answers'], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, title: 'Save onboarding answers' } },
   { name: 'save_draft_answer', scope: 'drafts:write', description: 'Save a draft answer to one unanswered question. It is NOT sent: the person reviews it and presses Send in Elsewhere. Saving again replaces the previous draft for that question.', inputSchema: { type: 'object', properties: { question_id: { type: 'string', description: 'The id from get_my_unanswered_questions' }, answer: { type: 'string', description: `The answer, in the person's own words, up to ${prototype.maxAnswerChars} characters.` } }, required: ['question_id', 'answer'], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, title: 'Save a draft answer' } },
 ];
 
@@ -89,6 +94,17 @@ export async function handleRpc(msg: Rpc, auth: { base: BaseCtx; grantId: string
         if (tool.name === 'get_my_unanswered_questions') {
           const qs = await unanswered(ctx);
           return text(qs.length ? `${qs.length} unanswered question${qs.length === 1 ? '' : 's'}.\n${JSON.stringify(qs, null, 2)}\n\n${MEMORY_FIRST}` : 'No unanswered questions right now. They can start a check-in in Elsewhere to get a new question.', { questions: qs });
+        }
+        if (tool.name === 'get_my_onboarding_checklist') {
+          const v = await onboardingView(ctx);
+          const list = v.sections.map((sec) => ({ section: sec.title, questions: sec.questions.map((q) => ({ key: q.key, question: q.text, ...(q.hint ? { hint: q.hint } : {}), answer: q.answer, approved_by_them: q.approved })) }));
+          return text(`${v.answered} of ${v.total} answered, ${v.approved} approved by them.\n${JSON.stringify(list, null, 2)}\n\n${CHECKLIST_HOW}`, { answered: v.answered, total: v.total, sections: list });
+        }
+        if (tool.name === 'save_onboarding_answers') {
+          const items = Array.isArray(args.answers) ? (args.answers as unknown[]).slice(0, 60).map((a) => ({ key: String((a as { key?: unknown })?.key ?? ''), answer: String((a as { answer?: unknown })?.answer ?? '') })) : [];
+          if (!items.length) return text('No answers were given.', undefined, true);
+          const r = await saveAiAnswers(ctx, auth.provider ?? 'your AI', items);
+          return text(`Saved ${r.saved.length} draft answer${r.saved.length === 1 ? '' : 's'}. Nothing has been sent: ask them to open Elsewhere, check each answer and approve it.${r.skipped.length ? ` Skipped: ${r.skipped.map((x) => `${x.key} (${x.reason})`).join(', ')}.` : ''}`, r);
         }
         if (tool.name === 'get_my_profile') { const p = await profile(ctx); return text(`Already on their Elsewhere profile (avoid repeating these; a new or better example from what you remember about them is more useful):\n${JSON.stringify(p, null, 2)}`, p); }
         return saveDraft(ctx, args, auth.provider ?? 'your AI');

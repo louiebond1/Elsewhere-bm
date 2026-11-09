@@ -1,6 +1,6 @@
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import * as argon2 from 'argon2';
-import { users, candidates, candidateIdentity, consentEvents, candidateBlocks, organisations, organisationAliases, evidenceItems, introductions, identityGrants, sessions, screenings, matches, pipelineEntries, checkInAnswers, conversations, files, profileVersions, aiRuns, jobs, hires } from '../db/schema';
+import { users, candidates, candidateIdentity, consentEvents, candidateBlocks, organisations, organisationAliases, evidenceItems, introductions, identityGrants, sessions, screenings, matches, pipelineEntries, checkInAnswers, onboardingAnswers, conversations, files, profileVersions, aiRuns, jobs, hires } from '../db/schema';
 import { AppError, conflict, invalid, notFound } from '../lib/errors';
 import { lockCandidates, requireUser, type Ctx } from './context';
 import { logActivity, notify, consultantUserIds } from './audit';
@@ -35,6 +35,9 @@ export async function signupCandidate(ctx: Ctx, raw: unknown) {
   const consent = (kind: 'terms' | 'ai_processing' | 'discovery' | 'aggregate_insights', granted: boolean) => ({ datasetId: ctx.datasetId, candidateId: cand.id, kind, granted, termsVersion: TERMS_VERSION, actorUserId: user.id, eventAt: ctx.now });
   await ctx.tx.insert(consentEvents).values([consent('terms', true), consent('ai_processing', true), consent('discovery', input.wantsDiscovery), consent('aggregate_insights', input.aggregateInsights)]);
   await logActivity(ctx, { subjectType: 'candidate', subjectId: cand.id, action: 'candidate.signed_up' });
+  // The welcome email: recorded in the outbox (the demo sends nothing unless email is set up and allowed).
+  const { queueEmails } = await import('../email');
+  await queueEmails(ctx, [user.id], { type: 'welcome', safeTitle: 'Welcome to BondMoran Elsewhere' }, '/candidate/welcome');
   return { user, candidate: cand, wantsDiscovery: input.wantsDiscovery };
 }
 
@@ -290,6 +293,7 @@ export async function purgeCandidate(ctx: Ctx, candidateId: string) {
   await ctx.tx.update(candidates).set({ latestProfileVersionId: null }).where(eq(candidates.id, candidateId));
   await ctx.tx.delete(profileVersions).where(eq(profileVersions.candidateId, candidateId));
   await ctx.tx.delete(checkInAnswers).where(eq(checkInAnswers.candidateId, candidateId));
+  await ctx.tx.delete(onboardingAnswers).where(eq(onboardingAnswers.candidateId, candidateId));
   await ctx.tx.delete(conversations).where(eq(conversations.candidateId, candidateId));
   await ctx.tx.delete(candidateIdentity).where(eq(candidateIdentity.candidateId, candidateId));
   await ctx.tx.delete(candidateBlocks).where(eq(candidateBlocks.candidateId, candidateId));

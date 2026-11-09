@@ -72,7 +72,7 @@ export const hireStatus = pgEnum('hire_status', ['confirmed', 'started', 'left']
 export const replacementEligibility = pgEnum('replacement_eligibility', ['eligible', 'outside_window', 'already_used', 'pending_review']);
 export const replacementStatus = pgEnum('replacement_status', ['requested', 'approved', 'declined', 'fulfilled']);
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
-export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system']);
+export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system', 'welcome']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
 export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews']);
 export const hiringConversationStatus = pgEnum('hiring_conversation_status', ['active', 'saved', 'abandoned']);
@@ -286,6 +286,18 @@ export const checkInAnswers = pgTable('check_in_answers', {
   submittedAt: ts('submitted_at'),
   replacesAnswerId: uuid('replaces_answer_id'),
 }, (t) => [index('answers_cand_idx').on(t.candidateId, t.submittedAt), uniqueIndex('one_submitted_answer').on(t.questionId).where(sql`status = 'submitted'`)]);
+
+/** The onboarding checklist: one answer per question per candidate. Drafts come from their own AI or from them; they approve each. */
+export const onboardingAnswers = pgTable('onboarding_answers', {
+  ...common(),
+  candidateId: uuid('candidate_id').notNull().references(() => candidates.id, { onDelete: 'cascade' }),
+  questionKey: text('question_key').notNull(),
+  answer: text('answer').notNull(),
+  source: text('source').notNull(),
+  aiProvider: text('ai_provider'),
+  status: text('status').notNull().default('draft'),
+  approvedAt: ts('approved_at'),
+}, (t) => [uniqueIndex('onboarding_answer_once').on(t.candidateId, t.questionKey)]);
 
 export const evidenceItems = pgTable('evidence_items', {
   ...common(),
