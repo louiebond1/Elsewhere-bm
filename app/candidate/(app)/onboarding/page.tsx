@@ -4,7 +4,11 @@ import { onboardingView } from '@/server/services/onboarding';
 import { connectedAi } from '@/server/connectors/drafts';
 import { issuer } from '@/server/connectors/oauth';
 import { cx } from '@/components/ui';
-import { ChecklistAi, ApproveAll, Extras, QuestionDeck, AlwaysOn, Question, AddSomething } from '@/components/onboarding-doc';
+import Image from 'next/image';
+import { MapPin, Briefcase, Trophy, Wrench, Users, Target, FileText, MoreHorizontal, LayoutGrid } from 'lucide-react';
+import { ApproveAll, Extras, QuestionDeck, AddSomething, ConnectBanner, AlwaysOnRow, KnowsCard } from '@/components/onboarding-doc';
+
+const AREA_ICONS: Record<string, typeof MapPin> = { all: LayoutGrid, now: MapPin, experience: Briefcase, examples: Trophy, skills: Wrench, style: Users, next: Target, practical: FileText, extras: MoreHorizontal };
 
 export const dynamic = 'force-dynamic';
 const PAGE = 12;
@@ -34,19 +38,6 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
       </div>
     </div>
   );
-  const ai = (
-    <>
-      <div className="mt-6"><ChecklistAi connected={connected} connectorUrl={`${issuer()}/mcp`} autoOpen={sp.ai === '1'} waiting={v.answered < v.total || v.toCheck > 0} /></div>
-      {connected && <div className="mt-3"><AlwaysOn provider={connected} /></div>}
-      {v.toCheck > 0 && (
-        <div className="mt-4 flex flex-col gap-3 rounded-3xl bg-warning-tint px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[17px]"><span className="font-semibold">Your AI wrote {v.toCheck} new thing{v.toCheck > 1 ? 's' : ''}.</span> Have a look, or if you trust it:</p>
-          <ApproveAll count={v.toCheck} />
-        </div>
-      )}
-    </>
-  );
-
   if (typing) {
     // The question-by-question view, for people who'd rather type.
     const tiles = [...v.sections.map((s) => ({ key: s.key, title: s.title, total: s.questions.length, answered: s.questions.filter((q) => q.answer).length, checked: s.questions.filter((q) => q.approved).length })), { key: 'extras', title: 'Extras', total: 0, answered: v.extras.length, checked: v.extras.filter((e) => e.approved).length }];
@@ -69,52 +60,83 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
     );
   }
 
-  // Default: what it knows. Area chips show coverage and filter the feed.
-  const areas = [...v.sections.map((s) => ({ key: s.key, title: s.title, have: s.questions.filter((q) => q.answer).length, of: s.questions.length })), { key: 'extras', title: 'Extras', have: v.extras.length, of: 0 }];
-  const area = areas.find((a) => a.key === sp.a)?.key ?? null;
-  const shown = v.feed.filter((f) => !area || f.areaKey === area);
+  // Default: what it knows. "Anything else" sits with Extras.
+  const areaKeyOf = (k: string) => (k === 'more' ? 'extras' : k);
+  const areas = [
+    { key: 'all', title: 'Everything', have: 1, of: 1 },
+    ...v.sections.filter((s) => s.key !== 'more').map((s) => ({ key: s.key, title: s.title, have: s.questions.filter((q) => q.answer).length, of: s.questions.length })),
+    { key: 'extras', title: 'Extras', have: v.extras.length + (v.sections.find((s) => s.key === 'more')?.questions.filter((q) => q.answer).length ?? 0), of: 0 },
+  ];
+  const area = areas.find((a) => a.key === sp.a && a.key !== 'all')?.key ?? null;
+  const shown = v.feed.filter((f) => !area || areaKeyOf(f.areaKey) === area);
   const n = Math.max(PAGE, Number(sp.n) || PAGE);
   const href = (q: Record<string, string | null>) => `/candidate/onboarding?${new URLSearchParams(Object.entries(q).filter(([, x]) => x) as [string, string][]).toString()}`;
   return (
-    <div className="mx-auto max-w-[1080px]">
-      {header}
-      {ai}
-      <section aria-labelledby="knows" className="mt-8">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 id="knows">What your mini-me knows</h2>
-          <Link href="/candidate/onboarding?mode=type" className="text-[16px]">Prefer to type? Answer some yourself</Link>
+    <div>
+      <section className="relative left-1/2 -mt-4 w-screen -translate-x-1/2 overflow-hidden lg:-mt-6">
+        <Image src="/images/mini-me-hills.webp" alt="" fill priority sizes="100vw" className="object-cover object-right" />
+        <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,rgb(10_30_20/0.72)_0%,rgb(10_30_20/0.45)_45%,rgb(10_30_20/0.1)_100%)]" />
+        <div className="relative mx-auto flex max-w-[1320px] flex-col gap-6 px-5 pb-24 pt-10 text-white lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:pb-28 lg:pt-14">
+          <div>
+            <h1 className="text-[44px] leading-[1.05] text-white lg:text-[64px]">Your mini-me</h1>
+            <p className="mt-3 max-w-[46ch] text-[17px] text-white/90 lg:text-[19px]">The more it knows, the better your interviews go. Your name stays hidden until you say yes.</p>
+          </div>
+          <div className="flex items-center gap-5">
+            <div className="relative h-24 w-24 shrink-0" aria-hidden>
+              <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90"><circle cx="18" cy="18" r="15.5" fill="none" stroke="rgb(255 255 255 / 0.25)" strokeWidth="3" /><circle cx="18" cy="18" r="15.5" fill="none" stroke="#9FD3AE" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${pct * 0.974} 100`} /></svg>
+              <span className="tnum absolute inset-0 flex items-center justify-center font-display text-[22px] font-semibold">{pct}%</span>
+            </div>
+            <span aria-hidden className="h-14 w-px bg-white/30" />
+            <p className="text-[16px] leading-snug"><span className="block font-display text-[22px] font-semibold">Profile complete</span><span className="text-white/85">{v.feed.length} thing{v.feed.length === 1 ? '' : 's'} learned</span></p>
+          </div>
         </div>
-        <nav aria-label="Areas" className="shelf -mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
-          <Link href={href({})} aria-current={!area ? 'true' : undefined} className={cx('shrink-0 rounded-full px-4 py-2 text-[15px] font-semibold no-underline', !area ? 'bg-primary text-white' : 'bg-surface text-ink')}>Everything</Link>
+      </section>
+
+      <div className="relative mx-auto -mt-16 max-w-[1240px] space-y-4 lg:-mt-20">
+        <ConnectBanner connected={connected} connectorUrl={`${issuer()}/mcp`} autoOpen={sp.ai === '1'} waiting={v.answered < v.total || v.toCheck > 0} />
+        <AlwaysOnRow provider={connected} />
+        {v.toCheck > 0 && (
+          <div className="flex flex-col gap-3 rounded-3xl bg-warning-tint px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[17px]"><span className="font-display text-[19px] font-semibold">Your AI wrote {v.toCheck} new thing{v.toCheck > 1 ? 's' : ''}.</span> Have a look, or if you trust it:</p>
+            <ApproveAll count={v.toCheck} />
+          </div>
+        )}
+
+        <nav aria-label="Areas" className="shelf -mx-5 flex gap-3 overflow-x-auto px-5 pb-2 pt-2 lg:mx-0 lg:grid lg:grid-cols-9 lg:overflow-visible lg:px-0">
           {areas.map((a) => {
-            const dots = a.of ? Math.round((a.have / a.of) * 4) : Math.min(4, a.have);
+            const on = (a.key === 'all' && !area) || a.key === area;
+            const Icon = AREA_ICONS[a.key] ?? MoreHorizontal;
+            const dots = a.key === 'all' ? 4 : a.of ? Math.round((a.have / a.of) * 4) : Math.min(4, a.have);
             return (
-              <Link key={a.key} href={href({ a: a.key })} aria-current={area === a.key ? 'true' : undefined} className={cx('flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[15px] no-underline', area === a.key ? 'bg-primary text-white' : 'bg-surface text-ink')}>
-                {a.title}<span aria-label={a.of ? `${a.have} of ${a.of} covered` : `${a.have} shared`} className="flex gap-0.5">{[0, 1, 2, 3].map((i) => <span key={i} className={cx('h-1.5 w-1.5 rounded-full', i < dots ? (area === a.key ? 'bg-white' : 'bg-primary') : (area === a.key ? 'bg-white/35' : 'bg-line'))} />)}</span>
+              <Link key={a.key} href={a.key === 'all' ? href({}) : href({ a: a.key })} aria-current={on ? 'true' : undefined} className={cx('press flex min-h-[92px] w-[132px] shrink-0 flex-col justify-between rounded-2xl p-3 no-underline lg:w-auto', on ? 'bg-primary text-white' : 'bg-surface text-ink shadow-[0_2px_10px_rgb(18_37_29/0.06)] hover:bg-white')}>
+                <span className="flex items-start gap-2"><Icon aria-hidden size={20} strokeWidth={1.7} className="mt-0.5 shrink-0" /><span className="text-[14px] font-semibold leading-tight">{a.title}</span></span>
+                <span aria-label={a.key === 'all' ? undefined : a.of ? `${a.have} of ${a.of} covered` : `${a.have} shared`} className="flex gap-1">{[0, 1, 2, 3].map((i) => <span key={i} className={cx('h-1.5 w-1.5 rounded-full', i < dots ? (on ? 'bg-white' : 'bg-primary') : (on ? 'bg-white/35' : 'bg-line'))} />)}</span>
               </Link>
             );
           })}
         </nav>
-        {shown.length === 0 ? (
-          <div className="mt-5 rounded-3xl bg-surface p-8 text-center shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
-            <p className="font-display text-[22px] font-semibold">Nothing here yet</p>
-            <p className="mt-2 text-[16px] text-muted">{connected ? `Say “Let’s build up my Elsewhere profile” to your ${connected} and chat. What it learns appears here.` : 'Connect your ChatGPT or Claude above, or add something yourself.'}</p>
+
+        <section aria-labelledby="knows" className="pt-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="knows" className="text-[30px] leading-9 lg:text-[36px] lg:leading-[44px]">What your mini-me knows</h2>
+            <Link href="/candidate/onboarding?mode=type" className="text-[16px] font-semibold underline underline-offset-2">Prefer to type? Answer some yourself</Link>
           </div>
-        ) : (
-          <ul className="mt-5 grid gap-4 lg:grid-cols-2">
-            {shown.slice(0, n).map((f, i) => (
-              <li key={f.key} style={{ animationDelay: `${Math.min(i, 6) * 30}ms` }} className="rise-in rounded-3xl bg-surface px-6 shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
-                <p className="pt-5 text-[13px] font-semibold uppercase tracking-wide text-muted">{f.area}</p>
-                <ul className="-mt-4"><Question q={f} /></ul>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          {shown.length > n && <Link href={href({ a: area, n: String(n + PAGE) })} className="text-[16px] font-semibold">Show more ({shown.length - n})</Link>}
-          <AddSomething />
-        </div>
-      </section>
+          {shown.length === 0 ? (
+            <div className="mt-5 rounded-3xl bg-surface p-8 text-center shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
+              <p className="font-display text-[22px] font-semibold">Nothing here yet</p>
+              <p className="mt-2 text-[16px] text-muted">{connected ? `Say “Let’s build up my Elsewhere profile” to your ${connected} and just chat. What it learns appears here.` : 'Connect your ChatGPT or Claude above, or add something yourself.'}</p>
+            </div>
+          ) : (
+            <ul className="mt-5 grid gap-4 lg:grid-cols-2">
+              {shown.slice(0, n).map((f) => <li key={f.key + (f.answer ?? '') + f.approved}><KnowsCard q={f} area={f.area === 'Anything else' ? 'Extras' : f.area} /></li>)}
+            </ul>
+          )}
+          <div className="mt-6 flex flex-col items-center gap-3">
+            {shown.length > n && <Link href={href({ a: area, n: String(n + PAGE) })} className="text-[16px] font-semibold">Show more ({shown.length - n})</Link>}
+            <AddSomething />
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

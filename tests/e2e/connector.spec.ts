@@ -135,5 +135,5 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();
   await page.getByRole('button', { name: 'All good: approve 2' }).click();
   await expect(page.getByText('Your AI wrote 2 new things.')).toHaveCount(0);
-  await expect(page.getByText('Knows you 6%')).toBeVisible();
+  await expect(page.getByText('6%', { exact: true })).toBeVisible();
 });
