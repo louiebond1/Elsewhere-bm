@@ -11,7 +11,7 @@ import { AI_APPS } from '@/lib/ai-connect';
 type Q = { key: string; text: string; hint: string | null; answer: string | null; source: 'ai' | 'self' | null; provider: string | null; approved: boolean };
 type Section = { key: string; title: string; questions: Q[] };
 
-export const CHECKLIST_PROMPT = 'Help me build my Elsewhere mini-me. Fill in everything you genuinely know about me, ask me about anything you don’t, then save it.';
+export const CHECKLIST_PROMPT = 'Mock-interview me for my Elsewhere mini-me. Fill in what you already know about me, then ask me the rest one question at a time like a friendly interviewer, and save my answers in batches as we go.';
 
 /** Ask their AI to fill in the checklist, or connect it first. Refreshes while answers arrive. */
 export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waiting }: { connected: string | null; connectorUrl: string; autoOpen: boolean; waiting: boolean }) {
@@ -32,7 +32,7 @@ export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waitin
   );
   return (
     <section aria-label="Let your AI fill it in" className="flex flex-col gap-3 rounded-3xl bg-surface p-4 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:flex-row lg:items-center lg:gap-5 lg:p-5">
-      <p className="text-[16px] lg:w-[250px] lg:shrink-0"><span className="block font-semibold">Let your {connected} do the talking</span><span className="text-muted">Paste this into <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">{connected}</a>. It asks follow-ups too.</span></p>
+      <p className="text-[16px] lg:w-[250px] lg:shrink-0"><span className="block font-semibold">Let your {connected} do the talking</span><span className="text-muted">Paste this into <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">{connected}</a>. It interviews you like a friendly chat, so you can do it by voice. Answers save in batches.</span></p>
       <div className="min-w-0 flex-1"><CopyBox text={CHECKLIST_PROMPT} label="Message for your AI" /></div>
     </section>
   );

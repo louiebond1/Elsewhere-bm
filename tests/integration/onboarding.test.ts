@@ -40,6 +40,9 @@ describe('candidate onboarding: welcome email and the 50-question checklist', ()
     const tok = await token(w, 'C01');
     const list = await call(tok, 'get_my_onboarding_checklist');
     expect(list.result.structuredContent).toMatchObject({ total: ONBOARDING_QUESTIONS.length, answered: 0 });
+    // Their AI is told to run it as a friendly mock interview and save in batches, not one by one.
+    expect(list.result.content[0].text).toMatch(/mock interview/);
+    expect(list.result.content[0].text).toMatch(/in batches/);
     expect(ONBOARDING_QUESTIONS.length).toBe(50);
     const saved = await call(tok, 'save_onboarding_answers', { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations, Excel, staying calm' }, { key: 'made_up', answer: 'x' }, { key: 'salary', answer: '' }] });
     expect(saved.result.isError).toBeUndefined();

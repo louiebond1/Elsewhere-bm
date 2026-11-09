@@ -12,7 +12,7 @@ export default async function Welcome() {
   const first = (self.identity?.fullName ?? '').split(' ')[0] || 'there';
   const steps = [
     { title: 'The basics', body: 'Name, email, where you are and what you’re after. Done.', done: true },
-    { title: 'Let your ChatGPT spill the beans', body: 'No one knows you better than your ChatGPT (not even your mum). Connect it and it builds your mini-me in minutes. Anything it doesn’t know, it just asks you.', done: false },
+    { title: 'Let your ChatGPT spill the beans', body: 'No one knows you better than your ChatGPT (not even your mum). Connect it and it gives you a quick, friendly mock interview (voice works too) and builds your mini-me as you chat.', done: false },
     { title: 'Give it a once-over', body: 'Read what it wrote, tweak anything that’s not quite you, and approve it. Nothing goes anywhere until you do.', done: false },
   ];
   return (
