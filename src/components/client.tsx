@@ -99,8 +99,8 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 md:items-center md:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] bg-surface px-6 pb-7 pt-7 shadow-2xl md:max-w-[520px] md:rounded-[28px]">
+    <div className="backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-[rgb(9_23_16/0.32)] p-0 backdrop-blur-[6px] md:items-center md:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="sheet-in relative max-h-[90dvh] w-full overflow-y-auto rounded-t-[32px] bg-surface px-6 pb-[max(28px,env(safe-area-inset-bottom))] pt-7 shadow-[0_24px_64px_rgb(18_37_29/0.2)] md:max-w-[520px] md:rounded-[28px]">
         <h2 className="mb-2 pr-10">{title}</h2>
         {children}
         <button type="button" aria-label="Close" onClick={onClose} className="absolute right-4 top-5 flex h-11 w-11 items-center justify-center rounded-full text-[26px] leading-none text-ink hover:bg-page">&times;</button>
@@ -181,8 +181,8 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   );
 }
 
-export const inputClass = 'h-12 w-full rounded-xl border border-line bg-surface px-4 text-[16px] placeholder:text-muted/80';
-export const textareaClass = 'w-full rounded-2xl border border-line bg-surface px-4 py-3 text-[17px] leading-relaxed placeholder:text-muted/80';
+export const inputClass = 'h-12 w-full rounded-xl border border-control/60 bg-surface px-4 text-[17px] placeholder:text-muted/80 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30';
+export const textareaClass = 'w-full rounded-[28px] bg-surface p-6 text-[17px] leading-[26px] shadow-[0_12px_32px_rgb(18_37_29/0.09)] placeholder:text-muted/80 focus:outline-none focus:ring-2 focus:ring-primary';
 
 /** Polls a job until it finishes, then refreshes the page. */
 export function JobPoller({ jobId, pendingText = 'Building your profile', failText }: { jobId: string; pendingText?: string; failText?: string }) {

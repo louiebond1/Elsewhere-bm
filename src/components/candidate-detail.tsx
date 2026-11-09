@@ -3,7 +3,9 @@ import type { Ctx } from '../server/services/context';
 import { candidateOnRole, simulationForCandidate } from '../server/views/client';
 import { roleCharges } from '../server/services/roles';
 import { PageHeader, Card, Badge, Notice, LinkButton, Tabs } from './ui';
-import { LevelBadge, fitLabel } from './role';
+import { LevelBadge, fitLabel, personName } from './role';
+import { FoldArt } from './fold-art';
+import { paletteFor, variantFor } from '../lib/codename';
 import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
@@ -13,10 +15,24 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
   const here = `${base}/roles/${roleId}/candidates/${candidateRef}`;
   const section = view === 'interview' && sim ? 'interview' : view === 'evidence' ? 'evidence' : 'overview';
   const ch = await roleCharges(ctx, roleId);
-  const name = dto.identity ? dto.identity.fullName : dto.safeHeadline;
+  const name = personName(dto);
   return (
     <>
-      <PageHeader back={{ href: `${base}/roles/${roleId}`, label: role.title }} title={name} subtitle={<span className="flex flex-wrap gap-2">{dto.identity ? dto.safeHeadline : 'Name hidden until they agree to meet you'} {dto.confidence && <Badge tone={dto.confidence === 'low' ? 'warning' : 'success'}>{dto.confidence === 'low' ? 'Little evidence so far' : 'Good evidence'}</Badge>}{dto.needsClarification && <Badge tone="warning">{dto.needsClarification}</Badge>}</span>} />
+      <PageHeader title="" back={{ href: `${base}/roles/${roleId}`, label: role.title }} />
+      <section className="mb-8 grid gap-6 lg:grid-cols-[440px_1fr] lg:items-end lg:gap-10">
+        <FoldArt id={`hero-${candidateRef}`} palette={paletteFor(dto.roleScopedReference)} variant={variantFor(dto.roleScopedReference)} className="aspect-[16/10] w-full rounded-3xl shadow-[0_8px_24px_rgb(18_37_29/0.08)]" />
+        <div>
+          <p className="font-display text-[22px] font-semibold tracking-[-0.02em] text-primary lg:text-[26px]">{name}</p>
+          <h1 className="mt-1 text-[30px] leading-[36px] lg:text-[40px] lg:leading-[46px]">{dto.safeHeadline}</h1>
+          <p className="mt-3 text-[17px] text-muted">{[dto.broadRegion, dto.workModes.join(', '), dto.experienceBand].filter(Boolean).join(' · ')}</p>
+          <p className="mt-3 flex flex-wrap gap-2">
+            {sim && <Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge>}
+            {!dto.identity && <Badge>Name hidden until they agree to meet you</Badge>}
+            {dto.confidence === 'low' && <Badge tone="warning">Little evidence so far</Badge>}
+            {dto.needsClarification && <Badge tone="warning">{dto.needsClarification}</Badge>}
+          </p>
+        </div>
+      </section>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
           <Tabs current={section} tabs={[{ key: 'overview', label: 'Overview', href: `${here}?view=overview` }, ...(sim ? [{ key: 'interview', label: 'Interview', href: `${here}?view=interview` }] : []), { key: 'evidence', label: 'Evidence', href: `${here}?view=evidence` }]} />

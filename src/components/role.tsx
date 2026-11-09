@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import type { RoleCharges } from '../server/services/roles';
 import type { AcceptedCandidateDTO } from '../server/dto/candidate';
+import { ChevronRight } from 'lucide-react';
 import { Badge, Card, KV, Avatar, cx } from './ui';
+import { FoldArt } from './fold-art';
+import { codename, paletteFor, variantFor } from '../lib/codename';
 import { credits, creditsLabel, gbp } from '../lib/format';
 
 const LEVEL: Record<string, { label: string; tone: 'success' | 'neutral' | 'warning' | 'danger' }> = {
@@ -129,19 +132,39 @@ export type SimCardView = { fitScore: number; summary: string; concerns: string[
 
 export const fitLabel = (s: number) => (s >= 75 ? { text: 'Great fit', tone: 'success' as const } : s >= 50 ? { text: 'Good fit', tone: 'success' as const } : { text: 'Possible fit', tone: 'neutral' as const });
 
-/** One compact row: rank, who they are, fit, one line. Tap to open. */
-export function PersonRow({ rank, m, sim, href }: { rank?: number; m: AcceptedCandidateDTO; sim?: SimCardView | null; href: string }) {
+/** The name to show: their real name once they've accepted, otherwise a friendly made-up one. */
+export const personName = (m: AcceptedCandidateDTO) => (m.identity ? m.identity.fullName : codename(m.roleScopedReference));
+
+/** One row: rank, artwork, name, one line of evidence, fit. Tap to open. */
+export function PersonRow({ rank, m, sim, href, index = 0 }: { rank?: number; m: AcceptedCandidateDTO; sim?: SimCardView | null; href: string; index?: number }) {
   const fit = sim ? fitLabel(sim.fitScore) : null;
   const status = m.introState === 'accepted' ? 'Agreed to meet you' : m.introState === 'pending' ? 'Asked to meet' : null;
   return (
-    <Link href={href} className="flex items-center gap-3 px-4 py-3 no-underline hover:bg-page">
-      {rank !== undefined && <span aria-label={`Number ${rank}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-[15px] font-semibold text-white">{rank}</span>}
+    <Link href={href} style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }} className="rise-in group flex min-h-[76px] items-center gap-4 rounded-3xl px-3 py-2.5 no-underline hover:bg-surface">
+      {rank !== undefined && <span aria-label={`Number ${rank}`} className="tnum flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E1E8C9] font-display text-[16px] font-semibold text-ink">{rank}</span>}
+      <FoldArt id={`row-${m.roleScopedReference}`} palette={paletteFor(m.roleScopedReference)} variant={variantFor(m.roleScopedReference)} className="h-14 w-14 shrink-0 rounded-2xl" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[16px] font-medium text-ink">{m.identity ? m.identity.fullName : m.safeHeadline}</span>
-        <span className="block truncate text-[14px] text-muted">{status ?? sim?.summary ?? (m.confidence === 'low' ? 'Not much known yet' : 'Has relevant examples')}</span>
+        <span className="block truncate font-display text-[19px] font-semibold tracking-[-0.02em] text-ink">{personName(m)}</span>
+        <span className="block truncate text-[15px] text-muted">{status ?? m.safeHeadline}</span>
       </span>
-      {fit && <Badge tone={fit.tone}>{fit.text}</Badge>}
-      <span aria-hidden className="text-[20px] text-muted">›</span>
+      {fit && <span className={cx('hidden whitespace-nowrap text-[14px] font-semibold sm:inline', fit.tone === 'success' ? 'text-primary' : 'text-muted')}>{fit.text}</span>}
+      <ChevronRight aria-hidden className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
+/** A big cover in the "Top picks" shelf: artwork edge to edge, name and line on a dark scrim. */
+export function PersonCover({ m, sim, href, index = 0 }: { m: AcceptedCandidateDTO; sim?: SimCardView | null; href: string; index?: number }) {
+  const fit = sim ? fitLabel(sim.fitScore) : null;
+  return (
+    <Link href={href} style={{ animationDelay: `${Math.min(index, 3) * 30}ms` }} className="rise-in lift relative block h-[300px] w-[min(76vw,300px)] shrink-0 overflow-hidden rounded-3xl no-underline shadow-[0_8px_24px_rgb(18_37_29/0.08)] lg:h-[340px] lg:w-[320px]">
+      <FoldArt id={`cover-${m.roleScopedReference}`} palette={paletteFor(m.roleScopedReference)} variant={variantFor(m.roleScopedReference)} className="absolute inset-0 h-full w-full" />
+      <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgb(10_36_25/0)_40%,rgb(10_36_25/0.55)_62%,rgb(10_36_25/0.92)_100%)]" />
+      <span className="absolute inset-x-0 bottom-0 p-5 text-white">
+        {fit && <span className="mb-2 inline-block rounded-full bg-white/15 px-3 py-1 text-[13px] font-semibold backdrop-blur-sm">{fit.text}</span>}
+        <span className="block font-display text-[26px] font-semibold leading-tight tracking-[-0.02em]">{personName(m)}</span>
+        <span className="mt-1 line-clamp-2 block text-[15px] leading-snug text-white/90">{m.safeHeadline}</span>
+      </span>
     </Link>
   );
 }

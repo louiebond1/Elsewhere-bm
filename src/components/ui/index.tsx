@@ -7,7 +7,7 @@ export function cx(...c: Array<string | false | null | undefined>) {
 
 export function Card({ children, className, title, action }: { children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode }) {
   return (
-    <section className={cx('rounded-2xl border border-line bg-surface p-5 md:p-6', className)}>
+    <section className={cx('rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)] md:p-6', className)}>
       {(title || action) && (
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           {title && <h3>{title}</h3>}
@@ -33,9 +33,9 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
 
 export const buttonClass = (variant: 'primary' | 'secondary' | 'danger' | 'ghost' = 'primary', full = false) =>
   cx(
-    'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-[16px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45',
-    variant === 'primary' && 'bg-primary text-white hover:bg-primary-hover',
-    variant === 'secondary' && 'border border-[#C9C8BF] bg-surface text-ink hover:bg-page',
+    'press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-[17px] font-semibold tracking-[-0.01em] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100',
+    variant === 'primary' && 'min-h-14 bg-primary text-white hover:bg-primary-hover active:bg-primary-pressed',
+    variant === 'secondary' && 'border border-control bg-transparent text-ink hover:bg-surface',
     variant === 'danger' && 'bg-danger text-white hover:opacity-90',
     variant === 'ghost' && 'text-link hover:bg-page',
     full && 'w-full',
@@ -54,7 +54,7 @@ export function PageHeader({ title, subtitle, actions, back }: { title: ReactNod
           {title && <h1>{title}</h1>}
           {subtitle && <p className="mt-2 text-[16px] text-muted">{subtitle}</p>}
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {actions && <div className="shelf -mx-5 flex w-[calc(100%+40px)] gap-2 overflow-x-auto px-5 pb-1 items-center [&_a]:shrink-0 [&_a]:whitespace-nowrap [&_button]:min-h-11 [&_button]:shrink-0 [&_button]:whitespace-nowrap [&_a]:min-h-11 sm:mx-0 sm:w-auto sm:flex-wrap sm:px-0">{actions}</div>}
       </div>}
     </div>
   );

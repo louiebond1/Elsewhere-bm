@@ -5,8 +5,8 @@ import * as S from '../server/db/schema';
 import { roleForActor, roleCharges, criteriaFor, openOrdinaryRoleCount } from '../server/services/roles';
 import { bestPeople, pipelineForRole, screeningsForRole, activityForRole } from '../server/views/client';
 import { activeContractForClient } from '../server/services/contracts';
-import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton } from './ui';
-import { SimplePrice, CompactPrice, PersonRow } from './role';
+import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton, cx } from './ui';
+import { SimplePrice, CompactPrice, PersonRow, PersonCover } from './role';
 import { FindingBest } from './finding-best';
 import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
 import { gbp, label, date, relative, creditsLabel } from '../lib/format';
@@ -77,23 +77,44 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
     const howMany = show === 5 || show === 20 ? show : 10;
     const { best, rest } = await bestPeople(ctx, roleId, howMany);
     const href = (ref: string) => `${base}/roles/${roleId}/candidates/${ref}`;
+    const top = best.slice(0, 3);
+    const couponsLeft = ch ? Math.max(0, prototype.includedScreenings - ch.screeningsUsed) : 0;
     body = (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h3 className="text-[22px]">Your best {best.length || howMany}</h3>
-            <p className="text-[15px] text-muted">Ranked by a quick simulated interview. Tap anyone to see more.</p>
-          </div>
-          <nav aria-label="How many to show" className="flex rounded-full border border-line bg-surface p-1 text-[14px]">
-            {[5, 10, 20].map((n) => <Link key={n} href={`${base}/roles/${roleId}?tab=matches&show=${n}`} aria-current={n === howMany ? 'true' : undefined} className={n === howMany ? 'rounded-full bg-primary px-3 py-1 text-white no-underline' : 'rounded-full px-3 py-1 text-ink no-underline hover:bg-page'}>{n}</Link>)}
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-[34px] leading-[38px] lg:text-[44px] lg:leading-[48px]">Your best people.</h2>
+          <nav aria-label="How many to show" className="flex rounded-2xl bg-surface p-1 shadow-[0_2px_8px_rgb(18_37_29/0.06)]">
+            {[5, 10, 20].map((n) => <Link key={n} href={`${base}/roles/${roleId}?tab=matches&show=${n}`} aria-current={n === howMany ? 'true' : undefined} className={cx('press tnum flex h-11 min-w-16 items-center justify-center rounded-xl px-4 font-display text-[17px] font-semibold no-underline', n === howMany ? 'bg-primary text-white' : 'text-ink hover:bg-page')}>{n}</Link>)}
           </nav>
         </div>
-        {role.status === 'open' && <FindingBest roleId={roleId} hasResults={best.length > 0} />}
-        {best.length > 0 && <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} /></li>)}</ul>}
+        {role.status === 'open' && <div className="mt-4"><FindingBest roleId={roleId} hasResults={best.length > 0} /></div>}
+        {top.length > 0 && (
+          <section aria-labelledby="top-picks" className="mt-8">
+            <h3 id="top-picks">Top picks</h3>
+            <div className="shelf -mx-5 mt-4 flex gap-4 overflow-x-auto px-5 pb-2 lg:mx-0 lg:px-0">
+              {top.map((b, i) => <PersonCover key={b.dto.roleScopedReference} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} index={i} />)}
+            </div>
+          </section>
+        )}
+        {best.length > 0 && (
+          <section aria-labelledby="ranked" className="mt-10">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 id="ranked">All {best.length}, ranked</h3>
+              <p className="text-[15px] text-muted">Ranked by a quick simulated interview.</p>
+            </div>
+            <ul className="-mx-3 mt-3">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} index={i} /></li>)}</ul>
+          </section>
+        )}
+        {role.status === 'open' && ch && (
+          <p className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-5 text-[16px]">
+            <span><span className="tnum font-semibold">{couponsLeft}</span> BondMoran screening coupon{couponsLeft === 1 ? '' : 's'} available</span>
+            <Link href={`${base}/roles/${roleId}?tab=screenings`}>How it works</Link>
+          </p>
+        )}
         {rest.length > 0 && (
-          <details className="rounded-2xl border border-line bg-surface">
-            <summary className="cursor-pointer px-4 py-3 text-[15px]">Everyone else who fits ({rest.length})</summary>
-            <ul className="divide-y divide-line border-t border-line">{rest.map((m) => <li key={m.roleScopedReference}><PersonRow m={m} href={href(m.roleScopedReference)} /></li>)}</ul>
+          <details className="mt-6 rounded-3xl bg-surface p-2">
+            <summary className="cursor-pointer px-3 py-3 font-display text-[18px] font-semibold">Everyone else who fits ({rest.length})</summary>
+            <ul className="pb-2">{rest.map((m, i) => <li key={m.roleScopedReference}><PersonRow m={m} href={href(m.roleScopedReference)} index={i} /></li>)}</ul>
           </details>
         )}
       </div>
@@ -151,7 +172,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
       <div className="mb-4 lg:hidden">{ch && <CompactPrice ch={ch} />}<details className="mt-2"><summary className="cursor-pointer text-[15px] text-link">What it costs</summary><div className="mt-2"><SimplePrice ch={ch!} replacementOf={replacementOf} /></div></details></div>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0"><Tabs current={tab} tabs={tabs} />{body}</div>
-        <aside className="hidden lg:block"><div className="sticky top-4"><SimplePrice ch={ch!} replacementOf={replacementOf} /></div></aside>
+        <aside className="hidden lg:block"><div className="sticky top-24"><SimplePrice ch={ch!} replacementOf={replacementOf} /></div></aside>
       </div>
     </>
   );

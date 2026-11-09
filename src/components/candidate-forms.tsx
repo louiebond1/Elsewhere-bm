@@ -65,7 +65,7 @@ export function Conversation({ conversationId, question, answered, canFinish, ai
         <p className="mt-3 text-[17px] text-muted">What did you do, and what changed?</p>
       </>)}
       <div className={reviewing ? 'hidden' : 'mt-6'}>
-        <textarea ref={box} className={textareaClass} rows={7} maxLength={4000} value={body} placeholder="Write your answer…" onChange={(e) => { setBody(e.target.value); if (fromAi) setEdited(true); }} aria-label="Your answer" />
+        <textarea ref={box} className={cx(textareaClass, "min-h-[220px]")} rows={7} maxLength={4000} value={body} placeholder="Write your answer…" onChange={(e) => { setBody(e.target.value); if (fromAi) setEdited(true); }} aria-label="Your answer" />
         <div className="mt-1 flex justify-between gap-2 text-[13px] text-muted"><span>{fromAi ? `Started with your ${fromAi}${edited ? ' · Edited by you' : ''} · Not sent` : ''}</span><span>{body.length} / 4000</span></div>
         {gaps && <p role="status" className="mt-2 rounded-xl bg-success-tint px-4 py-2 text-[15px] text-primary">Fill in the gaps in [square brackets] before sending.</p>}
       </div>
