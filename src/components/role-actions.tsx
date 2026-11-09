@@ -7,10 +7,10 @@ import { credits, gbp, creditsLabel } from '../lib/format';
 
 export function ActivateRole({ roleId, willBeExtra, depositUnits, depositPence, base }: { roleId: string; willBeExtra: boolean; depositUnits: string; depositPence: string; base: string }) {
   return (
-    <ActionButton path={`roles/${roleId}/activate`} body={{ confirmExtraDeposit: willBeExtra }} label="Activate role" redirect={`${base}/roles/${roleId}`}
+    <ActionButton path={`roles/${roleId}/activate`} body={{ confirmExtraDeposit: willBeExtra }} label="Make role live" redirect={`${base}/roles/${roleId}`}
       confirm={willBeExtra
-        ? { title: 'Activate extra role', confirmLabel: `Pay ${gbp(depositPence)} and activate`, body: <><p>This client already has its included open roles. This role is an extra role.</p><p className="font-semibold">{creditsLabel(depositUnits)} ({gbp(depositPence)}) will be charged now as this role&apos;s one deposit.</p><p>The deposit is allocated to this role&apos;s first hire. It is not charged again when the first introduction is accepted, and closing the role does not refund it.</p></> }
-        : { title: 'Activate role', confirmLabel: 'Activate', body: <><p>This role is inside your included open roles. Nothing is charged now.</p><p>The deposit of {creditsLabel(depositUnits)} ({gbp(depositPence)}) is reserved when you request the first introduction and charged when a candidate accepts.</p><p>The salary is locked for pricing once the role is active.</p></> }} />
+        ? { title: 'Make this extra role live', confirmLabel: `Pay ${gbp(depositPence)} and make it live`, body: <><p>This client already has its included open roles. This role is an extra role.</p><p className="font-semibold">{creditsLabel(depositUnits)} ({gbp(depositPence)}) will be charged now as this role&apos;s one deposit.</p><p>The deposit is allocated to this role&apos;s first hire. It is not charged again when the first introduction is accepted, and closing the role does not refund it.</p></> }
+        : { title: 'Make this role live', confirmLabel: 'Make it live', body: <><p>This role is inside your included open roles. Nothing is charged now.</p><p>The deposit of {creditsLabel(depositUnits)} ({gbp(depositPence)}) is reserved when you request the first introduction and charged when a candidate accepts.</p><p>The salary is locked for pricing once the role is live.</p></> }} />
   );
 }
 

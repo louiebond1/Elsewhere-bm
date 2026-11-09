@@ -36,6 +36,13 @@
       "when": 1794161112659,
       "tag": "0004_stage3_email",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794183781540,
+      "tag": "0005_hiring_assistant",
+      "breakpoints": true
     }
   ]
 }

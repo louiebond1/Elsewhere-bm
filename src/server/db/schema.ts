@@ -75,6 +75,7 @@ export const workCategory = pgEnum('work_category', ['training', 'screening', 's
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
 export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email']);
+export const hiringConversationStatus = pgEnum('hiring_conversation_status', ['active', 'saved', 'abandoned']);
 export const emailStatus = pgEnum('email_status', ['queued', 'recorded', 'sent', 'suppressed', 'failed']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
 export const aiOutcome = pgEnum('ai_outcome', ['succeeded', 'failed', 'refused', 'stale_discarded']);
@@ -634,6 +635,33 @@ export const idempotencyRecords = pgTable('idempotency_records', {
   state: idemState('state').notNull().default('processing'),
   expiresAt: ts('expires_at').notNull(),
 }, (t) => [uniqueIndex('idem_uq').on(t.datasetId, t.actorScope, t.endpoint, t.key)]);
+
+/**
+ * Hiring assistant conversation with one client user. Messages and the working understanding are stored
+ * so the conversation can resume; saving creates an ordinary draft role.
+ */
+export const hiringConversations = pgTable('hiring_conversations', {
+  ...common(),
+  clientId: uuid('client_id').notNull().references(() => clients.id),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: hiringConversationStatus('status').notNull().default('active'),
+  messages: jsonb('messages').notNull().default(sql`'[]'::jsonb`),
+  understanding: jsonb('understanding').notNull(),
+  lastAsked: text('last_asked'),
+  provider: text('provider').notNull(),
+  roleId: uuid('role_id').references(() => roles.id),
+}, (t) => [index('hiring_conv_user_idx').on(t.userId, t.status)]);
+
+/** What the assistant has learned about how one hiring manager hires. Plain-language facts the user can forget. */
+export const hiringManagerMemory = pgTable('hiring_manager_memory', {
+  ...common(),
+  clientId: uuid('client_id').notNull().references(() => clients.id),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  facts: jsonb('facts').notNull().default(sql`'[]'::jsonb`),
+  defaults: jsonb('defaults').notNull().default(sql`'{}'::jsonb`),
+  rolesCreated: integer('roles_created').notNull().default(0),
+  lastRoleTitle: text('last_role_title'),
+}, (t) => [uniqueIndex('hiring_memory_user_uq').on(t.datasetId, t.userId)]);
 
 /**
  * Email outbox. Holds no address and no personal data: the recipient is resolved from users at send time,

@@ -20,7 +20,7 @@ export const aiMode = (): 'fixture' | 'live' => (testProvider || process.env.AI_
 export const provider = (): AiProvider => testProvider ?? (aiMode() === 'live' ? anthropicProvider : fixtureProvider);
 export const providerLabel = () => (aiMode() === 'live' ? 'Live AI on fictional data' : 'Demo responses');
 
-const EST_OUTPUT: Record<string, number> = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500 };
+const EST_OUTPUT: Record<string, number> = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500 };
 
 /** Deployment-wide daily token admission. Uses the real UTC clock, survives demo resets. */
 async function reserve(task: string, inputChars: number): Promise<string | null> {
@@ -53,7 +53,7 @@ async function slot() {
 }
 function release() { inFlight--; waiters.shift()?.(); }
 
-export type RunMeta = { task: 'question' | 'extract' | 'feedback' | 'assess' | 'role'; datasetId?: string | null; userId?: string | null; candidateId?: string | null; roleId?: string | null; jobId?: string | null; input: unknown };
+export type RunMeta = { task: 'question' | 'extract' | 'feedback' | 'assess' | 'role' | 'hiring'; datasetId?: string | null; userId?: string | null; candidateId?: string | null; roleId?: string | null; jobId?: string | null; input: unknown };
 
 /** Runs an AI task outside any database transaction and records usage (never bodies). */
 export async function runAi<T>(meta: RunMeta, fn: (p: AiProvider) => Promise<AiResult<T>>): Promise<AiResult<T>> {

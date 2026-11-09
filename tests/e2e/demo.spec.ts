@@ -94,7 +94,7 @@ test('dialog keyboard support: Escape closes and focus returns @phone', async ({
 test('primary routes have no horizontal page scroll at phone width @phone', async ({ page }) => {
   await enterGate(page);
   await switchTo(page, 'Emma Stone');
-  for (const u of ['/client/home', '/client/roles', '/client/credits', '/client/credits/buy', '/client/hires', '/client/onboarding']) {
+  for (const u of ['/client/home', '/client/roles', '/client/credits', '/client/credits/buy', '/client/roles/new', '/client/hires', '/client/onboarding']) {
     await page.goto(u);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(over, u).toBeLessThanOrEqual(1);
@@ -163,12 +163,12 @@ test('B4: in the empty workspace the default contract start allows a role to be 
   await page.getByLabel(/^Outcomes/).fill('Produce reliable reporting');
   const labels = page.getByLabel('Label');
   for (const [i, l] of ['Reconciliations', 'Reporting', 'Learning'].entries()) await labels.nth(i).fill(l);
-  const tags = page.getByLabel('Evidence tags');
-  for (const [i, t] of ['reconciliations', 'reporting', 'learning'].entries()) await tags.nth(i).selectOption(t);
+  const skills = page.getByRole('group', { name: /Skills this covers/ });
+  for (const [i, t] of ['Reconciliations', 'Reporting', 'Learning quickly'].entries()) await skills.nth(i).getByText(t, { exact: true }).click();
   await page.getByRole('button', { name: 'Save draft' }).click();
   await page.waitForURL(/consultant\/roles\/[0-9a-f-]{36}/);
-  await page.getByRole('button', { name: 'Activate role' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Activate' }).click();
+  await page.getByRole('button', { name: 'Make role live' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Make it live' }).click();
   await expect(page.getByText('Open', { exact: true }).first()).toBeVisible();
 });
 
@@ -220,4 +220,42 @@ test('Guided walkthrough: gated, read-only, reachable from demo accounts, labels
   expect(await page.getByText('Explanation only, not performed').count()).toBeGreaterThan(0);
   const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(over).toBeLessThanOrEqual(1);
+});
+
+test('Hiring assistant: a client describes the role in conversation, taps quick answers, creates it and makes it live', async ({ page }) => {
+  await loadScenario(page, null);
+  await switchTo(page, 'Emma Stone');
+  await page.goto('/client/roles');
+  await page.getByRole('link', { name: /Add (a )?role/ }).first().click();
+  await expect(page).toHaveURL(/\/client\/roles\/new$/);
+  await expect(page.getByText(/Hi Emma, I'm your hiring assistant/)).toBeVisible();
+  await expect(page.getByText(/Demo mode: the assistant picks out key words/)).toBeVisible();
+  const box = page.getByLabel('Your answer');
+  const send = async (t: string) => { await box.fill(t); await box.press('Enter'); await expect(page.getByText(t, { exact: true }).last()).toBeVisible(); await expect(page.getByText('Your assistant is thinking…')).toHaveCount(0); };
+  await send('We need a finance assistant to help with payroll and reconciliations.');
+  await expect(page.getByText(/Job: Finance Assistant/)).toBeVisible();
+  await send('In six months they should run payroll on their own.');
+  await send('Reporting matters too, and Excel would be a bonus.');
+  await page.getByRole('button', { name: 'We will teach our systems' }).click();
+  await expect(page.getByText(/What is the salary/).last()).toBeVisible();
+  await send('38k');
+  await page.getByRole('button', { name: 'London', exact: true }).click();
+  await expect(page.getByText('How will they work?').last()).toBeVisible();
+  await page.getByRole('button', { name: 'Hybrid', exact: true }).click();
+  await expect(page.getByText(/That’s everything I need/)).toBeVisible();
+  const summary = page.getByRole('complementary');
+  await expect(summary.getByText('£38,000')).toBeVisible();
+  await expect(summary.getByText('Excel')).toBeVisible();
+  await expect(page.getByText(/criteri/i)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Create role' }).click();
+  await page.waitForURL(/\/client\/roles\/[0-9a-f-]{36}/);
+  await expect(page.getByText('Finance Assistant').first()).toBeVisible();
+  await expect(page.getByText('What matters')).toBeVisible();
+  await page.getByRole('button', { name: 'Make role live' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /make it live/i }).click();
+  await expect(page.getByText('Open', { exact: true }).first()).toBeVisible();
+  await page.goto('/client/roles/new');
+  await expect(page.getByText(/Welcome back, Emma/)).toBeVisible();
+  await page.getByText(/What I’ve learned about how you hire/).click();
+  await expect(page.getByText('Usually hires for hybrid roles in London')).toBeVisible();
 });

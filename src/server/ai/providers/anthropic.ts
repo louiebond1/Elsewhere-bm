@@ -3,11 +3,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
 import { prototype } from '../../../config/prototype';
-import { QUESTION_SYSTEM, EXTRACTION_SYSTEM, FEEDBACK_SYSTEM, MATCHING_SYSTEM, ROLE_SYSTEM } from '../prompts';
-import { questionOutput, extractionOutput, feedbackOutput, assessmentOutput, roleStructureOutput } from '../schemas';
+import { QUESTION_SYSTEM, EXTRACTION_SYSTEM, FEEDBACK_SYSTEM, MATCHING_SYSTEM, ROLE_SYSTEM, HIRING_SYSTEM } from '../prompts';
+import { questionOutput, extractionOutput, feedbackOutput, assessmentOutput, roleStructureOutput, hiringTurnOutput } from '../schemas';
 import { AiFailure, type AiProvider, type AiResult } from './types';
 
-const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500 } as const;
+const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500 } as const;
 
 let client: Anthropic | null = null;
 function c() {
@@ -61,4 +61,5 @@ export const anthropicProvider: AiProvider = {
   feedback: (i) => call('feedback', FEEDBACK_SYSTEM, wrap('approved_evidence', i.evidence), feedbackOutput),
   assessCriteria: (i, o) => call('assess', MATCHING_SYSTEM, `${wrap('role_criteria', i.criteria)}\n${wrap('approved_evidence', i.evidence)}`, assessmentOutput, o?.review ? reviewModel() : cheapModel()),
   structureRole: (i) => call('role', ROLE_SYSTEM, wrap('employer_brief', { title: i.title, brief: i.brief }), roleStructureOutput),
+  hiringTurn: (i) => call('hiring', HIRING_SYSTEM, `Missing, in order: ${i.missing.join(', ') || 'nothing'}\n${wrap('what_you_remember_about_this_manager', i.memory)}\n${wrap('current_understanding', i.understanding)}\n${wrap('conversation', i.messages.slice(-16))}`, hiringTurnOutput),
 };

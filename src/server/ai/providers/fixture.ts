@@ -67,6 +67,10 @@ export const fixtureProvider: AiProvider = {
     });
     return { provider: 'fixture', usage, output: { criteria } };
   },
+  async hiringTurn() {
+    // Demo mode never calls this: the hiring assistant uses the labelled keyword reader instead.
+    throw new AiFailure('not_supported', 'Demo responses: the hiring assistant uses keyword matching in demo mode.');
+  },
   async structureRole(i) {
     maybeFail('role');
     return { provider: 'fixture', usage, output: { outcomes: [firstSentence(i.brief) || i.title], teachableSkills: ['Our internal systems', 'Our reporting format'], criteria: [], warnings: ['Demo responses: the brief was not analysed. Write 3 to 6 criteria yourself.'] } };

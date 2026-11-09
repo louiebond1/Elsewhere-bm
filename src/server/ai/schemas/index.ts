@@ -40,3 +40,22 @@ export const roleStructureOutput = z.object({
   warnings: z.array(z.string().max(300)),
 });
 export type RoleStructureOutput = z.infer<typeof roleStructureOutput>;
+
+const hiringItem = z.object({ label: z.string().max(80), tags: z.array(z.enum(TAXONOMY)).min(1).max(8) });
+/** One hiring-assistant turn: the updated understanding, the next reply, and anything learned about the hiring manager. */
+export const hiringTurnOutput = z.object({
+  reply: z.string().max(1200),
+  understanding: z.object({
+    title: z.string().max(120).nullable(),
+    roleFamily: z.enum(['finance', 'operations', 'commercial']).nullable(),
+    salaryPounds: z.number().int().nullable(),
+    locationRegion: z.enum(['london', 'hertfordshire', 'manchester', 'remote_uk']).nullable(),
+    workMode: z.enum(['onsite', 'hybrid', 'remote']).nullable(),
+    outcomes: z.array(z.string().max(300)).max(6),
+    mustHaves: z.array(hiringItem).max(6),
+    niceToHaves: z.array(hiringItem).max(6),
+    teachable: z.array(z.string().max(120)).max(8),
+  }),
+  learned: z.array(z.string().max(200)).max(3),
+});
+export type HiringTurnOutput = z.infer<typeof hiringTurnOutput>;

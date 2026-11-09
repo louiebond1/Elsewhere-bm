@@ -46,9 +46,9 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card title="Draft brief">
             <p className="text-[15px]">{role.briefText || 'No brief yet.'}</p>
-            <h4 className="mt-3 font-semibold">Outcomes</h4><ul className="list-disc pl-5 text-[15px]">{role.outcomes.map((o) => <li key={o}>{o}</li>)}</ul>
-            <h4 className="mt-3 font-semibold">Criteria</h4><ul className="text-[15px]">{crit.map((c) => <li key={c.id}>{c.label} · {c.importance} · weight {c.weight}</li>)}</ul>
-            {crit.length < 3 && <Notice tone="warning">Approve 3 to 6 criteria before activating.</Notice>}
+            <h4 className="mt-3 font-semibold">What they should achieve</h4><ul className="list-disc pl-5 text-[15px]">{role.outcomes.map((o) => <li key={o}>{o}</li>)}</ul>
+            <h4 className="mt-3 font-semibold">What matters</h4><ul className="text-[15px]">{crit.map((c) => <li key={c.id}>{c.label} · {c.importance === 'essential' ? 'Must have' : 'Nice to have'}</li>)}</ul>
+            {crit.length < 3 && <Notice tone="warning">Add 3 to 6 things that matter before making this role live.</Notice>}
           </Card>
           <Card title="Your hire price">
             {q ? <><p className="text-[15px]">Total {Number(q.total) / 10000} credits / {gbp(q.totalPence)}. Deposit {Number(q.deposit) / 10000} credits / {gbp(q.depositPence)}.</p>
@@ -82,7 +82,7 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
     );
     body = (
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[14px] text-muted">Evidence is shown against each criterion. Unknown means not enough evidence yet, never a weak candidate.</p>{role.status === 'open' && <AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} />}</div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[14px] text-muted">Evidence is shown against each thing that matters. Unknown means not enough evidence yet, never a weak candidate.</p>{role.status === 'open' && <AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} />}</div>
         <section><h3 className="mb-3">Evidence-backed matches</h3>{strong.length ? <div className="space-y-3">{strong.map(card)}</div> : <Empty>No suitable profiles to show yet. Your consultant can review the brief.</Empty>}</section>
         <section><h3 className="mb-1">Worth a conversation</h3><p className="mb-3 text-[14px] text-muted">Little evidence so far, but relevant to this role. A conversation could show more.</p>{worth.length ? <div className="space-y-3">{worth.map(card)}</div> : <Empty>No low-information profiles for this role.</Empty>}</section>
       </div>

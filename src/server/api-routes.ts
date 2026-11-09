@@ -18,6 +18,7 @@ import * as convs from './services/conversations';
 import * as filesSvc from './services/files';
 import * as contracts from './services/contracts';
 import * as checkout from './services/checkout';
+import * as hiring from './services/hiring-assistant';
 import { enqueue } from './services/jobs';
 import { roleScopedRef } from './dto/refs';
 import { notify, logActivity, clientUserIds } from './services/audit';
@@ -262,6 +263,22 @@ export const ROUTES: R[] = [
       return { saved: true };
     });
   } },
+  // ---------- hiring assistant (client) ----------
+  { method: 'POST', path: 'client/hiring/message', types: ['client'], h: async ({ base, body, viewer }) => {
+    const b = parse(z.object({ conversationId: z.string().uuid().nullable().default(null), text: z.string().trim().min(1, 'Type a message').max(2000) }), body);
+    const p = await hiring.prepareTurn(readCtx(base), b.conversationId);
+    let r: hiring.TurnResult;
+    if (aiMode() === 'live') {
+      const input = hiring.liveInput(p, b.text);
+      const res = await runAi({ task: 'hiring', datasetId: base.datasetId, userId: viewer.actor.userId, input }, (pr) => pr.hiringTurn(input));
+      r = hiring.liveResult(p, res.output, res.provider);
+    } else r = hiring.demoTurn(p, b.text);
+    return T(base, (c) => hiring.commitTurn(c, p, b.text, r));
+  } },
+  { method: 'POST', path: 'client/hiring/:id/save', types: ['client'], h: async ({ base, p }) => ({ id: (await T(base, (c) => hiring.saveAsDraft(c, p.id))).id }) },
+  { method: 'POST', path: 'client/hiring/:id/start-over', types: ['client'], h: ({ base, p }) => T(base, (c) => hiring.startOver(c, p.id)) },
+  { method: 'POST', path: 'client/hiring/:id/remove', types: ['client'], h: ({ base, body, p }) => { const b = parse(z.object({ list: z.enum(['mustHaves', 'niceToHaves', 'outcomes', 'teachable']), index: z.number().int().min(0).max(10) }), body); return T(base, (c) => hiring.removeItem(c, p.id, b.list, b.index)); } },
+  { method: 'POST', path: 'client/hiring/forget', types: ['client'], h: ({ base, body }) => T(base, (c) => hiring.forgetFact(c, parse(z.object({ factId: z.string().uuid() }), body).factId)) },
   // ---------- demo checkout (no money is taken; no payment provider) ----------
   { method: 'POST', path: 'credits/checkout', types: ['client'], h: ({ req, base, body }) => { const b = parse(checkoutInput, body); return idempotent(req, base, 'credits/checkout', body, (c) => checkout.createCheckout(c, b).then((r) => ({ id: r.id })), unwrapRef); } },
   { method: 'POST', path: 'credits/checkout/:id/succeed', types: ['client'], h: ({ req, base, body, p }) => idempotent(req, base, `credits/checkout/${p.id}/succeed`, body, (c) => checkout.simulateSuccess(c, p.id).then((r) => ({ id: r.id })), unwrapRef) },
