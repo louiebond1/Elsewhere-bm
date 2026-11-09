@@ -82,7 +82,8 @@ export async function getConversation(ctx: Ctx, conversationId: string) {
 }
 
 /** Each Send saves the answer before the next question is requested. A retry never creates a second answer. */
-export async function submitAnswer(ctx: Ctx, conversationId: string, questionId: string, body: string) {
+/** usedDraft: the person put their AI's draft into the box (default true, for older callers). Only then is the answer labelled AI-assisted. */
+export async function submitAnswer(ctx: Ctx, conversationId: string, questionId: string, body: string, usedDraft = true) {
   if (!body.trim()) throw invalid('Write an answer or choose Skip question.');
   if (body.length > prototype.maxAnswerChars) throw invalid(`Answers can be up to ${prototype.maxAnswerChars} characters.`);
   const conv = await convForCandidate(ctx, conversationId, true);
@@ -98,7 +99,7 @@ export async function submitAnswer(ctx: Ctx, conversationId: string, questionId:
   // A draft saved by the candidate's own AI assistant: sending it (edited or not) keeps the AI-assisted label.
   const [draft] = await ctx.tx.select().from(checkInAnswers).where(and(eq(checkInAnswers.questionId, q.id), eq(checkInAnswers.status, 'draft')));
   if (draft) await ctx.tx.update(checkInAnswers).set({ status: 'withdrawn', updatedAt: new Date() }).where(and(eq(checkInAnswers.questionId, q.id), eq(checkInAnswers.status, 'draft')));
-  const [a] = await ctx.tx.insert(checkInAnswers).values({ datasetId: ctx.datasetId, questionId: q.id, candidateId: conv.candidateId, body, status: 'submitted', submittedAt: ctx.now, replacesAnswerId: existing?.id ?? null, ...(draft ? { inputMode: draft.inputMode, assistance: draft.assistance } : {}) }).returning();
+  const [a] = await ctx.tx.insert(checkInAnswers).values({ datasetId: ctx.datasetId, questionId: q.id, candidateId: conv.candidateId, body, status: 'submitted', submittedAt: ctx.now, replacesAnswerId: existing?.id ?? null, ...(draft && usedDraft ? { inputMode: draft.inputMode, assistance: draft.assistance, aiProvider: draft.aiProvider } : {}) }).returning();
   await ctx.tx.update(checkInQuestions).set({ state: 'answered', updatedAt: new Date() }).where(eq(checkInQuestions.id, q.id));
   const next = (await currentUnanswered(ctx, conv.id)) ?? (await addQuestion(ctx, conv));
   return { answer: a, next };

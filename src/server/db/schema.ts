@@ -281,6 +281,7 @@ export const checkInAnswers = pgTable('check_in_answers', {
   body: text('body').notNull(),
   inputMode: inputMode('input_mode').notNull().default('text'),
   assistance: assistance('assistance').notNull().default('not_declared'),
+  aiProvider: text('ai_provider'),
   status: answerStatus('status').notNull().default('submitted'),
   submittedAt: ts('submitted_at'),
   replacesAnswerId: uuid('replaces_answer_id'),

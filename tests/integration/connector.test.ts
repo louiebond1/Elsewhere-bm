@@ -8,6 +8,7 @@ import { readCtx } from '../../src/server/services/context';
 import { startConversation, getConversation, submitAnswer } from '../../src/server/services/conversations';
 import { registerClient, checkAuthorizeRequest, approve, tokenRequest, authenticate, disconnect, myConnections, redirectAllowed, authorizationServerMetadata } from '../../src/server/connectors/oauth';
 import { handleRpc } from '../../src/server/connectors/mcp';
+import { questionDraft, discardDraft, draftsWaiting, connectedAi } from '../../src/server/connectors/drafts';
 
 type W = Awaited<ReturnType<typeof load>>;
 const CLAUDE = 'https://claude.ai/api/mcp/auth_callback';
@@ -111,5 +112,29 @@ describe('AI assistant connector (Claude and ChatGPT)', () => {
     for (const c of conns) await w.T(w.cand('C01'), (x) => disconnect(x, c.id));
     expect(await authenticate(`Bearer ${tokens.access_token}`)).toBeNull();
     await expect(w.T(w.cand('C02'), (x) => disconnect(x, conns[0].id))).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('drafts record which AI made them, can be discarded, and writing your own answer is not labelled AI', async () => {
+    const w = await load();
+    const conv = await w.T(w.cand('C01'), (c) => startConversation(c, 'check_in')) as { id: string };
+    expect(await connectedAi(readCtx(w.cand('C01')))).toBeNull();
+    const { tokens } = await connect(w, 'C01');
+    expect(await connectedAi(readCtx(w.cand('C01')))).toBe('Claude');
+    const qs = (await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.structuredContent as { questions: { question_id: string }[] };
+    const qid = qs.questions[0].question_id;
+    await rpc(tokens.access_token, 'tools/call', { name: 'save_draft_answer', arguments: { question_id: qid, answer: 'Draft one.' } });
+    expect((await questionDraft(readCtx(w.cand('C01')), qid)).draft).toMatchObject({ body: 'Draft one.', provider: 'Claude' });
+    expect(await draftsWaiting(readCtx(w.cand('C01')))).toBe(1);
+    // Someone else cannot see or discard it.
+    await expect(questionDraft(readCtx(w.cand('C02')), qid)).rejects.toMatchObject({ status: 404 });
+    await expect(w.T(w.cand('C02'), (c) => discardDraft(c, qid))).rejects.toMatchObject({ status: 404 });
+    await w.T(w.cand('C01'), (c) => discardDraft(c, qid));
+    expect((await questionDraft(readCtx(w.cand('C01')), qid)).draft).toBeNull();
+    expect(await draftsWaiting(readCtx(w.cand('C01')))).toBe(0);
+    // A new draft arrives, but they write their own answer instead: not labelled AI-assisted.
+    await rpc(tokens.access_token, 'tools/call', { name: 'save_draft_answer', arguments: { question_id: qid, answer: 'Draft two.' } });
+    await w.T(w.cand('C01'), (c) => submitAnswer(c, conv.id, qid, 'All my own words.', false));
+    const [sent] = await db().select().from(S.checkInAnswers).where(and(eq(S.checkInAnswers.questionId, qid), eq(S.checkInAnswers.status, 'submitted')));
+    expect(sent).toMatchObject({ assistance: 'not_declared', inputMode: 'text', aiProvider: null });
   });
 });

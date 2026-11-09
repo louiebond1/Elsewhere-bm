@@ -116,4 +116,4 @@ export const employerInput = z.union([
 
 export const evidenceReviseInput = z.object({ evidenceId: z.string().uuid(), claim: text(600).min(5), safeClaim: text(400).min(5), tags: z.array(tagSchema).min(1).max(8), uncertainty: text(300).nullable().default(null) });
 
-export const answerInput = z.object({ body: text(prototype.maxAnswerChars).min(1, 'Write an answer or choose Skip question'), questionId: z.string().uuid() });
+export const answerInput = z.object({ body: text(prototype.maxAnswerChars).min(1, 'Write an answer or choose Skip question'), questionId: z.string().uuid(), usedDraft: z.boolean().optional() });

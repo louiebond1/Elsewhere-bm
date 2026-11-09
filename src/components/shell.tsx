@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CsrfProvider } from './client';
 import { NotificationBell, SignOut, SwitchPersona, NavLinks, MobileNav, type NavItem } from './shell-client';
@@ -22,7 +23,7 @@ export function DemoStrip({ who }: { who?: string | null }) {
   );
 }
 
-export function AppShell({ children, nav, base, csrf, who, brandSub }: { children: ReactNode; nav: NavItem[]; base: string; csrf: string; who: string; brandSub?: string }) {
+export function AppShell({ children, nav, base, csrf, who, brandSub, drafts }: { children: ReactNode; nav: NavItem[]; base: string; csrf: string; who: string; brandSub?: string; drafts?: { count: number; href: string } }) {
   return (
     <CsrfProvider token={csrf}>
       <div className="md:flex">
@@ -35,7 +36,9 @@ export function AppShell({ children, nav, base, csrf, who, brandSub }: { childre
           <header className="flex h-[60px] items-center justify-between border-b border-line bg-surface px-4 md:px-7">
             <div className="md:hidden"><Brand sub={brandSub} /></div>
             <div className="hidden text-[17px] text-ink md:block">{who}</div>
-            <div className="flex items-center"><NotificationBell base={base} /><span aria-hidden className="mx-2 h-7 w-px bg-line" /><SignOut /></div>
+            <div className="flex items-center">
+              {drafts && drafts.count > 0 && <Link href={drafts.href} className="mr-2 rounded-full bg-info-tint px-3 py-1.5 text-[14px] font-medium text-ink no-underline">{drafts.count} draft{drafts.count > 1 ? 's' : ''} ready</Link>}
+              <NotificationBell base={base} /><span aria-hidden className="mx-2 h-7 w-px bg-line" /><SignOut /></div>
           </header>
           <main className="mx-auto max-w-[1240px] px-4 pb-24 pt-6 md:px-8 md:pb-12">{children}</main>
           <footer className="px-4 pb-24 text-center text-[12px] text-muted md:pb-6">Powered by Elsewhere</footer>

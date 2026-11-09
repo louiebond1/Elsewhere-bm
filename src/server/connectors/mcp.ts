@@ -44,7 +44,7 @@ async function profile(ctx: Ctx) {
   return { approved_examples: ev.map((e) => ({ example: e.claim, skills: e.tags })), preferences: { role_families: c?.preferredRoleFamilies ?? [], work_modes: c?.workModes ?? [], minimum_salary_pounds: c?.minSalaryPence ? Number(c.minSalaryPence) / 100 : null } };
 }
 
-async function saveDraft(ctx: Ctx, args: Record<string, unknown>) {
+async function saveDraft(ctx: Ctx, args: Record<string, unknown>, provider: string) {
   const candidateId = (ctx.actor as { candidateId: string }).candidateId;
   const qid = typeof args.question_id === 'string' ? args.question_id : '';
   const body = typeof args.answer === 'string' ? args.answer.trim() : '';
@@ -56,14 +56,14 @@ async function saveDraft(ctx: Ctx, args: Record<string, unknown>) {
   if (!q || q.c.candidateId !== candidateId) return text('That question was not found. Call get_my_unanswered_questions for current ids.', undefined, true);
   if (q.c.status !== 'active' || q.q.state !== 'unanswered') return text('That question has already been answered or skipped, so no draft was saved.', undefined, true);
   const [existing] = await ctx.tx.select().from(checkInAnswers).where(and(eq(checkInAnswers.questionId, qid), eq(checkInAnswers.status, 'draft')));
-  if (existing) await ctx.tx.update(checkInAnswers).set({ body, inputMode: 'imported_assisted', assistance: 'candidate_declared_ai', updatedAt: new Date(), rowVersion: existing.rowVersion + 1 }).where(eq(checkInAnswers.id, existing.id));
-  else await ctx.tx.insert(checkInAnswers).values({ datasetId: ctx.datasetId, questionId: qid, candidateId, body, status: 'draft', inputMode: 'imported_assisted', assistance: 'candidate_declared_ai' });
+  if (existing) await ctx.tx.update(checkInAnswers).set({ body, inputMode: 'imported_assisted', assistance: 'candidate_declared_ai', aiProvider: provider, updatedAt: new Date(), rowVersion: existing.rowVersion + 1 }).where(eq(checkInAnswers.id, existing.id));
+  else await ctx.tx.insert(checkInAnswers).values({ datasetId: ctx.datasetId, questionId: qid, candidateId, body, status: 'draft', inputMode: 'imported_assisted', assistance: 'candidate_declared_ai', aiProvider: provider });
   await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'connector.draft_saved' });
   return text('Saved as a draft. It has not been sent: ask them to open Elsewhere, check it and press Send.', { saved: true, question_id: qid });
 }
 
 /** Handles one JSON-RPC message for an authenticated connection. Returns null for notifications. */
-export async function handleRpc(msg: Rpc, auth: { base: BaseCtx; grantId: string; scope: string[] }) {
+export async function handleRpc(msg: Rpc, auth: { base: BaseCtx; grantId: string; scope: string[]; provider?: string }) {
   if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') return fail(msg?.id, -32600, 'Invalid request');
   const isNotification = msg.id === undefined;
   switch (msg.method) {
@@ -91,7 +91,7 @@ export async function handleRpc(msg: Rpc, auth: { base: BaseCtx; grantId: string
           return text(qs.length ? `${qs.length} unanswered question${qs.length === 1 ? '' : 's'}.\n${JSON.stringify(qs, null, 2)}\n\n${MEMORY_FIRST}` : 'No unanswered questions right now. They can start a check-in in Elsewhere to get a new question.', { questions: qs });
         }
         if (tool.name === 'get_my_profile') { const p = await profile(ctx); return text(`Already on their Elsewhere profile (avoid repeating these; a new or better example from what you remember about them is more useful):\n${JSON.stringify(p, null, 2)}`, p); }
-        return saveDraft(ctx, args);
+        return saveDraft(ctx, args, auth.provider ?? 'your AI');
       });
       return ok(msg.id, result);
     }

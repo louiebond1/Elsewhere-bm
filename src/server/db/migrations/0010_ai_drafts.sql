@@ -1,0 +1,1 @@
+ALTER TABLE "check_in_answers" ADD COLUMN "ai_provider" text;

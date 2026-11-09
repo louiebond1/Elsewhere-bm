@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { SESSION_COOKIE, GATE_COOKIE, gateValid, viewerFromToken, csrfFor } from '@/server/auth';
-import { checkAuthorizeRequest, SCOPE_TEXT, SCOPES } from '@/server/connectors/oauth';
+import { checkAuthorizeRequest, SCOPE_TEXT, SCOPES, providerName } from '@/server/connectors/oauth';
 import { Brand } from '@/components/shell';
 import { CsrfProvider } from '@/components/client';
 import { AllowConnector, ReturnAfterSignIn } from './allow';
@@ -21,7 +21,7 @@ export default async function Authorize({ searchParams }: { searchParams: Promis
   if (!viewer || !token) return <Shell><ReturnAfterSignIn to="/demo/personas" /></Shell>;
   if (viewer.actor.userType !== 'candidate') return <Shell><h1 className="text-[24px]">For candidates only</h1><p className="mt-2 text-[15px] text-muted">Sign in as a candidate to connect your AI assistant.</p></Shell>;
   const scopes = checked.params.scope.split(' ').filter((s): s is (typeof SCOPES)[number] => (SCOPES as readonly string[]).includes(s));
-  const app = /chatgpt|openai/i.test(checked.client.clientName) ? 'ChatGPT' : /claude|anthropic/i.test(checked.client.clientName) ? 'Claude' : checked.client.clientName;
+  const app = providerName(checked.client.clientName);
   return (
     <Shell>
       <h1 className="text-[26px] leading-tight">Let {app} help with your answers?</h1>

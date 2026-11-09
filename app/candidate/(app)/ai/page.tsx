@@ -5,41 +5,20 @@ import { PageHeader, Card, Badge, LinkButton, Tabs } from '@/components/ui';
 import { ActionButton } from '@/components/client';
 import { CopyBox } from '@/components/copy-box';
 import { date } from '@/lib/format';
+import { AI_APPS } from '@/lib/ai-connect';
 
 export const dynamic = 'force-dynamic';
 
 const STARTER = 'Help me answer my Elsewhere questions.';
 
-// Menu names in these apps change from time to time, so the steps say what to look for, not exact clicks.
-const STEPS: Record<'chatgpt' | 'claude', { name: string; steps: string[]; note: string }> = {
-  chatgpt: {
-    name: 'ChatGPT',
-    steps: [
-      'Open ChatGPT and go to Settings, then Apps & Connectors.',
-      'Add a new connector (you may need to turn on Developer mode under Advanced first). Paste the address below and choose OAuth sign-in.',
-      'A small Elsewhere window opens. Sign in and press Allow.',
-    ],
-    note: 'Adding your own connector depends on your ChatGPT plan. If you can’t see the option, Claude works the same way.',
-  },
-  claude: {
-    name: 'Claude',
-    steps: [
-      'Open Claude and go to Connectors (in Customize or Settings).',
-      'Choose Add custom connector and paste the address below.',
-      'A small Elsewhere window opens. Sign in and press Allow.',
-    ],
-    note: 'The free Claude plan allows one custom connector.',
-  },
-};
-
 export default async function AiHelper({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const { ctx } = await pageViewer('candidate');
   const s = await aiHelperStatus(ctx);
   const app = (await searchParams).app === 'claude' ? 'claude' : 'chatgpt';
-  const how = STEPS[app];
+  const how = AI_APPS[app];
   return (
     <div className="mx-auto max-w-[760px]">
-      <PageHeader title="Your AI helper" subtitle="Let your own ChatGPT or Claude help you answer. It writes drafts; you check them and press Send." />
+      <PageHeader title="Your AI" subtitle="Your own ChatGPT or Claude prepares drafts. You check them and send them yourself." back={{ href: '/candidate/home', label: 'Home' }} />
 
       {s.waiting.length > 0 && (
         <Card title={`${s.waiting.length} answer${s.waiting.length > 1 ? 's' : ''} ready to check`} className="mb-4">

@@ -129,17 +129,21 @@ export async function tokenRequest(form: Record<string, string>) {
 }
 
 /** Resolves a bearer token to the candidate it acts for, inside the currently active demo dataset. */
-export async function authenticate(authorization: string | null): Promise<{ base: BaseCtx; grantId: string; scope: string[] } | null> {
+/** A plain name for the AI app, as people know it. */
+export const providerName = (clientName: string) => /chatgpt|openai/i.test(clientName) ? 'ChatGPT' : /claude|anthropic/i.test(clientName) ? 'Claude' : clientName;
+
+export async function authenticate(authorization: string | null): Promise<{ base: BaseCtx; grantId: string; scope: string[]; provider: string } | null> {
   const m = authorization?.match(/^Bearer\s+(\S+)$/i);
   if (!m) return null;
-  const [g] = await db().select().from(oauthGrants).where(and(eq(oauthGrants.accessHash, hash(m[1])), isNull(oauthGrants.revokedAt), gt(oauthGrants.accessExpiresAt, new Date())));
-  if (!g) return null;
+  const [row] = await db().select({ g: oauthGrants, clientName: oauthClients.clientName }).from(oauthGrants).innerJoin(oauthClients, eq(oauthClients.id, oauthGrants.clientId)).where(and(eq(oauthGrants.accessHash, hash(m[1])), isNull(oauthGrants.revokedAt), gt(oauthGrants.accessExpiresAt, new Date())));
+  if (!row) return null;
+  const g = row.g;
   const ds = await getActiveDataset();
   if (!ds || ds.id !== g.datasetId || ds.maintenance) return null;
   const [u] = await db().select({ id: users.id, type: users.userType, status: users.status, candidateId: candidates.id, candStatus: candidates.status }).from(users).leftJoin(candidates, eq(candidates.userId, users.id)).where(eq(users.id, g.userId));
   if (!u || u.status !== 'active' || u.type !== 'candidate' || !u.candidateId || u.candStatus === 'deleting' || u.candStatus === 'deleted') return null;
   await db().update(oauthGrants).set({ lastUsedAt: new Date() }).where(eq(oauthGrants.id, g.id));
-  return { grantId: g.id, scope: g.scope.split(' '), base: { datasetId: ds.id, generation: ds.generation, now: ds.businessNow ?? new Date(), actor: { kind: 'user', userId: u.id, userType: 'candidate', candidateId: u.candidateId } } };
+  return { grantId: g.id, scope: g.scope.split(' '), provider: providerName(row.clientName), base: { datasetId: ds.id, generation: ds.generation, now: ds.businessNow ?? new Date(), actor: { kind: 'user', userId: u.id, userType: 'candidate', candidateId: u.candidateId } } };
 }
 
 /** The candidate's connected AI apps, for the Privacy page. */

@@ -71,6 +71,13 @@
       "when": 1794229446814,
       "tag": "0009_ai_connectors",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794234513051,
+      "tag": "0010_ai_drafts",
+      "breakpoints": true
     }
   ]
 }

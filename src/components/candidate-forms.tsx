@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { QuestionAi } from './ai-task';
 import { api, useCsrf, useCommand, ErrorText, Field, inputClass, textareaClass, Dialog, JobPoller } from './client';
 import { buttonClass, cx } from './ui';
 
@@ -39,11 +40,13 @@ export function CvUpload({ hasCv }: { hasCv: boolean }) {
   );
 }
 
-export function Conversation({ conversationId, question, answered, canFinish }: { conversationId: string; question: { id: string; text: string; topic: string; draft?: string | null } | null; answered: number; canFinish: boolean }) {
+export function Conversation({ conversationId, question, answered, canFinish, ai }: { conversationId: string; question: { id: string; text: string; topic: string; draft?: { body: string; provider: string } | null } | null; answered: number; canFinish: boolean; ai: { connected: string | null; connectorUrl: string } }) {
   const { run, busy, error } = useCommand<{ nextQuestionId: string | null; jobId?: string }>();
   const router = useRouter();
-  // A draft from the person's own AI assistant starts in the box; nothing is sent until they press Send.
-  const [body, setBody] = useState(question?.draft ?? '');
+  const [body, setBody] = useState('');
+  // Where the text came from: their AI's draft (and whether they changed it since). Shown honestly, never guessed.
+  const [fromAi, setFromAi] = useState<string | null>(null);
+  const [edited, setEdited] = useState(false);
   return (
     <div className="space-y-4">
       {question ? (
@@ -51,12 +54,13 @@ export function Conversation({ conversationId, question, answered, canFinish }: 
           <p className="text-[13px] text-muted">Topic: {question.topic}</p>
           <p className="mt-1 text-[18px] font-medium">{question.text}</p>
           <p className="mt-2 text-[14px] text-muted">An example from work, study, volunteering or everyday responsibility is useful.</p>
-          {question.draft && <p className="mt-3 rounded-lg bg-info-tint px-3 py-2 text-[14px]">Drafted with your AI assistant. Check it, change anything that isn’t quite right, then press Send. It’s marked as AI-assisted.</p>}
-          <textarea className={cx(textareaClass, 'mt-3')} rows={6} maxLength={4000} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Your answer" />
-          <div className="mt-1 text-right text-[12px] text-muted">{body.length} / 4000</div>
+          <textarea className={cx(textareaClass, 'mt-3')} rows={6} maxLength={4000} value={body} onChange={(e) => { setBody(e.target.value); if (fromAi) setEdited(true); }} aria-label="Your answer" />
+          <div className="mt-1 flex justify-between gap-2 text-[12px] text-muted"><span>{fromAi ? `Started with your ${fromAi}${edited ? ' · Edited by you' : ''} · Not sent` : ''}</span><span>{body.length} / 4000</span></div>
+          <QuestionAi questionId={question.id} questionText={question.text} initialDraft={question.draft ?? null} connected={ai.connected} connectorUrl={ai.connectorUrl} hasText={!!body.trim()}
+            onUse={(d, mode) => { setBody((b) => (mode === 'add' && b.trim() ? `${b.trim()}\n\n${d.body}` : d.body)); setFromAi(d.provider); setEdited(false); }} />
           <ErrorText error={error} />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" className={buttonClass('primary')} disabled={busy || !body.trim()} onClick={async () => { if (await run(`conversations/${conversationId}/answers`, { questionId: question.id, body }) !== null) setBody(''); }}>{busy ? 'Saving…' : 'Send'}</button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className={buttonClass('primary')} disabled={busy || !body.trim()} onClick={async () => { if (await run(`conversations/${conversationId}/answers`, { questionId: question.id, body, usedDraft: !!fromAi }) !== null) { setBody(''); setFromAi(null); } }}>{busy ? 'Sending…' : 'Send answer'}</button>
             <button type="button" className={buttonClass('secondary')} disabled={busy} onClick={() => run(`conversations/${conversationId}/skip`, { questionId: question.id })}>Skip question</button>
             <button type="button" className={buttonClass('ghost')} onClick={async () => { await run(`conversations/${conversationId}/pause`, {}, { refresh: false }); router.push('/candidate/home'); }}>Save and leave</button>
           </div>
