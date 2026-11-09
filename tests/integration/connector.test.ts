@@ -74,6 +74,9 @@ describe('AI assistant connector (Claude and ChatGPT)', () => {
     expect(list.result!.tools!.map((t) => t.name)).toEqual(['get_my_unanswered_questions', 'get_my_profile', 'save_draft_answer']);
     const qs = (await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.structuredContent as { questions: { question_id: string }[] };
     expect(qs.questions.length).toBeGreaterThan(0);
+    // Guidance tells their AI to start from what it already knows about them.
+    expect((await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.content[0].text).toMatch(/remember about this person/);
+    expect(init.result).toMatchObject({ instructions: expect.stringMatching(/memory/) });
     const qid = qs.questions[0].question_id;
     const saved = await rpc(tokens.access_token, 'tools/call', { name: 'save_draft_answer', arguments: { question_id: qid, answer: 'I rebuilt the month-end checklist so the close took two days less.' } });
     expect(saved.result!.isError).toBeUndefined();

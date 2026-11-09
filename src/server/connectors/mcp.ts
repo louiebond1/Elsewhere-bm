@@ -13,12 +13,13 @@ import { isUuid } from '../lib/ids';
  * Nothing here submits: drafts wait for the candidate to check them and press Send in Elsewhere.
  */
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
-const INSTRUCTIONS = 'You are helping a job seeker with their Elsewhere profile. Use get_my_unanswered_questions, then help them answer in their own words with real examples: what they did and what happened. Use what you genuinely know about them, but never invent experience, employers, names, numbers or dates; ask them if unsure. Save each answer with save_draft_answer. Drafts are not sent: the person checks and sends them in Elsewhere. Do not include anyone else\'s personal details.';
+const INSTRUCTIONS = 'You are helping a job seeker answer their Elsewhere questions. You probably know them better than Elsewhere does. For each question, FIRST look at what you already know about this person from your memory and earlier conversations, and prefer a real, specific example from there. Then use get_my_profile only to see what is already on their Elsewhere profile, so you can offer something new or better rather than repeating it. If both have something, say briefly which you are using and why. Write in their own voice: what they did and what happened. Never invent experience, employers, names, numbers or dates; if a detail is missing, ask them. Show them the draft and get their OK before calling save_draft_answer. Drafts are not sent: the person checks and sends them in Elsewhere. Do not include anyone else\'s personal details.';
+const MEMORY_FIRST = 'How to help: first check what you remember about this person from earlier chats and use the best real example you know. Use get_my_profile only to avoid repeating what is already on their profile. Ask them for any missing detail, show the draft, and save it only once they say OK.';
 
 type Tool = { name: string; description: string; scope: string; inputSchema: Record<string, unknown>; annotations: Record<string, unknown> };
 const TOOLS: Tool[] = [
   { name: 'get_my_unanswered_questions', scope: 'questions:read', description: 'List the questions this person has not answered yet in Elsewhere, with any draft already saved for each.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, title: 'My unanswered questions' } },
-  { name: 'get_my_profile', scope: 'profile:read', description: 'Get this person\'s own approved examples and job preferences in Elsewhere, to avoid repeating what they have already said.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, title: 'My profile' } },
+  { name: 'get_my_profile', scope: 'profile:read', description: 'Get what is already on this person\'s Elsewhere profile (approved examples and job preferences). Use it to avoid repeating them; prefer a new or better example you know from your own memory of this person.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, title: 'My profile' } },
   { name: 'save_draft_answer', scope: 'drafts:write', description: 'Save a draft answer to one unanswered question. It is NOT sent: the person reviews it and presses Send in Elsewhere. Saving again replaces the previous draft for that question.', inputSchema: { type: 'object', properties: { question_id: { type: 'string', description: 'The id from get_my_unanswered_questions' }, answer: { type: 'string', description: `The answer, in the person's own words, up to ${prototype.maxAnswerChars} characters.` } }, required: ['question_id', 'answer'], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, title: 'Save a draft answer' } },
 ];
 
@@ -87,9 +88,9 @@ export async function handleRpc(msg: Rpc, auth: { base: BaseCtx; grantId: string
       const result = await withTx(auth.base, async (ctx) => {
         if (tool.name === 'get_my_unanswered_questions') {
           const qs = await unanswered(ctx);
-          return text(qs.length ? `${qs.length} unanswered question${qs.length === 1 ? '' : 's'}.\n${JSON.stringify(qs, null, 2)}` : 'No unanswered questions right now. They can start a check-in in Elsewhere to get a new question.', { questions: qs });
+          return text(qs.length ? `${qs.length} unanswered question${qs.length === 1 ? '' : 's'}.\n${JSON.stringify(qs, null, 2)}\n\n${MEMORY_FIRST}` : 'No unanswered questions right now. They can start a check-in in Elsewhere to get a new question.', { questions: qs });
         }
-        if (tool.name === 'get_my_profile') { const p = await profile(ctx); return text(JSON.stringify(p, null, 2), p); }
+        if (tool.name === 'get_my_profile') { const p = await profile(ctx); return text(`Already on their Elsewhere profile (avoid repeating these; a new or better example from what you remember about them is more useful):\n${JSON.stringify(p, null, 2)}`, p); }
         return saveDraft(ctx, args);
       });
       return ok(msg.id, result);
