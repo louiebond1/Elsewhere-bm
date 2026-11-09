@@ -17,7 +17,7 @@ export default async function Login() {
         <h1 className="text-[24px]">Sign in</h1>
         {!ds ? <p className="mt-3 text-[15px] text-muted">Demo setup is not complete yet.</p> : <LoginForm />}
       </div>
-      <p className="mt-4 text-center text-[14px]"><Link href="/demo/personas">Choose a fictional demo account instead</Link> · <Link href="/candidate/start">Create a fictional candidate</Link></p>
+      <p className="mt-4 text-center text-[14px]"><Link href="/candidate/start">New here? Create your account</Link> · <Link href="/demo/personas">Use a demo account</Link></p>
     </main>
   );
 }

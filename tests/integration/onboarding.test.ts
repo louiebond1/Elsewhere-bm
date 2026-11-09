@@ -35,37 +35,33 @@ describe('candidate onboarding: welcome email and the 50-question checklist', ()
     expect(mail[0]).toMatchObject({ notificationType: 'welcome', subject: 'Welcome to BondMoran Elsewhere', linkPath: '/candidate/welcome' });
   });
 
-  it('their ChatGPT reads the checklist and saves many drafts; they check, edit and approve; approved answers are never overwritten', async () => {
+  it('their ChatGPT reads the checklist and saves straight into the profile; it can update its own answers but never ones they wrote', async () => {
     const w = await load();
     const tok = await token(w, 'C01');
     const list = await call(tok, 'get_my_onboarding_checklist');
     expect(list.result.structuredContent).toMatchObject({ total: ONBOARDING_QUESTIONS.length, answered: 0 });
-    // Their AI is told to run it as a friendly mock interview and save in batches, not one by one.
     expect(list.result.content[0].text).toMatch(/mock interview/);
     expect(list.result.content[0].text).toMatch(/in batches/);
     expect(ONBOARDING_QUESTIONS.length).toBe(50);
     const saved = await call(tok, 'save_onboarding_answers', { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations, Excel, staying calm' }, { key: 'made_up', answer: 'x' }, { key: 'salary', answer: '' }] });
     expect(saved.result.isError).toBeUndefined();
-    expect(saved.result.content[0].text).toMatch(/Saved 2 draft answers.*Nothing has been sent/);
+    expect(saved.result.content[0].text).toMatch(/Saved 2 answers straight into their profile/);
     expect(saved.result.content[0].text).toMatch(/made_up \(not a checklist question\)/);
-    expect(await onboardingToCheck(readCtx(w.cand('C01')))).toBe(2);
+    expect(await onboardingToCheck(readCtx(w.cand('C01')))).toBe(0); // no drafts
 
     let v = await onboardingView(readCtx(w.cand('C01')));
-    const q = v.sections.flatMap((s) => s.questions).find((x) => x.key === 'current_role')!;
-    expect(q).toMatchObject({ answer: 'Finance assistant', source: 'ai', provider: 'ChatGPT', approved: false });
+    expect(v.sections.flatMap((s) => s.questions).find((x) => x.key === 'current_role')).toMatchObject({ answer: 'Finance assistant', source: 'ai', provider: 'ChatGPT', approved: true });
 
-    // They approve one, and write another themselves.
-    await w.T(w.cand('C01'), (c) => approveAnswers(c, ['current_role']));
+    // They write one themselves; their AI tries again: it updates its own answer, never theirs.
     await w.T(w.cand('C01'), (c) => saveOwnAnswer(c, 'notice', 'Four weeks'));
-    // Their AI tries again: approved and self-written answers are skipped.
-    const again = await call(tok, 'save_onboarding_answers', { answers: [{ key: 'current_role', answer: 'Something else' }, { key: 'notice', answer: 'Two weeks' }, { key: 'hours', answer: 'Full-time' }] });
-    expect(again.result.content[0].text).toMatch(/Saved 1 draft answer\..*current_role \(already approved by them\), notice \(already approved by them\)/);
+    const again = await call(tok, 'save_onboarding_answers', { answers: [{ key: 'current_role', answer: 'Senior finance assistant' }, { key: 'notice', answer: 'Two weeks' }, { key: 'hours', answer: 'Full-time' }] });
+    expect(again.result.content[0].text).toMatch(/Saved 2 answers.*notice \(they wrote this one themselves\)/);
     v = await onboardingView(readCtx(w.cand('C01')));
-    expect(v.sections.flatMap((s) => s.questions).find((x) => x.key === 'current_role')!.answer).toBe('Finance assistant');
-    expect(v).toMatchObject({ answered: 4, approved: 2, toCheck: 2 });
-    await w.T(w.cand('C01'), (c) => approveAnswers(c, 'all'));
-    expect((await onboardingView(readCtx(w.cand('C01'))))).toMatchObject({ approved: 4, toCheck: 0 });
-    // An empty answer removes it.
+    const all = v.sections.flatMap((s) => s.questions);
+    expect(all.find((x) => x.key === 'current_role')!.answer).toBe('Senior finance assistant');
+    expect(all.find((x) => x.key === 'notice')!.answer).toBe('Four weeks');
+    expect(v).toMatchObject({ answered: 4, approved: 4, toCheck: 0 });
+    // Removing: an empty answer takes it out of the profile.
     await w.T(w.cand('C01'), (c) => saveOwnAnswer(c, 'hours', ''));
     expect((await onboardingView(readCtx(w.cand('C01')))).answered).toBe(3);
   });
@@ -78,7 +74,7 @@ describe('candidate onboarding: welcome email and the 50-question checklist', ()
     await expect(w.T(w.cand('C01'), (c) => saveOwnAnswer(c, 'extra', 'x'.repeat(1501)))).rejects.toMatchObject({ status: 400 });
     await expect(w.T(w.client('A'), (c) => saveOwnAnswer(c, 'extra', 'x'))).rejects.toMatchObject({ status: 403 });
     const rows = await db().select().from(S.onboardingAnswers).where(and(eq(S.onboardingAnswers.candidateId, w.ids.candidates.C01), eq(S.onboardingAnswers.questionKey, 'current_role')));
-    expect(rows[0]).toMatchObject({ source: 'ai', aiProvider: 'Claude', status: 'draft' });
+    expect(rows[0]).toMatchObject({ source: 'ai', aiProvider: 'Claude', status: 'approved' });
   });
 });
 
@@ -87,29 +83,26 @@ describe('mini-me: follow-ups and extras, and everyone gets interviewed', () => 
     const w = await load();
     const tok = await token(w, 'C01');
     const r = await call(tok, 'add_to_my_mini_me', { items: [{ topic: 'How many invoices a week?', answer: 'About 300, across four entities.' }, { topic: '', answer: 'x' }] });
-    expect(r.result.content[0].text).toMatch(/Added 1 item to their mini-me as drafts/);
+    expect(r.result.content[0].text).toMatch(/Added 1 item straight into their profile/);
     const { addExtras } = await import('../../src/server/services/onboarding');
     await w.T(w.cand('C01'), (c) => addExtras(c, [{ topic: 'The audit I helped prepare', answer: 'I pulled the samples and tracked every query to closure.' }], 'self'));
     let v = await onboardingView(readCtx(w.cand('C01')));
     expect(v.extras).toHaveLength(2);
-    expect(v.extras.find((e) => e.text === 'How many invoices a week?')).toMatchObject({ approved: false, provider: 'ChatGPT' });
+    expect(v.extras.find((e) => e.text === 'How many invoices a week?')).toMatchObject({ approved: true, source: 'ai', provider: 'ChatGPT' });
     expect(v.extras.find((e) => e.text === 'The audit I helped prepare')).toMatchObject({ approved: true, source: 'self' });
-    expect(v.toCheck).toBe(1);
+    expect(v.toCheck).toBe(0);
     const list = await call(tok, 'get_my_onboarding_checklist');
     expect((list.result.structuredContent as { extras: unknown[] }).extras).toHaveLength(2);
-    const aiKey = v.extras.find((e) => !e.approved)!.key;
-    await w.T(w.cand('C01'), (c) => approveAnswers(c, [aiKey]));
+    const aiKey = v.extras.find((e) => e.source === 'ai')!.key;
     await w.T(w.cand('C01'), (c) => saveOwnAnswer(c, aiKey, ''));
     v = await onboardingView(readCtx(w.cand('C01')));
     expect(v.extras).toHaveLength(1);
   });
 
-  it('approved mini-me answers become interview material; practical details and anything identifying are left out', async () => {
+  it('mini-me answers become interview material straight away; practical details are left out', async () => {
     const w = await load();
     const { miniMeEvidence } = await import('../../src/server/services/mini-me');
     await w.T(w.cand('C01'), (c) => saveAiAnswers(c, 'ChatGPT', [{ key: 'ex_improvement', answer: 'I rebuilt the month-end reconciliation checklist in Excel.' }, { key: 'salary', answer: '£40k' }]));
-    expect(await miniMeEvidence(readCtx(w.cand('C01')), w.ids.candidates.C01)).toHaveLength(0); // not approved yet
-    await w.T(w.cand('C01'), (c) => approveAnswers(c, 'all'));
     const ev = await miniMeEvidence(readCtx(w.cand('C01')), w.ids.candidates.C01);
     expect(ev).toHaveLength(1);
     expect(ev[0]).toMatchObject({ id: 'mm:ex_improvement', strength: 'partial' });
@@ -135,9 +128,13 @@ describe('always-on mode', () => {
     expect(v.answered).toBe(1);
     expect(v.extras.map((e) => e.text)).toEqual(expect.arrayContaining(['Weekend football coaching', 'Bad key']));
     expect(((await call(tok, 'next_mini_me_questions')).result.structuredContent as { left: number }).left).toBe(49);
-    // Approved answers are never overwritten by always-on saves.
-    await w.T(w.cand('C01'), (c) => approveAnswers(c, ['current_role']));
+    // What they wrote themselves is never overwritten by always-on saves.
+    await w.T(w.cand('C01'), (c) => saveOwnAnswer(c, 'current_role', 'Finance assistant (my words)'));
     const again = await call(tok, 'remember_for_my_mini_me', { items: [{ topic: 'Job', detail: 'Something else', question_key: 'current_role' }] });
     expect(again.result.structuredContent).toMatchObject({ savedToChecklist: 0 });
+    // The story shows what happened, newest first, with who did it.
+    const { miniMeStory } = await import('../../src/server/services/onboarding');
+    const story = await miniMeStory(readCtx(w.cand('C01')));
+    expect(story.map((x) => x.text)).toEqual(expect.arrayContaining(['You answered something yourself', 'ChatGPT added 1 thing', 'ChatGPT added 2 things beyond the usual questions']));
   });
 });

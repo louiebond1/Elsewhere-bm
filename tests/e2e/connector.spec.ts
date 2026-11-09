@@ -100,7 +100,7 @@ test('AI helper page fits a phone and shows both apps @phone', async ({ page }) 
   expect(w).toBeLessThanOrEqual(0);
 });
 
-test('Onboarding checklist: welcome page, answer one yourself, your AI fills in others, approve them all', async ({ page }) => {
+test('Onboarding: welcome page, answer one yourself, your AI saves others straight into the profile', async ({ page }) => {
   await loadScenario(page, null);
   await switchTo(page, 'Maya Ellis');
   await page.goto('/candidate/welcome');
@@ -129,12 +129,10 @@ test('Onboarding checklist: welcome page, answer one yourself, your AI fills in 
   const t = await (await page.request.post('/api/oauth/token', { form: { grant_type: 'authorization_code', code: new URL(redirected).searchParams.get('code')!, code_verifier: verifier, client_id: reg.client_id, redirect_uri: 'https://chatgpt.com/connector_platform_oauth_redirect' } })).json();
   await page.request.post('/mcp', { headers: { authorization: `Bearer ${t.access_token}` }, data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'save_onboarding_answers', arguments: { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations and Excel' }] } } } });
   await page.unroute('https://chatgpt.com/**');
-  await page.goto('/candidate/home');
-  await expect(page.getByRole('link', { name: /Mini-me.*2 waiting/ })).toBeVisible();
+  // Straight into the profile: nothing waiting to approve, and it shows on the page and in the story.
   await page.goto('/candidate/onboarding');
-  await expect(page.getByText('Your AI wrote 2 new things.')).toBeVisible();
-  await expect(page.getByText('From your ChatGPT · to check').first()).toBeVisible();
-  await page.getByRole('button', { name: 'All good: approve 2' }).click();
-  await expect(page.getByText('Your AI wrote 2 new things.')).toHaveCount(0);
+  await expect(page.getByText('Your AI wrote')).toHaveCount(0);
+  await expect(page.getByText('From your ChatGPT').first()).toBeVisible();
+  await expect(page.getByText('ChatGPT added 2 things')).toBeVisible();
   await expect(page.getByText('6%', { exact: true })).toBeVisible();
 });

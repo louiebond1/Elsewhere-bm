@@ -225,7 +225,7 @@ export function ConnectBanner({ connected: initial, connectorUrl, autoOpen, wait
         <span aria-hidden className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-primary text-white"><MessageCircle size={38} strokeWidth={1.6} /></span>
         <div className="min-w-0 flex-1">
           <h2 className="text-[24px] leading-8 lg:text-[28px]">Let your {app} do the talking</h2>
-          <p className="mt-1 text-[16px] text-muted">Say ‘Let’s build up my Elsewhere profile’ and just chat. Voice works too. It saves what it learns in batches.</p>
+          <p className="mt-1 text-[16px] text-muted">Say ‘Let’s build up my Elsewhere profile’ and just chat. Voice works too. What it learns goes straight into your profile as you chat.</p>
           {!connected && <button type="button" className="mt-1 text-[16px] font-semibold text-primary underline underline-offset-2" onClick={() => setSheet('claude')}>Use Claude instead</button>}
         </div>
         <div className="flex shrink-0 flex-col gap-2 lg:absolute lg:right-6 lg:top-1/2 lg:-translate-y-1/2">
@@ -277,7 +277,7 @@ export function KnowsCard({ q, area }: { q: Q; area: string }) {
           <h3 className="mt-1 text-[21px] leading-7">{q.text}</h3>
         </div>
         {q.approved
-          ? <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success-tint px-3 py-1 text-[14px] font-semibold text-primary"><Check size={15} aria-hidden /> Checked · <button type="button" className="underline underline-offset-2" onClick={() => setEditing(true)}>Edit</button></span>
+          ? <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success-tint px-3 py-1 text-[14px] font-semibold text-primary"><Check size={15} aria-hidden /> {q.source === 'ai' ? `From your ${q.provider ?? 'AI'}` : 'From you'}</span>
           : <span className="shrink-0 rounded-full bg-warning-tint px-3 py-1 text-[14px] font-semibold text-warning">From your {q.provider ?? 'AI'} · to check</span>}
       </div>
       {editing ? (
@@ -291,12 +291,11 @@ export function KnowsCard({ q, area }: { q: Q; area: string }) {
       ) : (
         <div className="mt-2 flex flex-1 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <p className="whitespace-pre-wrap text-[16px] leading-relaxed">“{q.answer}”</p>
-          {!q.approved && (
-            <div className="flex shrink-0 items-center gap-3">
-              <button type="button" className={cx(buttonClass('secondary'), 'min-h-11 rounded-full!')} disabled={busy} onClick={() => run('onboarding/approve', { keys: [q.key] })}>Looks right</button>
-              <button type="button" className="text-[15px] font-semibold text-primary underline underline-offset-2" onClick={() => setEditing(true)}>Edit</button>
-            </div>
-          )}
+          <div className="flex shrink-0 items-center gap-4">
+            {!q.approved && <button type="button" className={cx(buttonClass('secondary'), 'min-h-11 rounded-full!')} disabled={busy} onClick={() => run('onboarding/approve', { keys: [q.key] })}>Looks right</button>}
+            <button type="button" className="text-[15px] font-semibold text-primary underline underline-offset-2" onClick={() => setEditing(true)}>Edit</button>
+            <button type="button" className="text-[15px] text-muted underline underline-offset-2" disabled={busy} onClick={() => { if (window.confirm('Remove this from your profile?')) run('onboarding/answer', { key: q.key, answer: '' }); }}>Remove</button>
+          </div>
         </div>
       )}
       <ErrorText error={error} />

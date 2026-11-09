@@ -91,7 +91,7 @@ export const signupInput = z.object({
   roleFamilies: z.array(z.enum(['finance', 'operations', 'commercial'])).min(1),
   minSalaryPounds: z.number().int().positive().max(1000000).nullable().default(null),
   noticeWeeks: z.number().int().min(0).max(52).nullable().default(null),
-  fictionalConfirmed: z.literal(true, { message: 'Confirm you are entering fictional information only' }),
+  fictionalConfirmed: z.boolean().default(false),
   acceptTerms: z.literal(true, { message: 'Accept the prototype terms to continue' }),
   acceptAi: z.literal(true, { message: 'Accept AI processing to continue' }),
   wantsDiscovery: z.boolean().default(false),

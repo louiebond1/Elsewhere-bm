@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
-import { onboardingView } from '@/server/services/onboarding';
+import { onboardingView, miniMeStory } from '@/server/services/onboarding';
 import { connectedAi, draftsWaiting } from '@/server/connectors/drafts';
 import { issuer } from '@/server/connectors/oauth';
 import { cx } from '@/components/ui';
@@ -19,7 +19,7 @@ const PAGE = 12;
  */
 export default async function Onboarding({ searchParams }: { searchParams: Promise<{ ai?: string; s?: string; mode?: string; a?: string; n?: string }> }) {
   const { ctx } = await pageViewer('candidate');
-  const [v, connected, sp, questionDrafts] = await Promise.all([onboardingView(ctx), connectedAi(ctx), searchParams, draftsWaiting(ctx)]);
+  const [v, connected, sp, questionDrafts, story] = await Promise.all([onboardingView(ctx), connectedAi(ctx), searchParams, draftsWaiting(ctx), miniMeStory(ctx)]);
   const pct = Math.round((v.answered / v.total) * 100);
   const typing = sp.mode === 'type';
 
@@ -140,6 +140,21 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
             {shown.length > n && <Link href={href({ a: area, n: String(n + PAGE) })} className="text-[16px] font-semibold">Show more ({shown.length - n})</Link>}
             <AddSomething />
           </div>
+        </section>
+
+        <section aria-labelledby="story" className="pt-8">
+          <h2 id="story" className="text-[26px] leading-8">How your mini-me has grown</h2>
+          {story.length === 0 ? <p className="mt-3 text-[16px] text-muted">Nothing yet. Every time your AI saves something, or you approve it, it shows up here.</p> : (
+            <ol className="mt-4 space-y-0 border-l-2 border-line pl-6">
+              {story.map((e, i) => (
+                <li key={i} className="relative pb-5 last:pb-0">
+                  <span aria-hidden className={cx('absolute -left-[33px] top-1.5 h-4 w-4 rounded-full border-4 border-page', e.kind === 'approved' ? 'bg-primary' : e.kind === 'ai' ? 'bg-[#E8C27A]' : 'bg-[#9CC3A6]')} />
+                  <p className="text-[16px] font-semibold">{e.text}</p>
+                  <p className="tnum text-[14px] text-muted">{new Date(e.at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
       </div>
     </div>

@@ -1,39 +1,51 @@
 'use client';
 import { useState } from 'react';
-import { api, Field, inputClass, ErrorText, type ApiError } from '@/components/client';
-import { buttonClass } from '@/components/ui';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
+import { api, inputClass, ErrorText, type ApiError } from '@/components/client';
+import { buttonClass, cx } from '@/components/ui';
 
 export function SignupForm() {
-  const [f, setF] = useState({ fullName: '', email: '', password: '', region: 'london', workModes: ['hybrid'] as string[], roleFamilies: ['finance'] as string[], minSalaryPounds: '', noticeWeeks: '', fictionalConfirmed: false, acceptTerms: false, acceptAi: false, wantsDiscovery: true, aggregateInsights: false });
+  const router = useRouter();
+  const [f, setF] = useState({ fullName: '', email: '', password: '' });
+  const [agree, setAgree] = useState(false);
+  const [show, setShow] = useState(false);
   const [err, setErr] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
-  const toggle = (k: 'workModes' | 'roleFamilies', v: string) => setF({ ...f, [k]: f[k].includes(v) ? f[k].filter((x) => x !== v) : [...f[k], v] });
+  const fe = err?.fieldErrors ?? {};
+  const field = (k: 'fullName' | 'email', label: string, type: string, auto: string) => (
+    <label className="block"><span className="text-[16px] font-semibold">{label}</span>
+      <input className={cx(inputClass, 'mt-2 h-14', fe[k] && 'border-danger')} type={type} autoComplete={auto} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} required />
+      {fe[k] && <span className="mt-1 block text-[14px] text-danger">{fe[k]}</span>}
+    </label>
+  );
   return (
-    <form className="mt-6 space-y-5 rounded-xl border border-line bg-surface p-5" onSubmit={async (e) => {
-      e.preventDefault(); setBusy(true);
-      const r = await api('auth/candidate-signup', { body: { ...f, minSalaryPounds: f.minSalaryPounds ? Number(f.minSalaryPounds) : null, noticeWeeks: f.noticeWeeks ? Number(f.noticeWeeks) : null } });
+    <form className="rounded-[28px] bg-surface p-6 shadow-[0_24px_64px_rgb(18_37_29/0.2)] lg:p-8" noValidate onSubmit={async (e) => {
+      e.preventDefault(); setBusy(true); setErr(null);
+      // Where and what they want comes later (from their AI, or the Practical details on their mini-me).
+      const r = await api('auth/candidate-signup', { body: { ...f, region: 'london', workModes: ['hybrid'], roleFamilies: ['finance'], minSalaryPounds: null, noticeWeeks: null, fictionalConfirmed: false, acceptTerms: agree, acceptAi: agree, wantsDiscovery: true, aggregateInsights: false } });
       setBusy(false);
-      if (r.ok) window.location.href = '/candidate/welcome'; else setErr(r.error);
+      if (r.ok) router.push('/candidate/welcome'); else setErr(r.error);
     }}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Full name (fictional)" error={err?.fieldErrors?.fullName}><input className={inputClass} value={f.fullName} onChange={(e) => setF({ ...f, fullName: e.target.value })} required /></Field>
-        <Field label="Email (fictional)" error={err?.fieldErrors?.email}><input type="email" className={inputClass} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required /></Field>
-        <Field label="Password" hint="At least 10 characters." error={err?.fieldErrors?.password}><input type="password" autoComplete="new-password" className={inputClass} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required /></Field>
-        <Field label="Region"><select className={inputClass} value={f.region} onChange={(e) => setF({ ...f, region: e.target.value })}><option value="london">London</option><option value="hertfordshire">Hertfordshire</option><option value="manchester">Manchester</option><option value="remote_uk">Remote, UK</option></select></Field>
-        <Field label="Minimum salary (£, optional)"><input inputMode="numeric" className={inputClass} value={f.minSalaryPounds} onChange={(e) => setF({ ...f, minSalaryPounds: e.target.value.replace(/\D/g, '') })} /></Field>
-        <Field label="Notice period in weeks (optional)"><input inputMode="numeric" className={inputClass} value={f.noticeWeeks} onChange={(e) => setF({ ...f, noticeWeeks: e.target.value.replace(/\D/g, '') })} /></Field>
+      <h2 className="text-[28px] leading-8">Create your account</h2>
+      <p className="mt-1 text-[16px] text-muted">Takes a minute. Your AI can do the rest.</p>
+      <div className="mt-6 space-y-4">
+        {field('fullName', 'Your name', 'text', 'name')}
+        {field('email', 'Email', 'email', 'email')}
+        <label className="block"><span className="text-[16px] font-semibold">Password</span> <span className="text-[14px] text-muted">(at least 10 characters)</span>
+          <span className="relative mt-2 block">
+            <input className={cx(inputClass, 'h-14 pr-14', fe.password && 'border-danger')} type={show ? 'text' : 'password'} autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} required />
+            <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'Hide password' : 'Show password'} className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full hover:bg-page">{show ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}</button>
+          </span>
+          {fe.password && <span className="mt-1 block text-[14px] text-danger">{fe.password}</span>}
+        </label>
+        <label className="flex items-start gap-3 rounded-2xl bg-page p-4 text-[15px]">
+          <input type="checkbox" className="mt-1 h-5 w-5 accent-[#16543D]" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <span>I agree to the prototype terms, and to AI helping build my profile. This is a test system.</span>
+        </label>
       </div>
-      <fieldset><legend className="text-[14px] font-medium">Work modes</legend><div className="mt-1 flex flex-wrap gap-4">{['onsite', 'hybrid', 'remote'].map((m) => <label key={m} className="flex items-center gap-2 text-[15px]"><input type="checkbox" checked={f.workModes.includes(m)} onChange={() => toggle('workModes', m)} />{m[0].toUpperCase() + m.slice(1)}</label>)}</div></fieldset>
-      <fieldset><legend className="text-[14px] font-medium">Role families</legend><div className="mt-1 flex flex-wrap gap-4">{['finance', 'operations', 'commercial'].map((m) => <label key={m} className="flex items-center gap-2 text-[15px]"><input type="checkbox" checked={f.roleFamilies.includes(m)} onChange={() => toggle('roleFamilies', m)} />{m[0].toUpperCase() + m.slice(1)}</label>)}</div></fieldset>
-      <div className="space-y-3 rounded-lg bg-page p-4 text-[15px]">
-        <label className="flex gap-2"><input type="checkbox" checked={f.fictionalConfirmed} onChange={(e) => setF({ ...f, fictionalConfirmed: e.target.checked })} /> I am entering fictional information only.</label>
-        <label className="flex gap-2"><input type="checkbox" checked={f.acceptTerms} onChange={(e) => setF({ ...f, acceptTerms: e.target.checked })} /> I accept the prototype terms (version prototype-terms-v1).</label>
-        <label className="flex gap-2"><input type="checkbox" checked={f.acceptAi} onChange={(e) => setF({ ...f, acceptAi: e.target.checked })} /> I agree that my answers and CV are processed by AI to suggest evidence, which I review before anything is shared.</label>
-        <label className="flex gap-2"><input type="checkbox" checked={f.wantsDiscovery} onChange={(e) => setF({ ...f, wantsDiscovery: e.target.checked })} /> I want employers to be able to discover my anonymous profile once it is approved.</label>
-        <label className="flex gap-2"><input type="checkbox" checked={f.aggregateInsights} onChange={(e) => setF({ ...f, aggregateInsights: e.target.checked })} /> Optional: my data may contribute to aggregated, anonymised insights.</label>
-      </div>
-      <ErrorText error={err} />
-      <button className={buttonClass('primary', true)} disabled={busy}>{busy ? 'Saving…' : 'Next'}</button>
+      <ErrorText error={err ? { ...err, fieldErrors: null } : null} />
+      <button className={cx(buttonClass('primary', true), 'mt-6 rounded-full! text-[18px]')} disabled={busy || !agree}>{busy ? 'Creating your account…' : 'Create my account'}</button>
     </form>
   );
 }

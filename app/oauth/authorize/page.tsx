@@ -18,7 +18,7 @@ export default async function Authorize({ searchParams }: { searchParams: Promis
   if (!gateValid(c.get(GATE_COOKIE)?.value)) return <Shell><ReturnAfterSignIn to="/demo" /></Shell>;
   const token = c.get(SESSION_COOKIE)?.value;
   const viewer = await viewerFromToken(token);
-  if (!viewer || !token) return <Shell><ReturnAfterSignIn to="/demo/personas" /></Shell>;
+  if (!viewer || !token) return <Shell><ReturnAfterSignIn to="/login" /></Shell>;
   if (viewer.actor.userType !== 'candidate') return <Shell><h1 className="text-[24px]">For candidates only</h1><p className="mt-2 text-[15px] text-muted">Sign in as a candidate to connect your AI assistant.</p></Shell>;
   const scopes = checked.params.scope.split(' ').filter((s): s is (typeof SCOPES)[number] => (SCOPES as readonly string[]).includes(s));
   const app = providerName(checked.client.clientName);

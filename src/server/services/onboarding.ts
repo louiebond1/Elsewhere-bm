@@ -54,6 +54,7 @@ export async function saveOwnAnswer(ctx: Ctx, key: string, answer: string) {
     if (!body) { await ctx.tx.delete(onboardingAnswers).where(eq(onboardingAnswers.id, row.id)); return { saved: true }; }
     if (body.length > MAX_ONBOARDING_ANSWER) throw invalid(`Answers can be up to ${MAX_ONBOARDING_ANSWER} characters.`, { answer: 'Too long' });
     await ctx.tx.update(onboardingAnswers).set({ answer: body, source: 'self', aiProvider: null, status: 'approved', approvedAt: ctx.now, updatedAt: new Date() }).where(eq(onboardingAnswers.id, row.id));
+    await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.self_saved', metadata: { count: 1 } });
     await refreshInterviews(ctx, candidateId);
     return { saved: true };
   }
@@ -61,6 +62,7 @@ export async function saveOwnAnswer(ctx: Ctx, key: string, answer: string) {
   if (!body) { await ctx.tx.delete(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.questionKey, key))); return { saved: true }; }
   await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: key, answer: body, source: 'self', status: 'approved', approvedAt: ctx.now })
     .onConflictDoUpdate({ target: [onboardingAnswers.candidateId, onboardingAnswers.questionKey], set: { answer: body, source: 'self', aiProvider: null, status: 'approved', approvedAt: ctx.now, updatedAt: new Date() } });
+  await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.self_saved', metadata: { count: 1 } });
   await refreshInterviews(ctx, candidateId);
   return { saved: true };
 }
@@ -76,25 +78,25 @@ export async function approveAnswers(ctx: Ctx, keys: string[] | 'all') {
 }
 
 /**
- * Their own AI saves drafts through the connector. It never overwrites an answer the person has
- * already approved or written themselves; those are reported back as skipped.
+ * Their own AI saves straight into their profile (they asked for no drafts). It can update what it
+ * wrote before, but never an answer the person wrote themselves; those are reported back as skipped.
  */
 export async function saveAiAnswers(ctx: Ctx, provider: string, items: { key: string; answer: string }[]) {
   const candidateId = me(ctx);
-  const existing = await ctx.tx.select({ key: onboardingAnswers.questionKey, status: onboardingAnswers.status }).from(onboardingAnswers).where(eq(onboardingAnswers.candidateId, candidateId));
-  const locked = new Set(existing.filter((e) => e.status === 'approved').map((e) => e.key));
+  const existing = await ctx.tx.select({ key: onboardingAnswers.questionKey, source: onboardingAnswers.source }).from(onboardingAnswers).where(eq(onboardingAnswers.candidateId, candidateId));
+  const locked = new Set(existing.filter((e) => e.source === 'self').map((e) => e.key));
   const saved: string[] = []; const skipped: { key: string; reason: string }[] = [];
   for (const it of items) {
     const body = clean(it.answer);
     if (!ONBOARDING_KEYS.has(it.key)) { skipped.push({ key: it.key, reason: 'not a checklist question' }); continue; }
     if (!body) { skipped.push({ key: it.key, reason: 'empty' }); continue; }
     if (body.length > MAX_ONBOARDING_ANSWER) { skipped.push({ key: it.key, reason: `longer than ${MAX_ONBOARDING_ANSWER} characters` }); continue; }
-    if (locked.has(it.key)) { skipped.push({ key: it.key, reason: 'already approved by them' }); continue; }
-    await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: it.key, answer: body, source: 'ai', aiProvider: provider, status: 'draft' })
-      .onConflictDoUpdate({ target: [onboardingAnswers.candidateId, onboardingAnswers.questionKey], set: { answer: body, source: 'ai', aiProvider: provider, status: 'draft', approvedAt: null, updatedAt: new Date() } });
+    if (locked.has(it.key)) { skipped.push({ key: it.key, reason: 'they wrote this one themselves' }); continue; }
+    await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: it.key, answer: body, source: 'ai', aiProvider: provider, status: 'approved', approvedAt: ctx.now })
+      .onConflictDoUpdate({ target: [onboardingAnswers.candidateId, onboardingAnswers.questionKey], set: { answer: body, source: 'ai', aiProvider: provider, status: 'approved', approvedAt: ctx.now, updatedAt: new Date() } });
     saved.push(it.key);
   }
-  if (saved.length) await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.ai_saved', metadata: { count: saved.length } });
+  if (saved.length) { await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.ai_saved', metadata: { count: saved.length, provider } }); await refreshInterviews(ctx, candidateId); }
   return { saved, skipped };
 }
 
@@ -120,10 +122,10 @@ export async function addExtras(ctx: Ctx, items: { topic: string; answer: string
     if (body.length > MAX_ONBOARDING_ANSWER) { skipped.push({ topic, reason: `longer than ${MAX_ONBOARDING_ANSWER} characters` }); continue; }
     if (room <= 0) { skipped.push({ topic, reason: `already ${MAX_EXTRAS} extra items` }); continue; }
     const key = `${EXTRA}${randomUUID().slice(0, 12)}`;
-    await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: key, questionText: topic, answer: body, ...(from === 'self' ? { source: 'self', status: 'approved', approvedAt: ctx.now } : { source: 'ai', aiProvider: from.provider, status: 'draft' }) });
+    await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: key, questionText: topic, answer: body, ...(from === 'self' ? { source: 'self', status: 'approved', approvedAt: ctx.now } : { source: 'ai', aiProvider: from.provider, status: 'approved', approvedAt: ctx.now }) });
     saved.push(key); room--;
   }
-  if (saved.length) { await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.extras_added', metadata: { count: saved.length } }); if (from === 'self') await refreshInterviews(ctx, candidateId); }
+  if (saved.length) { await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.extras_added', metadata: { count: saved.length, provider: from === 'self' ? null : from.provider } }); await refreshInterviews(ctx, candidateId); }
   return { saved, skipped };
 }
 
@@ -144,4 +146,21 @@ export async function questionsLeft(ctx: Ctx, limit = 6) {
   const v = await onboardingView(ctx);
   const left = v.sections.flatMap((s) => s.questions.filter((q) => !q.answer).map((q) => ({ key: q.key, question: q.text, section: s.title })));
   return { left: left.length, total: v.total, suggestions: left.slice(0, limit) };
+}
+
+/** The mini-me's story: what was added or approved, and when, newest first. */
+export async function miniMeStory(ctx: Ctx, limit = 30) {
+  const candidateId = me(ctx);
+  const { activityEvents } = await import('../db/schema');
+  const { desc, like: lk } = await import('drizzle-orm');
+  const rows = await ctx.tx.select({ action: activityEvents.action, metadata: activityEvents.metadata, at: activityEvents.eventAt }).from(activityEvents)
+    .where(and(eq(activityEvents.subjectType, 'candidate'), eq(activityEvents.subjectId, candidateId), lk(activityEvents.action, 'onboarding.%'))).orderBy(desc(activityEvents.eventAt)).limit(limit);
+  return rows.map((r) => {
+    const m = (r.metadata ?? {}) as { count?: number; provider?: string | null };
+    const n = m.count ?? 1; const things = `${n} thing${n === 1 ? '' : 's'}`;
+    const text = r.action === 'onboarding.ai_saved' ? `${m.provider ?? 'Your AI'} added ${things}`
+      : r.action === 'onboarding.extras_added' ? (m.provider ? `${m.provider} added ${things} beyond the usual questions` : `You added ${things}`)
+      : r.action === 'onboarding.approved' ? `You approved ${things}` : r.action === 'onboarding.self_saved' ? 'You answered something yourself' : 'Your mini-me changed';
+    return { at: r.at.toISOString(), text, kind: r.action === 'onboarding.approved' ? 'approved' : m.provider ? 'ai' : 'you' };
+  });
 }
