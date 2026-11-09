@@ -26,7 +26,7 @@ import * as S from './db/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
 import { activateInput, closeInput, reopenInput, introRequestInput, hireInput, outsideHireInput, departureInput, replacementRequestInput, contractInput, grantInput, reversalInput, checkoutInput, screeningRequestInput, screeningCompleteInput, adjustmentInput, workLogInput, answerInput, preferencesInput } from './services/inputs';
 import { prepFor, savePrep } from './services/prep';
-import { runAi, aiMode } from './ai';
+import { runAi, aiMode, AiFailure } from './ai';
 import { questionOutput, assessmentOutput } from './ai/schemas';
 import { validateAssessment } from './ai/validate';
 import { assessmentInput, applyAssessment } from './services/matching';
@@ -237,7 +237,7 @@ export const ROUTES: R[] = [
     await roles.roleForActor(readCtx(base), b.roleId);
     const prepared = await assessmentInput(readCtx(base), b.roleId, b.candidateId);
     if (!prepared || !prepared.input.evidence.length) throw new AppError('NO_EVIDENCE', 409, 'This candidate has no approved evidence to review.');
-    const res = await runAi({ task: 'assess', datasetId: base.datasetId, userId: viewer.actor.userId, roleId: b.roleId, candidateId: b.candidateId, input: prepared.input }, (p) => p.assessCriteria(prepared.input, { review: true }));
+    const res = await runAi({ task: 'assess', model: 'review', datasetId: base.datasetId, userId: viewer.actor.userId, roleId: b.roleId, candidateId: b.candidateId, input: prepared.input }, (p) => p.assessCriteria(prepared.input, { review: true }));
     const v = validateAssessment(res.output, prepared.input.criteria.map((c) => c.criterionId), prepared.input.evidence.map((e) => e.id));
     if (!v.ok) throw new AppError('REVIEW_INVALID', 422, `The review did not pass validation (${v.reason.replace(/_/g, ' ')}). Nothing was changed.`);
     return { proposal: res.output, provider: res.provider, model: res.usage.modelId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion };
@@ -270,8 +270,14 @@ export const ROUTES: R[] = [
     let r: hiring.TurnResult;
     if (aiMode() === 'live') {
       const input = hiring.liveInput(p, b.text);
-      const res = await runAi({ task: 'hiring', datasetId: base.datasetId, userId: viewer.actor.userId, input }, (pr) => pr.hiringTurn(input));
-      r = hiring.liveResult(p, res.output, res.provider);
+      try {
+        const res = await runAi({ task: 'hiring', datasetId: base.datasetId, userId: viewer.actor.userId, input }, (pr) => pr.hiringTurn(input));
+        r = hiring.liveResult(p, res.output, res.provider);
+      } catch (e) {
+        // Out of budget or the provider is unavailable: keep the conversation going with the labelled keyword reader.
+        if (!(e instanceof AiFailure)) throw e;
+        r = hiring.demoTurn(p, b.text);
+      }
     } else r = hiring.demoTurn(p, b.text);
     return T(base, (c) => hiring.commitTurn(c, p, b.text, r));
   } },

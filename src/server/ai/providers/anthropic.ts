@@ -7,11 +7,12 @@ import { QUESTION_SYSTEM, EXTRACTION_SYSTEM, FEEDBACK_SYSTEM, MATCHING_SYSTEM, R
 import { questionOutput, extractionOutput, feedbackOutput, assessmentOutput, roleStructureOutput, hiringTurnOutput } from '../schemas';
 import { AiFailure, type AiProvider, type AiResult } from './types';
 
-const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500 } as const;
+export const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500 } as const;
 
 let client: Anthropic | null = null;
 function c() {
-  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: prototype.aiTimeoutMs, maxRetries: prototype.aiMaxRetries });
+  // maxRetries 0: every billable attempt must pass the monthly spend check in runAi. App-level job retries book again.
+  if (!client) client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: prototype.aiTimeoutMs, maxRetries: 0 });
   return client;
 }
 

@@ -6,7 +6,8 @@ import { aiRuns, aiBudgetReservations } from '../db/schema';
 import { prototype } from '../../config/prototype';
 import { PROMPT_VERSION } from './prompts';
 import { fixtureProvider } from './providers/fixture';
-import { anthropicProvider, cheapModel } from './providers/anthropic';
+import { anthropicProvider, cheapModel, reviewModel, MAX_TOKENS } from './providers/anthropic';
+import { bookSpend, settleSpend, worstCaseMicroUsd } from './spend';
 import { AiFailure, type AiProvider, type AiResult } from './providers/types';
 import { eq } from 'drizzle-orm';
 
@@ -53,7 +54,7 @@ async function slot() {
 }
 function release() { inFlight--; waiters.shift()?.(); }
 
-export type RunMeta = { task: 'question' | 'extract' | 'feedback' | 'assess' | 'role' | 'hiring'; datasetId?: string | null; userId?: string | null; candidateId?: string | null; roleId?: string | null; jobId?: string | null; input: unknown };
+export type RunMeta = { task: 'question' | 'extract' | 'feedback' | 'assess' | 'role' | 'hiring'; model?: 'cheap' | 'review'; datasetId?: string | null; userId?: string | null; candidateId?: string | null; roleId?: string | null; jobId?: string | null; input: unknown };
 
 /** Runs an AI task outside any database transaction and records usage (never bodies). */
 export async function runAi<T>(meta: RunMeta, fn: (p: AiProvider) => Promise<AiResult<T>>): Promise<AiResult<T>> {
@@ -64,16 +65,21 @@ export async function runAi<T>(meta: RunMeta, fn: (p: AiProvider) => Promise<AiR
     if (await rateLimitHit(`ai:${meta.userId}`, 'ai_request', 60, prototype.aiRequestsPerUserHour)) throw new AiFailure('user_rate_limited', 'You have reached the hourly limit for AI requests. Your work is saved; try again later.');
   }
   const key = await reserve(meta.task, inputJson.length);
+  // Hard monthly money cap shared by web and worker: book the worst case or refuse before anything is sent.
+  const modelId = meta.model === 'review' ? reviewModel() : cheapModel();
+  const spendKey = aiMode() === 'live' ? await bookSpend(meta.task, modelId, worstCaseMicroUsd(modelId, inputJson.length, MAX_TOKENS[meta.task])) : null;
   const started = Date.now();
   await slot();
   try {
     const res = await fn(provider());
+    if (spendKey) await settleSpend(spendKey, modelId, res.usage);
     await reconcile(key, res.usage.inputTokens + res.usage.outputTokens);
     await db().insert(aiRuns).values({ datasetId: meta.datasetId ?? null, jobId: meta.jobId ?? null, userId: meta.userId ?? null, candidateId: meta.candidateId ?? null, roleId: meta.roleId ?? null, task: meta.task, provider: res.provider, modelId: res.usage.modelId, promptVersion: PROMPT_VERSION, inputHash: createHash('sha256').update(inputJson).digest('hex'), inputTokens: res.usage.inputTokens, outputTokens: res.usage.outputTokens, cacheReadTokens: res.usage.cacheReadTokens, cacheWriteTokens: res.usage.cacheWriteTokens, durationMs: Date.now() - started, outcome: 'succeeded' });
     return res;
   } catch (e) {
     const code = e instanceof AiFailure ? e.code : 'unknown';
-    const u = (e as { usage?: { inputTokens: number; outputTokens: number } }).usage;
+    const u = (e as { usage?: { inputTokens: number; outputTokens: number; cacheReadTokens?: number; cacheWriteTokens?: number } }).usage;
+    if (spendKey) await settleSpend(spendKey, modelId, u ? { inputTokens: u.inputTokens, outputTokens: u.outputTokens, cacheReadTokens: u.cacheReadTokens ?? 0, cacheWriteTokens: u.cacheWriteTokens ?? 0, modelId } : null);
     await reconcile(key, u ? u.inputTokens + u.outputTokens : null);
     await db().insert(aiRuns).values({ datasetId: meta.datasetId ?? null, jobId: meta.jobId ?? null, userId: meta.userId ?? null, candidateId: meta.candidateId ?? null, roleId: meta.roleId ?? null, task: meta.task, provider: aiMode() === 'live' ? 'anthropic' : 'fixture', modelId: testProvider ? 'test' : aiMode() === 'live' ? cheapModel() : 'fixture', promptVersion: PROMPT_VERSION, inputTokens: u?.inputTokens ?? 0, outputTokens: u?.outputTokens ?? 0, durationMs: Date.now() - started, outcome: code === 'refused' ? 'refused' : 'failed', errorCode: code });
     throw e;

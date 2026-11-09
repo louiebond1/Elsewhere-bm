@@ -81,6 +81,10 @@ export const prototype = Object.freeze({
   /** PROVISIONAL technical limits. */
   aiConcurrency: 2,
   aiDailyTokenLimit: 200000,
+  /** Hard monthly AI spend cap for the whole app (web and worker), in US dollars. Owner limit is £5/month; $5 is below that. Can be lowered by AI_MONTHLY_BUDGET_USD, never raised. */
+  aiMonthlyBudgetUsd: 5,
+  /** Published Anthropic prices, USD per million tokens (input, output). A model not listed here is refused in live mode. */
+  aiPricesUsdPerMTok: { 'claude-haiku-5-5': [0.10, 0.50], 'claude-sonnet-5-5': [2.00, 10.00] } as Record<string, [number, number]>,
   aiRequestsPerUserHour: 60,
   aiTimeoutMs: 30000,
   aiMaxRetries: 2,

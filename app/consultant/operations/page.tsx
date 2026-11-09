@@ -9,6 +9,9 @@ import { reconcileWallet } from '@/server/services/ledger';
 import { label, date, credits } from '@/lib/format';
 import { env } from '@/server/env';
 import { maskAddress } from '@/server/email';
+import { monthSpendMicroUsd, monthlyBudgetMicroUsd } from '@/server/ai/spend';
+
+const usd = (m: bigint) => `$${(Number(m) / 1_000_000).toFixed(4)}`;
 
 export default async function Operations() {
   const { ctx } = await pageViewer('consultant');
@@ -18,6 +21,8 @@ export default async function Operations() {
   const wallets = await ctx.tx.select({ w: S.wallets, name: S.organisations.displayName }).from(S.wallets).innerJoin(S.clients, eq(S.clients.id, S.wallets.clientId)).innerJoin(S.organisations, eq(S.organisations.id, S.clients.organisationId)).where(eq(S.wallets.datasetId, ctx.datasetId));
   const outbox = await ctx.tx.select({ o: S.emailOutbox, email: S.users.emailNormalized }).from(S.emailOutbox).innerJoin(S.users, eq(S.users.id, S.emailOutbox.recipientUserId)).where(eq(S.emailOutbox.datasetId, ctx.datasetId)).orderBy(desc(S.emailOutbox.createdAt)).limit(20);
   const emailDriver = env().EMAIL_DRIVER;
+  const spent = await monthSpendMicroUsd();
+  const budget = monthlyBudgetMicroUsd();
   const rec = [];
   for (const w of wallets) rec.push({ name: w.name, ...(await reconcileWallet(ctx, w.w.id)) });
   return (
@@ -29,7 +34,8 @@ export default async function Operations() {
           {(usage.rows as Array<Record<string, string | number>>).length === 0 ? <p className="text-[14px] text-muted">{aiMode() === 'fixture' ? 'No provider calls. Fixture mode uses local demo responses.' : 'No calls yet today.'}</p> : (
             <ul className="text-[14px]">{(usage.rows as Array<Record<string, string | number>>).map((u) => <li key={`${u.model_id}${u.provider}`}>{u.model_id} ({u.provider}): {u.calls} calls, {u.input} input, {u.output} output, {u.cache_read} cache read, {u.cache_write} cache write tokens, {u.failed} failed</li>)}</ul>
           )}
-          <p className="mt-2 text-[13px] text-muted">Token counts come from the provider responses. No spend in pounds is estimated.</p>
+          <p className="mt-2 text-[15px]">AI spend this month (UTC): <span className="font-semibold">{usd(spent)}</span> of a {usd(budget)} hard limit shared by web and worker. A call that could pass the limit is refused before anything is sent.</p>
+          <p className="mt-1 text-[13px] text-muted">Worked out from published per-token prices and the provider’s usage figures; failed calls count at their worst case. Anthropic’s own bill is the final figure.</p>
         </Card>
         <Card title="Wallet reconciliation">
           <ul className="space-y-1 text-[15px]">{rec.map((r) => <li key={r.name} className="flex justify-between"><span>{r.name}</span><span>{credits(r.posted)} credits {r.chainOk && !r.discrepancy ? <Badge tone="success">Reconciled</Badge> : <Badge tone="danger">Check</Badge>}</span></li>)}</ul>

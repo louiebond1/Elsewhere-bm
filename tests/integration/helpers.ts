@@ -14,6 +14,8 @@ let migrated = false;
 export async function ensureMigrated() {
   if (migrated) return;
   await migrate(db(), { migrationsFolder: new URL('../../src/server/db/migrations', import.meta.url).pathname });
+  // The monthly AI spend ledger is deliberately not dataset-scoped; start each test process from zero.
+  await db().execute(sql`delete from ai_spend`);
   migrated = true;
 }
 

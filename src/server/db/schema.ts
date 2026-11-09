@@ -720,6 +720,24 @@ export const aiRuns = pgTable('ai_runs', {
   errorCode: text('error_code'),
 });
 
+/**
+ * Monthly AI money cap, shared by web and worker. Every paid call books its worst-case cost first (under an
+ * advisory lock); a settled row holds the actual cost, an unsettled row keeps the full worst case forever.
+ * Not linked to a dataset, so demo resets never clear it.
+ */
+export const aiSpend = pgTable('ai_spend', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+  requestKey: text('request_key').notNull().unique(),
+  utcMonth: text('utc_month').notNull(),
+  task: text('task').notNull(),
+  modelId: text('model_id').notNull(),
+  reservedMicroUsd: bigint('reserved_micro_usd', { mode: 'bigint' }).notNull(),
+  actualMicroUsd: bigint('actual_micro_usd', { mode: 'bigint' }),
+  state: text('state').notNull().default('reserved'),
+}, (t) => [index('ai_spend_month_idx').on(t.utcMonth)]);
+
 export const aiBudgetReservations = pgTable('ai_budget_reservations', {
   id: uuid('id').primaryKey().defaultRandom(),
   datasetId: uuid('dataset_id'),
