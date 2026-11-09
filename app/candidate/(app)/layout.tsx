@@ -1,14 +1,14 @@
 import { pageViewer } from '@/server/page-auth';
 import { AppShell } from '@/components/shell';
 import { candidateSelf } from '@/server/services/candidates';
-import { draftsWaiting } from '@/server/connectors/drafts';
+import { draftsWaiting, connectedAi } from '@/server/connectors/drafts';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CandidateLayout({ children }: { children: React.ReactNode }) {
   const { ctx, csrf } = await pageViewer('candidate');
   const self = await candidateSelf(ctx);
-  const drafts = { count: await draftsWaiting(ctx), href: '/candidate/ai' };
+  const aiBar = { drafts: await draftsWaiting(ctx), connected: await connectedAi(ctx), href: '/candidate/ai' };
   const nav = [
     { href: '/candidate/home', label: 'Home', icon: 'home' },
     { href: '/candidate/profile', label: 'Profile', icon: 'profile' },
@@ -17,5 +17,5 @@ export default async function CandidateLayout({ children }: { children: React.Re
     { href: '/candidate/cv', label: 'CV', icon: 'cv' },
     { href: '/candidate/privacy', label: 'Privacy', icon: 'privacy' },
   ];
-  return <AppShell nav={nav} base="/candidate" csrf={csrf} who={`${self.identity?.fullName ?? ''} · ${self.candidate.publicRef}`} brandSub="Elsewhere" drafts={drafts}>{children}</AppShell>;
+  return <AppShell nav={nav} base="/candidate" csrf={csrf} who={`${self.identity?.fullName ?? ''} · ${self.candidate.publicRef}`} brandSub="Elsewhere" aiBar={aiBar}>{children}</AppShell>;
 }

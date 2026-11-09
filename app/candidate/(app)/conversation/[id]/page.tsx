@@ -9,13 +9,14 @@ import { connectedAi } from '@/server/connectors/drafts';
 import { issuer } from '@/server/connectors/oauth';
 import { CANDIDATES } from '../../../../../fixtures/candidates';
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; ai?: string }> }) {
   const { ctx } = await pageViewer('candidate');
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const c = await getConversation(ctx, id).catch(() => null);
   if (!c) notFound();
-  const asked = (await searchParams).q;
+  const sp = await searchParams;
+  const asked = sp.q;
   const open = c.questions.filter((x) => x.state === 'unanswered');
   // A chosen question first, then one their AI already drafted, then the next in order.
   const q = open.find((x) => x.id === asked) ?? open.find((x) => x.draft) ?? open[0] ?? null;
@@ -29,7 +30,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       <PageHeader title="" back={{ href: '/candidate/check-ins', label: 'Your questions' }} />
       {c.conversation.status === 'completed' ? <><h1>All done</h1><p className="mt-3 text-[17px] text-muted">This conversation is complete. Your draft examples are being prepared.</p></> : (<>
         {moreDrafts > 0 && <p className="mb-4 rounded-full bg-success-tint px-4 py-2 text-[14px] font-semibold text-primary">Your AI also drafted {moreDrafts} more answer{moreDrafts > 1 ? 's' : ''}. They come up next.</p>}
-        <Conversation key={q?.id ?? "done"} conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic, draft: q.draft ? { body: q.draft.body, provider: q.draft.aiProvider ?? 'AI' } : null } : null} answered={answered} canFinish={answered > 0} ai={ai} />
+        <Conversation key={q?.id ?? "done"} conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic, draft: q.draft ? { body: q.draft.body, provider: q.draft.aiProvider ?? 'AI' } : null } : null} answered={answered} canFinish={answered > 0} ai={ai} autoAi={sp.ai === '1'} />
       </>)}
       {c.questions.some((x) => x.state !== 'unanswered') && (
         <details className="mt-10 text-[15px]"><summary className="cursor-pointer font-semibold">Your answers so far ({c.questions.filter((x) => x.state !== 'unanswered').length})</summary>

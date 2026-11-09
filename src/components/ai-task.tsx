@@ -10,7 +10,7 @@ import { AI_APPS, AI_NOTE, type AiApp } from '@/lib/ai-connect';
 export function LetMyAiButton({ onClick, connected, note = AI_NOTE, disabled }: { onClick: () => void; connected: string | null; note?: string; disabled?: boolean }) {
   return (
     <div>
-      <button type="button" className={cx(buttonClass('secondary', true), 'gap-3 text-[17px]')} onClick={onClick} disabled={disabled}>
+      <button type="button" className={cx(buttonClass('secondary', true), 'gap-3 border-primary text-[17px] text-primary')} onClick={onClick} disabled={disabled}>
         <HandHelping aria-hidden size={22} strokeWidth={1.8} /> Let my AI do this
       </button>
       <p className="mt-2 text-center text-[14px] text-muted">{connected ? <>Using your {connected} · </> : null}{note}</p>
@@ -111,15 +111,15 @@ function WithGaps({ text }: { text: string }) {
 }
 
 /** The whole "Let my AI do this → check the draft" flow for one question. The person always sends it themselves. */
-export function QuestionAi({ questionId, questionText, initialDraft, connected: initialConnected, connectorUrl, hasText, onUse, onReview }: {
-  questionId: string; questionText: string; initialDraft: Draft | null; connected: string | null; connectorUrl: string; hasText: boolean;
+export function QuestionAi({ questionId, questionText, initialDraft, connected: initialConnected, connectorUrl, hasText, onUse, onReview, autoStart = false }: {
+  autoStart?: boolean; questionId: string; questionText: string; initialDraft: Draft | null; connected: string | null; connectorUrl: string; hasText: boolean;
   onUse: (draft: Draft, mode: 'replace' | 'add', edit: boolean) => void; onReview: (reviewing: boolean) => void;
 }) {
   const csrf = useCsrf();
-  const [state, setState] = useState<'idle' | 'waiting' | 'ready' | 'used'>(initialDraft ? 'ready' : 'idle');
+  const [state, setState] = useState<'idle' | 'waiting' | 'ready' | 'used'>(initialDraft ? 'ready' : autoStart && initialConnected ? 'waiting' : 'idle');
   const [draft, setDraft] = useState<Draft | null>(initialDraft);
   const [connected, setConnected] = useState(initialConnected);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState(autoStart && !initialDraft && !initialConnected);
   const [choose, setChoose] = useState<null | boolean>(null);
   const [error, setError] = useState<string | null>(null);
   const app = connected ?? 'your AI';

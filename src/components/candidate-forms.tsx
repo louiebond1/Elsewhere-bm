@@ -40,7 +40,7 @@ export function CvUpload({ hasCv }: { hasCv: boolean }) {
   );
 }
 
-export function Conversation({ conversationId, question, answered, canFinish, ai }: { conversationId: string; question: { id: string; text: string; topic: string; draft?: { body: string; provider: string } | null } | null; answered: number; canFinish: boolean; ai: { connected: string | null; connectorUrl: string } }) {
+export function Conversation({ conversationId, question, answered, canFinish, ai, autoAi = false }: { autoAi?: boolean; conversationId: string; question: { id: string; text: string; topic: string; draft?: { body: string; provider: string } | null } | null; answered: number; canFinish: boolean; ai: { connected: string | null; connectorUrl: string } }) {
   const { run, busy, error } = useCommand<{ nextQuestionId: string | null; jobId?: string }>();
   const router = useRouter();
   const box = useRef<HTMLTextAreaElement>(null);
@@ -70,7 +70,7 @@ export function Conversation({ conversationId, question, answered, canFinish, ai
         {gaps && <p role="status" className="mt-2 rounded-xl bg-success-tint px-4 py-2 text-[15px] text-primary">Fill in the gaps in [square brackets] before sending.</p>}
       </div>
       <div className={reviewing ? '' : 'mt-5'}>
-        <QuestionAi questionId={question.id} questionText={question.text} initialDraft={question.draft ?? null} connected={ai.connected} connectorUrl={ai.connectorUrl} hasText={!!body.trim()} onReview={setReviewing}
+        <QuestionAi questionId={question.id} questionText={question.text} initialDraft={question.draft ?? null} connected={ai.connected} connectorUrl={ai.connectorUrl} hasText={!!body.trim()} onReview={setReviewing} autoStart={autoAi}
           onUse={(d, mode, edit) => { setBody((b) => (mode === 'add' && b.trim() ? `${b.trim()}\n\n${d.body}` : d.body)); setFromAi(d.provider); setEdited(false); if (edit) setTimeout(() => box.current?.focus(), 50); }} />
       </div>
       {!reviewing && (

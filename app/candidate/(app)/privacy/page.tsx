@@ -43,9 +43,9 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
           <div className="mt-3"><ActionButton path="candidate/insights" body={{ granted: !o.consents.aggregate_insights?.granted }} label={o.consents.aggregate_insights?.granted ? 'Turn aggregate insights off' : 'Turn aggregate insights on'} variant="secondary" successText="Saved." /></div>
           <p className="mt-2 text-[13px] text-muted">These records describe a prototype interaction, not a legal compliance claim.</p>
         </Card>
-        <Card title="Preferences" className="lg:col-span-2">
+        <div id="preferences" className="scroll-mt-24 lg:col-span-2"><Card title="Preferences">
           <PreferencesForm initial={{ region: o.candidate.region, workModes: o.candidate.workModes, roleFamilies: o.candidate.preferredRoleFamilies, minSalaryPounds: o.candidate.minSalaryPence ? Number(o.candidate.minSalaryPence / 100n) : null, noticeWeeks: o.candidate.noticeWeeks, workAuthorisation: o.candidate.workAuthorisation, experienceBand: o.candidate.experienceBand }} />
-        </Card>
+        </Card></div>
         <Card title="Your AI assistant" className="lg:col-span-2">
           <p className="text-[15px]">{apps.length ? `Connected: ${apps.map((a) => a.name).join(', ')}. It can read your questions and save drafts, never send.` : 'Not connected.'}</p>
           <div className="mt-3"><Link href="/candidate/ai">{apps.length ? 'Manage or disconnect' : 'Set up your AI helper'}</Link></div>

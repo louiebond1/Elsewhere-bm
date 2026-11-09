@@ -1,14 +1,18 @@
 import Link from 'next/link';
+import { and, asc, eq } from 'drizzle-orm';
+import { Briefcase, FileText, SlidersHorizontal, CalendarDays, ChevronRight, Inbox } from 'lucide-react';
 import { pageViewer } from '@/server/page-auth';
 import { candidateOverview } from '@/server/views/candidate';
-import { aiHelperStatus } from '@/server/connectors/status';
-import { PageHeader, Card, Notice, LinkButton, Badge } from '@/components/ui';
+import { checkInQuestions } from '@/server/db/schema';
+import { LinkButton, buttonClass, cx } from '@/components/ui';
 import { ActionButton, JobPoller } from '@/components/client';
+import { FoldArt } from '@/components/fold-art';
+import { HomeAiButton } from '@/components/home-ai';
 
 const REASON: Record<string, string> = {
-  discovery_off: 'Discovery is off. Employers cannot find you for new roles.',
-  employer_unresolved: 'Needs confirmation: we are checking your current employer before you can be discovered.',
-  no_approved_profile: 'Approve some evidence so we can publish your anonymous profile.',
+  discovery_off: 'Discovery is off, so employers can’t find you for new roles.',
+  employer_unresolved: 'We’re checking your current employer before you can be found.',
+  no_approved_profile: 'Approve one example so employers can see your anonymous profile.',
   status_onboarding: 'Finish setting up your profile.',
   status_paused: 'Your profile is paused.',
   terms_missing: 'Accept the prototype terms.',
@@ -18,55 +22,77 @@ const REASON: Record<string, string> = {
 export default async function CandidateHome() {
   const { ctx } = await pageViewer('candidate');
   const o = await candidateOverview(ctx);
-  const ai = await aiHelperStatus(ctx);
-  const fb = (o.profile?.feedbackLive ?? o.profile?.feedback ?? null) as { strengths: { text: string }[]; gaps: { text: string }[]; nextQuestion?: string } | null;
   const initial = o.conversations.find((c) => c.kind === 'initial_screening');
-  const steps = [
-    ['Basics', true],
-    ['Current employer', o.candidate.employerResolutionStatus !== 'not_supplied'],
-    ['CV', !!o.cv],
-    ['Conversation', initial?.status === 'completed'],
-    ['Review', !!o.profile],
-  ] as const;
+  const active = o.conversations.find((c) => c.status === 'active');
+  const [nextQ] = active ? await ctx.tx.select({ text: checkInQuestions.questionText }).from(checkInQuestions).where(and(eq(checkInQuestions.conversationId, active.id), eq(checkInQuestions.state, 'unanswered'))).orderBy(asc(checkInQuestions.ordinal)).limit(1) : [];
+  const fb = (o.profile?.feedbackLive ?? o.profile?.feedback ?? null) as { nextQuestion?: string } | null;
+  const approved = o.evidence.filter((e) => e.reviewState === 'candidate_approved' || e.reviewState === 'consultant_verified').length;
+
+  // The one next thing to do, in plain words.
+  const needsCv = !o.cv && !initial;
+  const startKind = initial?.status === 'completed' ? 'check_in' : 'initial_screening';
+  const question = nextQ?.text ?? fb?.nextQuestion ?? 'Tell us about a task you took responsibility for.';
+
+  const sections = [
+    { label: 'Experience', hint: o.cv ? 'CV added' : 'Add your CV', done: !!o.cv, href: '/candidate/cv', Icon: Briefcase },
+    { label: 'Examples', hint: approved ? `${approved} approved` : o.drafts.length ? `${o.drafts.length} to review` : 'Answer a question', done: approved > 0, href: '/candidate/profile?tab=evidence', Icon: FileText },
+    { label: 'Preferences', hint: o.candidate.preferredRoleFamilies.length ? 'Set' : 'Roles, pay, where', done: o.candidate.preferredRoleFamilies.length > 0 && o.candidate.workModes.length > 0, href: '/candidate/privacy#preferences', Icon: SlidersHorizontal },
+    { label: 'Availability', hint: o.candidate.noticeWeeks != null ? `${o.candidate.noticeWeeks} weeks’ notice` : 'Your notice period', done: o.candidate.noticeWeeks != null, href: '/candidate/privacy#preferences', Icon: CalendarDays },
+  ];
+  const ready = sections.filter((s) => s.done).length;
+
   return (
-    <>
-      <PageHeader title="Your Elsewhere profile" subtitle="You choose who sees your name. Candidates never pay." actions={<LinkButton href={initial?.status === 'completed' ? '/candidate/check-ins' : initial ? `/candidate/conversation/${initial.id}` : '/candidate/cv'}>Continue your profile</LinkButton>} />
-      {o.candidate.status === 'onboarding' && (
-        <ol className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-5">{steps.map(([l, d], i) => <li key={l} className="rounded-lg border border-line bg-surface p-3 text-[14px]"><span className="text-muted">Step {i + 1}</span><br /><span className="font-medium">{l}</span> {d ? <Badge tone="success">Done</Badge> : null}</li>)}</ol>
+    <div className="relative mx-auto max-w-[1080px]">
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-[radial-gradient(closest-side,rgba(29,91,63,.12),rgba(29,91,63,0))]" />
+      <header className="relative">
+        <h1 className="max-w-[14ch] text-[40px] leading-[1.05] md:text-[56px]">Let your experience speak.</h1>
+        <p className="mt-3 text-[17px] text-muted">Anonymous until you accept an introduction.</p>
+      </header>
+
+      {o.pendingIntros > 0 && (
+        <Link href="/candidate/introductions" className="relative mt-6 flex items-center gap-4 rounded-[24px] bg-ink px-5 py-4 text-white no-underline">
+          <Inbox aria-hidden size={26} strokeWidth={1.7} />
+          <span className="flex-1"><span className="block font-display text-[19px] font-extrabold">{o.pendingIntros} employer{o.pendingIntros > 1 ? 's want' : ' wants'} to meet you</span><span className="text-[15px] text-white/80">You decide. Your name stays hidden until you accept.</span></span>
+          <ChevronRight aria-hidden />
+        </Link>
       )}
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="space-y-4">
-          <Card title="Profile status">
-            {o.discovery.discoverable ? <Notice tone="success">Ready for matching. Employers see an anonymous summary, never your name, until you accept a request.</Notice> : (
-              <ul className="space-y-2">{o.discovery.reasons.map((r) => <li key={r}><Notice tone="warning">{REASON[r] ?? r}</Notice></li>)}</ul>
-            )}
-            {o.awaitingReview.length > 0 && <p className="mt-3 text-[14px] text-muted">{o.awaitingReview.length} approved item{o.awaitingReview.length > 1 ? 's are' : ' is'} waiting for BondMoran&apos;s anonymity review.</p>}
-            {o.drafts.length > 0 && <p className="mt-3 text-[15px]"><Link href="/candidate/profile?tab=evidence">Review {o.drafts.length} draft evidence item{o.drafts.length > 1 ? 's' : ''}</Link></p>}
-            {o.profileJob && (o.profileJob.status === 'queued' || o.profileJob.status === 'running') && <div className="mt-3"><JobPoller jobId={o.profileJob.id} /></div>}
-            {o.profileJob?.status === 'failed' && <div className="mt-3"><Notice tone="danger">Your answer is saved. We could not update your profile just now. Try again.</Notice><div className="mt-2"><ActionButton path="conversations/retry-profile" body={{ jobId: o.profileJob.id }} label="Try again" /></div></div>}
-          </Card>
-          <Card title="Latest feedback">
-            {fb && (fb.strengths.length || fb.gaps.length) ? (
-              <div className="space-y-3 text-[15px]">
-                {fb.strengths.map((s) => <p key={s.text}>{s.text}</p>)}
-                {fb.gaps.map((g) => <p key={g.text} className="text-muted">{g.text}</p>)}
-              </div>
-            ) : <p className="text-[15px] text-muted">We will share feedback once there is enough approved evidence to say something specific. Meanwhile, a useful next step is to describe one task you took responsibility for.</p>}
-            {fb?.nextQuestion && <p className="mt-3 text-[14px]"><span className="text-muted">Suggested next question:</span> {fb.nextQuestion}</p>}
-          </Card>
-        </div>
-        <div className="space-y-4">
-          <Card title="Introduction requests">
-            <p className="text-[15px]">{o.pendingIntros ? `${o.pendingIntros} request${o.pendingIntros > 1 ? 's' : ''} waiting for your decision.` : 'You control which employers see your name.'}</p>
-            <div className="mt-3"><LinkButton href="/candidate/introductions" variant="secondary">View requests</LinkButton></div>
-          </Card>
-          <Card title="Your AI helper">
-            <p className="text-[15px]">{ai.waiting.length ? `${ai.waiting.length} answer${ai.waiting.length > 1 ? 's' : ''} drafted by your AI ${ai.waiting.length > 1 ? 'are' : 'is'} ready to check.` : ai.connections.length ? `Connected to ${ai.connections[0].name}. Ask it to help with your questions.` : 'Let your own ChatGPT or Claude draft your answers. You check them and press Send.'}</p>
-            <div className="mt-3"><LinkButton href="/candidate/ai" variant={ai.waiting.length ? 'primary' : 'secondary'}>{ai.waiting.length ? 'Check them' : ai.connections.length ? 'Open' : 'Set it up'}</LinkButton></div>
-          </Card>
-          <Card title="Your controls"><div className="flex flex-col gap-2"><LinkButton href="/candidate/profile" variant="secondary">Review profile</LinkButton><LinkButton href="/candidate/privacy" variant="secondary">Privacy</LinkButton></div></Card>
-        </div>
+
+      <div className="relative mt-6 grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:items-start">
+        <section aria-label="Your next step" className="overflow-hidden rounded-[32px] bg-surface p-3 shadow-[0_24px_60px_-28px_rgba(30,40,30,.35)]">
+          <FoldArt className="h-40 w-full rounded-[24px] md:h-52" />
+          <div className="px-3 pb-3 pt-1">
+            <h2 className="text-[30px] leading-tight">{needsCv ? 'Start with your CV.' : 'One good example.'}</h2>
+            <p className="mt-1 text-[17px] text-muted">{needsCv ? 'We use it to ask you the right questions.' : question}</p>
+            <div className="mt-5 space-y-3">
+              {needsCv ? <LinkButton href="/candidate/cv" className="w-full text-[17px]">Add your CV</LinkButton>
+                : active ? <LinkButton href={`/candidate/conversation/${active.id}`} className="w-full text-[17px]">Answer next question</LinkButton>
+                : <ActionButton path="conversations/start" body={{ kind: startKind }} label="Answer next question" redirect="/candidate/conversation/{id}" full />}
+              {!needsCv && <HomeAiButton conversationId={active?.id ?? null} startKind={startKind} />}
+            </div>
+          </div>
+        </section>
+
+        <section aria-label="Your profile">
+          <h2 className="text-[30px]">Your profile</h2>
+          <p className="mt-1 text-[17px] text-muted">{ready} of {sections.length} sections ready</p>
+          <div className="mt-4 grid grid-cols-4 gap-2" aria-hidden>{sections.map((s) => <span key={s.label} className={cx('h-2 rounded-full', s.done ? 'bg-primary' : 'bg-line')} />)}</div>
+          <ul className="mt-4">
+            {sections.map(({ label, hint, done, href, Icon }) => (
+              <li key={label}>
+                <Link href={href} className="-mx-2 flex items-center gap-4 rounded-2xl px-2 py-3.5 text-ink no-underline hover:bg-surface">
+                  <Icon aria-hidden size={24} strokeWidth={1.6} />
+                  <span className="flex-1"><span className="block text-[18px] font-medium">{label}</span><span className={cx('text-[14px]', done ? 'text-primary' : 'text-muted')}>{done ? `✓ ${hint}` : hint}</span></span>
+                  <ChevronRight aria-hidden className="text-muted" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {!o.discovery.discoverable && o.discovery.reasons[0] && <p className="mt-3 rounded-2xl bg-warning-tint px-4 py-3 text-[15px] text-warning">{REASON[o.discovery.reasons[0]] ?? o.discovery.reasons[0]}</p>}
+          {o.profileJob && (o.profileJob.status === 'queued' || o.profileJob.status === 'running') && <div className="mt-3"><JobPoller jobId={o.profileJob.id} /></div>}
+          {o.profileJob?.status === 'failed' && <div className="mt-3 flex flex-wrap items-center gap-3 text-[15px]"><span>We couldn’t update your profile just now.</span><ActionButton path="conversations/retry-profile" body={{ jobId: o.profileJob.id }} label="Try again" variant="secondary" /></div>}
+          <p className="mt-4 text-[14px]"><Link href="/candidate/profile" className={cx(buttonClass('ghost'), 'min-h-0 px-0 text-[15px]')}>See your profile as employers do</Link></p>
+        </section>
       </div>
-    </>
+    </div>
   );
 }
