@@ -133,7 +133,7 @@ export async function rememberForMiniMe(ctx: Ctx, provider: string, items: { top
 }
 
 /** A few questions not yet answered, for their AI to slip into conversation when it fits. */
-export async function questionsLeft(ctx: Ctx, limit = 3) {
+export async function questionsLeft(ctx: Ctx, limit = 6) {
   const v = await onboardingView(ctx);
   const left = v.sections.flatMap((s) => s.questions.filter((q) => !q.answer).map((q) => ({ key: q.key, question: q.text, section: s.title })));
   return { left: left.length, total: v.total, suggestions: left.slice(0, limit) };

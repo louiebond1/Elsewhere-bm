@@ -123,7 +123,8 @@ describe('always-on mode', () => {
     const tok = await token(w, 'C01');
     const next = await call(tok, 'next_mini_me_questions');
     expect(next.result.structuredContent).toMatchObject({ left: 50, total: 50 });
-    expect((next.result.structuredContent as { suggestions: unknown[] }).suggestions).toHaveLength(3);
+    expect((next.result.structuredContent as { suggestions: unknown[] }).suggestions).toHaveLength(6);
+    expect(next.result.content[0].text).toMatch(/natural, conversational/);
     const r = await call(tok, 'remember_for_my_mini_me', { items: [
       { topic: 'Current job', detail: 'Finance assistant at a retailer', question_key: 'current_role' },
       { topic: 'Weekend football coaching', detail: 'Runs a kids’ team every Saturday: kit, rotas and parents.' },

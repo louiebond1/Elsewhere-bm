@@ -11,7 +11,7 @@ import { AI_APPS } from '@/lib/ai-connect';
 type Q = { key: string; text: string; hint: string | null; answer: string | null; source: 'ai' | 'self' | null; provider: string | null; approved: boolean };
 type Section = { key: string; title: string; questions: Q[] };
 
-export const CHECKLIST_PROMPT = 'Mock-interview me for my Elsewhere mini-me. Fill in what you already know about me, then ask me the rest one question at a time like a friendly interviewer, and save my answers in batches as we go.';
+export const CHECKLIST_PROMPT = 'Let’s build up my Elsewhere profile. Use what you already know about me, then get to know me with a relaxed chat about whatever’s missing, and save everything as we go.';
 
 /** Ask their AI to fill in the checklist, or connect it first. Refreshes while answers arrive. */
 export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waiting }: { connected: string | null; connectorUrl: string; autoOpen: boolean; waiting: boolean }) {
