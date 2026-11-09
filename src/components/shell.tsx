@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { CsrfProvider } from './client';
-import { NotificationBell, SignOut, SwitchPersona, TopNav, MobileNav, type NavItem } from './shell-client';
+import { NotificationBell, SignOut, SwitchPersona, TopNav, MobileNav, HideOn, Initials, type NavItem } from './shell-client';
 import { providerLabel } from '../server/ai';
 import { HandHelping, ArrowRight } from 'lucide-react';
 
@@ -26,7 +26,7 @@ export function DemoStrip({ who }: { who?: string | null }) {
 
 export type AiBarInfo = { status: string; action: string; href: string };
 
-export function AppShell({ children, nav, base, csrf, who, brandSub, aiBar, pill }: { children: ReactNode; nav: NavItem[]; base: string; csrf: string; who: string; brandSub?: string; aiBar?: AiBarInfo; pill?: ReactNode }) {
+export function AppShell({ children, nav, base, csrf, who, brandSub, aiBar, pill, person }: { children: ReactNode; nav: NavItem[]; base: string; csrf: string; who: string; brandSub?: string; aiBar?: AiBarInfo; pill?: ReactNode; person?: string }) {
   return (
     <CsrfProvider token={csrf}>
       <div className="min-h-screen bg-page">
@@ -40,10 +40,11 @@ export function AppShell({ children, nav, base, csrf, who, brandSub, aiBar, pill
               <SwitchPersona />
               {pill}
               <span className="hidden lg:inline-flex"><SignOut /></span>
+              {person && <Initials name={person} />}
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-[1320px] px-5 pb-28 pt-4 lg:px-10 lg:pb-14 lg:pt-6">{aiBar && <AiBar {...aiBar} />}{children}</main>
+        <main className="mx-auto max-w-[1320px] px-5 pb-28 pt-4 lg:px-10 lg:pb-14 lg:pt-6">{aiBar && <HideOn paths={['/candidate/onboarding']}><AiBar {...aiBar} /></HideOn>}{children}</main>
         <footer className="px-4 pb-24 text-center text-[12px] text-muted lg:pb-6">Powered by Elsewhere</footer>
       </div>
       <MobileNav items={nav} />

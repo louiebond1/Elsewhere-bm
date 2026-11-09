@@ -34,9 +34,9 @@ function Steps({ step }: { step: 1 | 2 | 3 }) {
 }
 
 /** Connect ChatGPT or Claude in three steps, then come back to the task. */
-export function AiConnectSheet({ open, onClose, connectorUrl, onConnected, task }: { open: boolean; onClose: () => void; connectorUrl: string; onConnected: (provider: string) => void; task?: string }) {
+export function AiConnectSheet({ open, onClose, connectorUrl, onConnected, task, initialApp = 'chatgpt' }: { open: boolean; onClose: () => void; connectorUrl: string; onConnected: (provider: string) => void; task?: string; initialApp?: AiApp }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [app, setApp] = useState<AiApp>('chatgpt');
+  const [app, setApp] = useState<AiApp>(initialApp);
   const [provider, setProvider] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [notYet, setNotYet] = useState(false);

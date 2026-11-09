@@ -79,7 +79,7 @@ export function SwitchPersona() {
   );
 }
 
-export type NavItem = { href: string; label: string; icon: string };
+export type NavItem = { href: string; label: string; icon: string; count?: number };
 
 export function NavLinks({ items, onNavigate, dark }: { items: NavItem[]; onNavigate?: () => void; dark?: boolean }) {
   const path = usePathname();
@@ -140,10 +140,22 @@ export function TopNav({ items }: { items: NavItem[] }) {
         const active = path === i.href || path.startsWith(i.href + '/');
         return (
           <li key={i.href}>
-            <Link href={i.href} aria-current={active ? 'page' : undefined} className={cx('inline-flex h-11 items-center whitespace-nowrap rounded-full px-5 text-[16px] font-medium no-underline transition-colors', active ? 'bg-[#E3E9DC] text-ink' : 'text-ink hover:bg-surface')}>{i.label}</Link>
+            <Link href={i.href} aria-current={active ? 'page' : undefined} className={cx('inline-flex h-11 items-center whitespace-nowrap rounded-full px-5 text-[16px] font-medium no-underline transition-colors', active ? 'bg-[#E3E9DC] text-ink' : 'text-ink hover:bg-surface')}>{i.label}{i.count ? <span aria-label={`${i.count} waiting`} className="tnum ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-[13px] font-semibold text-white">{i.count}</span> : null}</Link>
           </li>
         );
       })}
     </ul>
   );
+}
+
+/** The AI strip, hidden on pages that have their own AI banner. */
+export function HideOn({ paths, children }: { paths: string[]; children: React.ReactNode }) {
+  const path = usePathname();
+  return paths.some((p) => path === p || path.startsWith(p + '/')) ? null : <>{children}</>;
+}
+
+/** A round avatar with initials. */
+export function Initials({ name }: { name: string }) {
+  const i = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
+  return <span aria-hidden className="hidden h-11 w-11 items-center justify-center rounded-full bg-primary font-display text-[15px] font-semibold text-white sm:inline-flex">{i}</span>;
 }
