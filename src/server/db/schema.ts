@@ -292,6 +292,8 @@ export const onboardingAnswers = pgTable('onboarding_answers', {
   ...common(),
   candidateId: uuid('candidate_id').notNull().references(() => candidates.id, { onDelete: 'cascade' }),
   questionKey: text('question_key').notNull(),
+  /** Only for extra things they chose to share beyond the checklist: the topic or follow-up question. */
+  questionText: text('question_text'),
   answer: text('answer').notNull(),
   source: text('source').notNull(),
   aiProvider: text('ai_provider'),

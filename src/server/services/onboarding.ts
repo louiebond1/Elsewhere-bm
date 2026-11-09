@@ -1,9 +1,11 @@
 import 'server-only';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, like } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import { onboardingAnswers } from '../db/schema';
 import { requireUser, type Ctx } from './context';
 import { invalid } from '../lib/errors';
 import { logActivity } from './audit';
+import { refreshInterviews } from './mini-me';
 import { ONBOARDING, ONBOARDING_KEYS, MAX_ONBOARDING_ANSWER } from '../../config/onboarding';
 
 const me = (ctx: Ctx) => {
@@ -12,6 +14,9 @@ const me = (ctx: Ctx) => {
   return a.candidateId;
 };
 const clean = (t: unknown) => (typeof t === 'string' ? t.trim() : '');
+export const EXTRA = 'extra:';
+export const MAX_EXTRAS = 100;
+const isExtra = (k: string) => k.startsWith(EXTRA) && k.length <= 60;
 
 /** The checklist with this person's answers, section by section, plus simple counts. */
 export async function onboardingView(ctx: Ctx) {
@@ -25,19 +30,31 @@ export async function onboardingView(ctx: Ctx) {
       return { key: q.key, text: q.text, hint: q.hint ?? null, answer: r?.answer ?? null, source: (r?.source ?? null) as 'ai' | 'self' | null, provider: r?.aiProvider ?? null, approved: r?.status === 'approved' };
     }),
   }));
+  const extras = rows.filter((r) => r.questionKey.startsWith(EXTRA)).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    .map((r) => ({ key: r.questionKey, text: r.questionText ?? 'Something else', hint: null, answer: r.answer, source: r.source as 'ai' | 'self', provider: r.aiProvider, approved: r.status === 'approved' }));
   const all = sections.flatMap((s) => s.questions);
-  return { sections, total: all.length, answered: all.filter((q) => q.answer).length, approved: all.filter((q) => q.approved).length, toCheck: all.filter((q) => q.answer && !q.approved).length };
+  return { sections, extras, extrasToCheck: extras.filter((e) => !e.approved).length, total: all.length, answered: all.filter((q) => q.answer).length, approved: all.filter((q) => q.approved).length, toCheck: all.filter((q) => q.answer && !q.approved).length + extras.filter((e) => !e.approved).length };
 }
 
 /** The person writes or edits an answer themselves: it counts as checked. An empty answer removes it. */
 export async function saveOwnAnswer(ctx: Ctx, key: string, answer: string) {
   const candidateId = me(ctx);
-  if (!ONBOARDING_KEYS.has(key)) throw invalid('That question isn’t on the checklist.');
+  if (!ONBOARDING_KEYS.has(key) && !isExtra(key)) throw invalid('That question isn’t on the checklist.');
   const body = clean(answer);
+  if (isExtra(key)) {
+    const [row] = await ctx.tx.select({ id: onboardingAnswers.id }).from(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.questionKey, key)));
+    if (!row) throw invalid('That item no longer exists.');
+    if (!body) { await ctx.tx.delete(onboardingAnswers).where(eq(onboardingAnswers.id, row.id)); return { saved: true }; }
+    if (body.length > MAX_ONBOARDING_ANSWER) throw invalid(`Answers can be up to ${MAX_ONBOARDING_ANSWER} characters.`, { answer: 'Too long' });
+    await ctx.tx.update(onboardingAnswers).set({ answer: body, source: 'self', aiProvider: null, status: 'approved', approvedAt: ctx.now, updatedAt: new Date() }).where(eq(onboardingAnswers.id, row.id));
+    await refreshInterviews(ctx, candidateId);
+    return { saved: true };
+  }
   if (body.length > MAX_ONBOARDING_ANSWER) throw invalid(`Answers can be up to ${MAX_ONBOARDING_ANSWER} characters.`, { answer: 'Too long' });
   if (!body) { await ctx.tx.delete(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.questionKey, key))); return { saved: true }; }
   await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: key, answer: body, source: 'self', status: 'approved', approvedAt: ctx.now })
     .onConflictDoUpdate({ target: [onboardingAnswers.candidateId, onboardingAnswers.questionKey], set: { answer: body, source: 'self', aiProvider: null, status: 'approved', approvedAt: ctx.now, updatedAt: new Date() } });
+  await refreshInterviews(ctx, candidateId);
   return { saved: true };
 }
 
@@ -45,9 +62,9 @@ export async function saveOwnAnswer(ctx: Ctx, key: string, answer: string) {
 export async function approveAnswers(ctx: Ctx, keys: string[] | 'all') {
   const candidateId = me(ctx);
   const where = keys === 'all' ? and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.status, 'draft'))
-    : and(eq(onboardingAnswers.candidateId, candidateId), inArray(onboardingAnswers.questionKey, keys.filter((k) => ONBOARDING_KEYS.has(k)).length ? keys.filter((k) => ONBOARDING_KEYS.has(k)) : ['-']));
+    : and(eq(onboardingAnswers.candidateId, candidateId), inArray(onboardingAnswers.questionKey, keys.filter((k) => ONBOARDING_KEYS.has(k) || isExtra(k)).length ? keys.filter((k) => ONBOARDING_KEYS.has(k) || isExtra(k)) : ['-']));
   const r = await ctx.tx.update(onboardingAnswers).set({ status: 'approved', approvedAt: ctx.now, updatedAt: new Date() }).where(where).returning({ id: onboardingAnswers.id });
-  if (r.length) await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.approved', metadata: { count: r.length } });
+  if (r.length) { await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.approved', metadata: { count: r.length } }); await refreshInterviews(ctx, candidateId); }
   return { approved: r.length };
 }
 
@@ -79,4 +96,26 @@ export async function onboardingToCheck(ctx: Ctx) {
   const candidateId = me(ctx);
   const r = await ctx.tx.select({ id: onboardingAnswers.id }).from(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.status, 'draft')));
   return r.length;
+}
+
+/**
+ * Anything beyond the checklist: follow-ups their AI asked, or things they want to share.
+ * From their AI it's a draft to check; written by them it's already checked.
+ */
+export async function addExtras(ctx: Ctx, items: { topic: string; answer: string }[], from: { provider: string } | 'self') {
+  const candidateId = me(ctx);
+  const have = await ctx.tx.select({ id: onboardingAnswers.id }).from(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), like(onboardingAnswers.questionKey, `${EXTRA}%`)));
+  let room = MAX_EXTRAS - have.length;
+  const saved: string[] = []; const skipped: { topic: string; reason: string }[] = [];
+  for (const it of items) {
+    const topic = clean(it.topic).slice(0, 200); const body = clean(it.answer);
+    if (!topic || !body) { skipped.push({ topic: topic || '(no topic)', reason: 'empty' }); continue; }
+    if (body.length > MAX_ONBOARDING_ANSWER) { skipped.push({ topic, reason: `longer than ${MAX_ONBOARDING_ANSWER} characters` }); continue; }
+    if (room <= 0) { skipped.push({ topic, reason: `already ${MAX_EXTRAS} extra items` }); continue; }
+    const key = `${EXTRA}${randomUUID().slice(0, 12)}`;
+    await ctx.tx.insert(onboardingAnswers).values({ datasetId: ctx.datasetId, candidateId, questionKey: key, questionText: topic, answer: body, ...(from === 'self' ? { source: 'self', status: 'approved', approvedAt: ctx.now } : { source: 'ai', aiProvider: from.provider, status: 'draft' }) });
+    saved.push(key); room--;
+  }
+  if (saved.length) { await logActivity(ctx, { subjectType: 'candidate', subjectId: candidateId, action: 'onboarding.extras_added', metadata: { count: saved.length } }); if (from === 'self') await refreshInterviews(ctx, candidateId); }
+  return { saved, skipped };
 }

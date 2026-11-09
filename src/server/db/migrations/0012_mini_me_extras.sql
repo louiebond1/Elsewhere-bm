@@ -1,0 +1,1 @@
+ALTER TABLE "onboarding_answers" ADD COLUMN "question_text" text;

@@ -3,7 +3,7 @@ import { onboardingView } from '@/server/services/onboarding';
 import { connectedAi } from '@/server/connectors/drafts';
 import { issuer } from '@/server/connectors/oauth';
 import { PageHeader } from '@/components/ui';
-import { ChecklistAi, ChecklistSections, ApproveAll } from '@/components/onboarding-doc';
+import { ChecklistAi, ChecklistSections, ApproveAll, Extras } from '@/components/onboarding-doc';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +29,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
         </div>
       )}
       <div className="mt-8"><ChecklistSections sections={v.sections} /></div>
+      <div className="mt-5"><Extras extras={v.extras} /></div>
     </div>
   );
 }

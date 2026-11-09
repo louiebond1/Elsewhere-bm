@@ -63,6 +63,11 @@ export default async function CandidateRecord({ params, searchParams }: { params
             </Section>
           ) : null;
         })}
+        {rows.some((x) => x.questionKey.startsWith('extra:') && x.status === 'approved') && (
+          <Section title="Extra things they shared">
+            <dl className="space-y-4">{rows.filter((x) => x.questionKey.startsWith('extra:') && x.status === 'approved').map((x) => <div key={x.id}><dt className="font-semibold">{x.questionText}</dt><dd className="mt-1 whitespace-pre-wrap text-[16px]">{x.answer}</dd></div>)}</dl>
+          </Section>
+        )}
       </div>
     );
   } else if (tab === 'overview') {

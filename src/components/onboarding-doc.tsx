@@ -36,7 +36,7 @@ export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waitin
       <ol className="mt-3 space-y-3 text-[16px]">
         <li><span className="font-semibold">1.</span> Copy this message:<div className="mt-2"><CopyBox text={CHECKLIST_PROMPT} label="Message for your AI" /></div></li>
         <li><span className="font-semibold">2.</span> <a href={connected === 'Claude' ? AI_APPS.claude.open : AI_APPS.chatgpt.open} target="_blank" rel="noreferrer">Open {connected}</a> and paste it. It fills in what it knows and asks you the rest. Type or just talk to it.</li>
-        <li><span className="font-semibold">3.</span> Its answers pop up here as it goes. You check them.</li>
+        <li><span className="font-semibold">3.</span> Its answers pop up here as it goes. It’ll ask you follow-ups too, and if you’ve got more to share, great: it all helps in your interviews.</li>
       </ol>
     </section>
   );
@@ -105,5 +105,36 @@ export function ChecklistSections({ sections }: { sections: Section[] }) {
         );
       })}
     </div>
+  );
+}
+
+/** Everything beyond the checklist: their AI's follow-ups and anything they chose to share. More is great. */
+export function Extras({ extras }: { extras: Q[] }) {
+  const { run, busy, error } = useCommand();
+  const [open, setOpen] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [answer, setAnswer] = useState('');
+  return (
+    <section aria-labelledby="extras" className="rounded-3xl bg-surface px-5 pb-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:px-7">
+      <div className="flex items-center justify-between gap-3 py-5">
+        <h2 id="extras" className="text-[22px] leading-7">Extra things you’ve shared</h2>
+        <span className="tnum whitespace-nowrap text-[15px] text-muted">{extras.length}</span>
+      </div>
+      <p className="border-t border-line pt-4 text-[16px] text-muted">Follow-ups your AI asked, and anything else worth knowing: a project, a result, a story. The more your mini-me knows, the better your interviews go.</p>
+      {extras.length > 0 && <ul className="divide-y divide-line">{extras.map((q) => <Question key={q.key + (q.answer ?? '') + q.approved} q={q} />)}</ul>}
+      {open ? (
+        <form className="mt-4 space-y-3" onSubmit={async (e) => { e.preventDefault(); if (await run('onboarding/extra', { topic, answer }) !== null) { setTopic(''); setAnswer(''); setOpen(false); } }}>
+          <label className="block"><span className="text-[16px] font-semibold">What’s it about?</span>
+            <input className="mt-2 h-12 w-full rounded-xl border border-control/60 bg-surface px-4 text-[17px]" value={topic} maxLength={200} onChange={(e) => setTopic(e.target.value)} placeholder="For example: The audit I helped prepare" /></label>
+          <label className="block"><span className="text-[16px] font-semibold">Tell us</span>
+            <textarea className={cx(textareaClass, 'mt-2 min-h-[140px]')} value={answer} maxLength={1500} onChange={(e) => setAnswer(e.target.value)} /></label>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className={buttonClass('primary')} disabled={busy || !topic.trim() || !answer.trim()}>{busy ? 'Saving…' : 'Add it'}</button>
+            <button type="button" className={buttonClass('ghost')} onClick={() => setOpen(false)}>Cancel</button>
+          </div>
+          <ErrorText error={error} />
+        </form>
+      ) : <button type="button" className={cx(buttonClass('secondary'), 'mt-4')} onClick={() => setOpen(true)}>Add something else</button>}
+    </section>
   );
 }

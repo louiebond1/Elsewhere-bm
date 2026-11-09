@@ -1,3 +1,4 @@
+import { miniMeEvidence, miniMeUpdatedAt } from './mini-me';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 import { roles, matches, candidates, candidateIdentity, organisations, simulatedInterviews, jobs } from '../db/schema';
 import { compareMatches } from '../lib/matching-rules';
@@ -16,11 +17,14 @@ import { clientMaySeeCandidateOnRole } from '../policies/privacy';
  * never something the person said, and a person always decides.
  */
 /** Enough to fill the largest list (20) with a little spare. */
-export const SIM_LIMIT = 22;
+/** Everyone who fits gets interviewed. This is only a safety ceiling per job run. */
+export const SIM_LIMIT = 500;
 export const NOT_SHARED = 'They haven’t shared an example of this yet.';
 
 type Crit = Awaited<ReturnType<typeof criteriaFor>>[number];
 type Evidence = { id: string; safeClaim: string; tags: string[]; strength: string };
+/** A company name the dataset doesn't know about usually ends like this; such answers aren't shown. */
+const COMPANY = /\b(ltd|limited|plc|inc|llp|gmbh)\b\.?/i;
 export type SimAnswer = { question: string; answer: string; evidenceIds: string[]; grounded: boolean };
 
 /** Up to three questions from what matters most, plus one about the role's main goal. */
@@ -64,7 +68,9 @@ export async function simulationTargets(ctx: Ctx, roleId: string) {
   const info = new Map(refs.map((r) => [r.id, r]));
   const ranked = ms.map((m) => ({ m, publicRef: info.get(m.candidateId)?.ref ?? '', eligibility: m.eligibility, score: m.score, coverageBps: m.coverageBps })).sort(compareMatches);
   const existing = await ctx.tx.select().from(simulatedInterviews).where(eq(simulatedInterviews.roleId, roleId));
-  const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.profileVersionId === info.get(s.candidateId)?.pv).map((s) => s.candidateId));
+  // An interview is redone when the job, their profile, or their mini-me has changed since.
+  const mini = await miniMeUpdatedAt(ctx, existing.map((s) => s.candidateId));
+  const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.profileVersionId === info.get(s.candidateId)?.pv && !(mini.get(s.candidateId) && mini.get(s.candidateId)! > s.updatedAt)).map((s) => s.candidateId));
   const targets: { candidateId: string }[] = [];
   let considered = 0;
   for (const r of ranked) {
@@ -103,10 +109,10 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
   const allowed = new Set(a.evidenceIds);
   const answers = a.answers.map((x) => {
     const ids = x.evidenceIds.filter((i) => allowed.has(i));
-    const ok = ids.length > 0 && x.answer.trim() && !safeClaimProblems(x.answer, forbidden).length;
+    const ok = ids.length > 0 && x.answer.trim() && !safeClaimProblems(x.answer, forbidden).length && !COMPANY.test(x.answer);
     return ok ? { ...x, evidenceIds: ids, grounded: true } : { question: x.question, answer: NOT_SHARED, evidenceIds: [], grounded: false };
   });
-  const clean = (t: string) => (safeClaimProblems(t, forbidden).length ? '' : t.trim());
+  const clean = (t: string) => (safeClaimProblems(t, forbidden).length || COMPANY.test(t) ? '' : t.trim());
   const summary = clean(a.summary) || (answers.some((x) => x.grounded) ? 'Has relevant examples for this job.' : 'Not much to go on yet.');
   const concerns = a.concerns.map(clean).filter(Boolean).slice(0, 3);
   const fitScore = Math.max(0, Math.min(100, Math.round(a.fitScore)));
@@ -125,7 +131,8 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
   for (const t of targets) {
     const prep = await assessmentInput(readCtx(base), roleId, t.candidateId);
     if (!prep || !prep.profileVersionId) continue;
-    const evidence = prep.input.evidence;
+    // Their approved examples plus their approved mini-me answers.
+    const evidence = [...prep.input.evidence, ...(await miniMeEvidence(readCtx(base), t.candidateId))];
     const demo = demoSimulation(questions, evidence);
     let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
     if (live && evidence.length) {

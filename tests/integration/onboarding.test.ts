@@ -78,3 +78,38 @@ describe('candidate onboarding: welcome email and the 50-question checklist', ()
     expect(rows[0]).toMatchObject({ source: 'ai', aiProvider: 'Claude', status: 'draft' });
   });
 });
+
+describe('mini-me: follow-ups and extras, and everyone gets interviewed', () => {
+  it('their AI adds follow-ups beyond the 50; they add their own; both show up and can be edited or removed', async () => {
+    const w = await load();
+    const tok = await token(w, 'C01');
+    const r = await call(tok, 'add_to_my_mini_me', { items: [{ topic: 'How many invoices a week?', answer: 'About 300, across four entities.' }, { topic: '', answer: 'x' }] });
+    expect(r.result.content[0].text).toMatch(/Added 1 item to their mini-me as drafts/);
+    const { addExtras } = await import('../../src/server/services/onboarding');
+    await w.T(w.cand('C01'), (c) => addExtras(c, [{ topic: 'The audit I helped prepare', answer: 'I pulled the samples and tracked every query to closure.' }], 'self'));
+    let v = await onboardingView(readCtx(w.cand('C01')));
+    expect(v.extras).toHaveLength(2);
+    expect(v.extras.find((e) => e.text === 'How many invoices a week?')).toMatchObject({ approved: false, provider: 'ChatGPT' });
+    expect(v.extras.find((e) => e.text === 'The audit I helped prepare')).toMatchObject({ approved: true, source: 'self' });
+    expect(v.toCheck).toBe(1);
+    const list = await call(tok, 'get_my_onboarding_checklist');
+    expect((list.result.structuredContent as { extras: unknown[] }).extras).toHaveLength(2);
+    const aiKey = v.extras.find((e) => !e.approved)!.key;
+    await w.T(w.cand('C01'), (c) => approveAnswers(c, [aiKey]));
+    await w.T(w.cand('C01'), (c) => saveOwnAnswer(c, aiKey, ''));
+    v = await onboardingView(readCtx(w.cand('C01')));
+    expect(v.extras).toHaveLength(1);
+  });
+
+  it('approved mini-me answers become interview material; practical details and anything identifying are left out', async () => {
+    const w = await load();
+    const { miniMeEvidence } = await import('../../src/server/services/mini-me');
+    await w.T(w.cand('C01'), (c) => saveAiAnswers(c, 'ChatGPT', [{ key: 'ex_improvement', answer: 'I rebuilt the month-end reconciliation checklist in Excel.' }, { key: 'salary', answer: '£40k' }]));
+    expect(await miniMeEvidence(readCtx(w.cand('C01')), w.ids.candidates.C01)).toHaveLength(0); // not approved yet
+    await w.T(w.cand('C01'), (c) => approveAnswers(c, 'all'));
+    const ev = await miniMeEvidence(readCtx(w.cand('C01')), w.ids.candidates.C01);
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ id: 'mm:ex_improvement', strength: 'partial' });
+    expect(ev[0].tags).toEqual(expect.arrayContaining(['reconciliations', 'month_end', 'excel', 'process_design']));
+  });
+});
