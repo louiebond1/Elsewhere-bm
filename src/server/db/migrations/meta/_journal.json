@@ -64,6 +64,13 @@
       "when": 1794228295074,
       "tag": "0008_screening_coupons",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794229446814,
+      "tag": "0009_ai_connectors",
+      "breakpoints": true
     }
   ]
 }

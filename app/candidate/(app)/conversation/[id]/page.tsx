@@ -22,7 +22,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <PageHeader title={c.conversation.kind === 'initial_screening' ? 'Your first conversation' : 'Check-in'} back={{ href: '/candidate/home', label: 'Home' }} subtitle={<span>Low pressure, text only. <Badge>{providerLabel()}</Badge></span>} />
       {c.conversation.status === 'completed' ? <p className="rounded-xl border border-line bg-surface p-5">This conversation is complete. Your draft evidence is being prepared.</p> : (
         <div className="grid gap-6 md:grid-cols-[1fr_200px]">
-          <Conversation conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic } : null} answered={answered} canFinish={answered > 0} />
+          <Conversation key={q?.id ?? "done"} conversationId={id} question={q ? { id: q.id, text: q.questionText, topic: q.topic, draft: q.draft?.body ?? null } : null} answered={answered} canFinish={answered > 0} />
           <aside className="hidden text-[14px] md:block"><h4 className="font-semibold">Topics covered</h4><ul className="mt-1 text-muted">{topics.length ? topics.map((t) => <li key={t}>{t}</li>) : <li>None yet</li>}</ul></aside>
         </div>
       )}

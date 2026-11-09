@@ -1,4 +1,5 @@
 'use client';
+import { takeReturnPath } from '@/lib/return-after-sign-in';
 import { useEffect, useMemo, useState } from 'react';
 import { api, Dialog, ErrorText, inputClass, type ApiError } from '@/components/client';
 import { buttonClass, cx } from '@/components/ui';
@@ -19,8 +20,9 @@ export function Personas({ people, scenarios, activeScenario }: { people: P[]; s
     const r = await api<{ userType: string }>('demo/switch-persona', { body: { userId } });
     setBusy(null);
     if (!r.ok) return setErr(r.error);
+    const back = takeReturnPath();
     try { sessionStorage.clear(); } catch {}
-    window.location.replace(`/${r.data.userType}/home`);
+    window.location.replace(back ?? `/${r.data.userType}/home`);
   };
   const load = async (code: string) => {
     setBusy(code);

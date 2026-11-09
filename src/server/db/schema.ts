@@ -757,6 +757,34 @@ export const aiSpend = pgTable('ai_spend', {
   state: text('state').notNull().default('reserved'),
 }, (t) => [index('ai_spend_month_idx').on(t.utcMonth)]);
 
+/**
+ * AI assistant connectors (Claude, ChatGPT). Each AI app registers itself (dynamic client registration);
+ * a person then signs in and approves a narrow set of permissions. Only hashes of codes and tokens are stored.
+ */
+export const oauthClients = pgTable('oauth_clients', {
+  id: text('id').primaryKey(),
+  clientName: text('client_name').notNull(),
+  redirectUris: text('redirect_uris').array().notNull(),
+  createdAt: ts('created_at').notNull().defaultNow(),
+});
+
+export const oauthGrants = pgTable('oauth_grants', {
+  ...common(),
+  clientId: text('client_id').notNull().references(() => oauthClients.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  scope: text('scope').notNull(),
+  redirectUri: text('redirect_uri').notNull(),
+  codeHash: text('code_hash').unique(),
+  codeChallenge: text('code_challenge'),
+  codeExpiresAt: ts('code_expires_at'),
+  accessHash: text('access_hash').unique(),
+  accessExpiresAt: ts('access_expires_at'),
+  refreshHash: text('refresh_hash').unique(),
+  refreshExpiresAt: ts('refresh_expires_at'),
+  revokedAt: ts('revoked_at'),
+  lastUsedAt: ts('last_used_at'),
+}, (t) => [index('oauth_grant_user_idx').on(t.userId)]);
+
 export const aiBudgetReservations = pgTable('ai_budget_reservations', {
   id: uuid('id').primaryKey().defaultRandom(),
   datasetId: uuid('dataset_id'),

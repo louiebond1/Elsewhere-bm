@@ -20,6 +20,7 @@ import * as contracts from './services/contracts';
 import * as checkout from './services/checkout';
 import * as hiring from './services/hiring-assistant';
 import * as simulation from './services/simulation';
+import * as connectors from './connectors/oauth';
 import { enqueue } from './services/jobs';
 import { roleScopedRef } from './dto/refs';
 import { notify, logActivity, clientUserIds } from './services/audit';
@@ -60,6 +61,8 @@ async function phraseQuestion(viewer: Viewer, base: BaseCtx, q: { id: string; to
 
 export const ROUTES: R[] = [
   // ---------- candidate ----------
+  { method: 'POST', path: 'oauth/approve', types: ['candidate'], h: ({ base, body }) => { const b = parse(z.object({ clientId: z.string().min(3).max(80), redirectUri: z.string().url().max(500), state: z.string().max(500).nullable(), codeChallenge: z.string().min(43).max(128), scope: z.string().max(200) }), body); return T(base, (c) => connectors.approve(c, b)); } },
+  { method: 'POST', path: 'connectors/:id/disconnect', types: ['candidate'], h: ({ base, p }) => T(base, (c) => connectors.disconnect(c, p.id)) },
   { method: 'POST', path: 'candidate/preferences', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.updatePreferences(c, parse(preferencesInput, body))) },
   { method: 'POST', path: 'candidate/discovery', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.setDiscovery(c, parse(z.object({ enabled: z.boolean() }), body).enabled)) },
   { method: 'POST', path: 'candidate/insights', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.setAggregateInsights(c, parse(z.object({ granted: z.boolean() }), body).granted)) },

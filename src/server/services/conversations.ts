@@ -77,8 +77,8 @@ export async function startConversation(ctx: Ctx, kind: 'initial_screening' | 'c
 export async function getConversation(ctx: Ctx, conversationId: string) {
   const conv = await convForCandidate(ctx, conversationId);
   const qs = await ctx.tx.select().from(checkInQuestions).where(eq(checkInQuestions.conversationId, conv.id)).orderBy(asc(checkInQuestions.ordinal));
-  const ans = qs.length ? await ctx.tx.select().from(checkInAnswers).where(and(inArray(checkInAnswers.questionId, qs.map((q) => q.id)), eq(checkInAnswers.status, 'submitted'))) : [];
-  return { conversation: conv, questions: qs.map((q) => ({ ...q, answer: ans.find((a) => a.questionId === q.id) ?? null })) };
+  const ans = qs.length ? await ctx.tx.select().from(checkInAnswers).where(and(inArray(checkInAnswers.questionId, qs.map((q) => q.id)), inArray(checkInAnswers.status, ['submitted', 'draft']))).orderBy(desc(checkInAnswers.updatedAt)) : [];
+  return { conversation: conv, questions: qs.map((q) => ({ ...q, answer: ans.find((a) => a.questionId === q.id && a.status === 'submitted') ?? null, draft: ans.find((a) => a.questionId === q.id && a.status === 'draft') ?? null })) };
 }
 
 /** Each Send saves the answer before the next question is requested. A retry never creates a second answer. */
@@ -95,7 +95,10 @@ export async function submitAnswer(ctx: Ctx, conversationId: string, questionId:
     await ctx.tx.update(checkInAnswers).set({ status: 'withdrawn', updatedAt: new Date() }).where(eq(checkInAnswers.id, existing.id));
     await ctx.tx.update(evidenceItems).set({ reviewState: 'superseded', updatedAt: new Date() }).where(and(eq(evidenceItems.sourceAnswerId, existing.id), ne(evidenceItems.reviewState, 'rejected')));
   }
-  const [a] = await ctx.tx.insert(checkInAnswers).values({ datasetId: ctx.datasetId, questionId: q.id, candidateId: conv.candidateId, body, status: 'submitted', submittedAt: ctx.now, replacesAnswerId: existing?.id ?? null }).returning();
+  // A draft saved by the candidate's own AI assistant: sending it (edited or not) keeps the AI-assisted label.
+  const [draft] = await ctx.tx.select().from(checkInAnswers).where(and(eq(checkInAnswers.questionId, q.id), eq(checkInAnswers.status, 'draft')));
+  if (draft) await ctx.tx.update(checkInAnswers).set({ status: 'withdrawn', updatedAt: new Date() }).where(and(eq(checkInAnswers.questionId, q.id), eq(checkInAnswers.status, 'draft')));
+  const [a] = await ctx.tx.insert(checkInAnswers).values({ datasetId: ctx.datasetId, questionId: q.id, candidateId: conv.candidateId, body, status: 'submitted', submittedAt: ctx.now, replacesAnswerId: existing?.id ?? null, ...(draft ? { inputMode: draft.inputMode, assistance: draft.assistance } : {}) }).returning();
   await ctx.tx.update(checkInQuestions).set({ state: 'answered', updatedAt: new Date() }).where(eq(checkInQuestions.id, q.id));
   const next = (await currentUnanswered(ctx, conv.id)) ?? (await addQuestion(ctx, conv));
   return { answer: a, next };

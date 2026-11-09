@@ -39,10 +39,11 @@ export function CvUpload({ hasCv }: { hasCv: boolean }) {
   );
 }
 
-export function Conversation({ conversationId, question, answered, canFinish }: { conversationId: string; question: { id: string; text: string; topic: string } | null; answered: number; canFinish: boolean }) {
+export function Conversation({ conversationId, question, answered, canFinish }: { conversationId: string; question: { id: string; text: string; topic: string; draft?: string | null } | null; answered: number; canFinish: boolean }) {
   const { run, busy, error } = useCommand<{ nextQuestionId: string | null; jobId?: string }>();
   const router = useRouter();
-  const [body, setBody] = useState('');
+  // A draft from the person's own AI assistant starts in the box; nothing is sent until they press Send.
+  const [body, setBody] = useState(question?.draft ?? '');
   return (
     <div className="space-y-4">
       {question ? (
@@ -50,6 +51,7 @@ export function Conversation({ conversationId, question, answered, canFinish }: 
           <p className="text-[13px] text-muted">Topic: {question.topic}</p>
           <p className="mt-1 text-[18px] font-medium">{question.text}</p>
           <p className="mt-2 text-[14px] text-muted">An example from work, study, volunteering or everyday responsibility is useful.</p>
+          {question.draft && <p className="mt-3 rounded-lg bg-info-tint px-3 py-2 text-[14px]">Drafted with your AI assistant. Check it, change anything that isn’t quite right, then press Send. It’s marked as AI-assisted.</p>}
           <textarea className={cx(textareaClass, 'mt-3')} rows={6} maxLength={4000} value={body} onChange={(e) => setBody(e.target.value)} aria-label="Your answer" />
           <div className="mt-1 text-right text-[12px] text-muted">{body.length} / 4000</div>
           <ErrorText error={error} />

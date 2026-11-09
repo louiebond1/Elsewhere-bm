@@ -114,7 +114,7 @@ export default async function CandidateRecord({ params, searchParams }: { params
           <section key={c.id} id={`c-${c.id}`} className="scroll-mt-4">
             <h2 className="text-[20px] font-semibold">{c.kind === 'initial_screening' ? 'First check-in' : 'Check-in'}</h2>
             <p className="mb-3 text-[14px] text-muted">{label(c.status)}{c.completedAt ? ` · completed ${date(c.completedAt)}` : ''} · {c.provider === 'fixture' ? 'Demo responses' : 'Live AI'}</p>
-            {qs.length ? <ul className="border-b border-line">{qs.map((a) => <li key={a.a.id} className="border-t border-line py-3 first:border-t-0 first:pt-0"><p className="font-medium">{a.q}</p><p className="mt-1">{a.a.body}</p></li>)}</ul> : <p className="text-muted">No submitted answers.</p>}
+            {qs.length ? <ul className="border-b border-line">{qs.map((a) => <li key={a.a.id} className="border-t border-line py-3 first:border-t-0 first:pt-0"><p className="font-medium">{a.q}</p>{a.a.assistance === 'candidate_declared_ai' && <span className="mt-1 inline-block rounded-full bg-info-tint px-2 py-0.5 text-[12px]">Drafted with the candidate’s AI assistant (not a sign it’s untrue)</span>}<p className="mt-1">{a.a.body}</p></li>)}</ul> : <p className="text-muted">No submitted answers.</p>}
           </section>
         );
       })}</div>
