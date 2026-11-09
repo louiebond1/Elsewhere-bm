@@ -6,12 +6,13 @@ import { roleForActor, roleCharges, criteriaFor, openOrdinaryRoleCount } from '.
 import { roleMatches, pipelineForRole, screeningsForRole, activityForRole } from '../server/views/client';
 import { activeContractForClient } from '../server/services/contracts';
 import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton } from './ui';
-import { ChargesPanel, CompactPrice, MatchCard } from './role';
+import { SimplePrice, CompactPrice, MatchCard } from './role';
 import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, RequestIntro, RequestScreening, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
 import { gbp, label, date, relative } from '../lib/format';
 import { prototype } from '../config/prototype';
 
-export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean }) {
+export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consultant }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean }) {
+  let tab = requestedTab;
   const role = await roleForActor(ctx, roleId);
   const crit = await criteriaFor(ctx, roleId);
   const isDraft = role.status === 'draft';
@@ -25,10 +26,10 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
   }
   const header = (
     <PageHeader back={{ href: consultant ? '/consultant/home' : '/client/roles', label: consultant ? 'Work queue' : 'Roles' }} title={role.title}
-      subtitle={<span className="flex flex-wrap items-center gap-2">{role.vacancyKey} · {gbp(role.salaryPence)} · {label(role.workMode)}, {label(role.locationRegion)} <Badge tone={role.status === 'open' ? 'success' : 'neutral'}>{label(role.status)}</Badge>{role.isExtraRole && <Badge>Extra role</Badge>}{role.isReplacementRole && <Badge tone="success">Replacement</Badge>}{role.defaultServiceMode === 'full_search' && <Badge tone="primary">Full search</Badge>}</span>}
+      subtitle={<span className="flex flex-wrap items-center gap-2">{gbp(role.salaryPence)} · {label(role.workMode)}, {label(role.locationRegion)} <Badge tone={role.status === 'open' ? 'success' : 'neutral'}>{role.status === 'open' ? 'Live' : role.status === 'draft' ? 'Draft' : label(role.status)}</Badge>{role.isExtraRole && <Badge>Extra role</Badge>}{role.isReplacementRole && <Badge tone="success">Replacement</Badge>}{role.defaultServiceMode === 'full_search' && <Badge tone="primary">Full search</Badge>}</span>}
       actions={<>
         {isDraft && <LinkButton href={`${base}/roles/${roleId}/edit`} variant="secondary">Edit draft</LinkButton>}
-        {!isDraft && role.status === 'open' && <LinkButton href={`${base}/roles/${roleId}/edit`} variant="secondary">Edit brief</LinkButton>}
+        {!isDraft && role.status === 'open' && <LinkButton href={`${base}/roles/${roleId}/edit`} variant="secondary">Edit role</LinkButton>}
         {ch && role.status === 'open' && role.defaultServiceMode === 'standard' && !role.isReplacementRole && <UpgradeRole roleId={roleId} ch={ch} />}
         {role.status === 'open' && <CloseRole roleId={roleId} />}
         {role.status === 'closed' && <ReopenRole roleId={roleId} />}
@@ -62,12 +63,14 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
   }
 
   const tabs = [
-    { key: 'matches', label: 'Matches', href: `${base}/roles/${roleId}?tab=matches` },
-    { key: 'pipeline', label: 'Pipeline', href: `${base}/roles/${roleId}?tab=pipeline` },
-    { key: 'screenings', label: 'Screenings', href: `${base}/roles/${roleId}?tab=screenings` },
-    { key: 'activity', label: 'Activity', href: `${base}/roles/${roleId}?tab=activity` },
+    { key: 'matches', label: 'Candidates', href: `${base}/roles/${roleId}?tab=matches` },
+    { key: 'pipeline', label: 'Interviews and hiring', href: `${base}/roles/${roleId}?tab=pipeline` },
+    { key: 'screenings', label: 'Phone screenings', href: `${base}/roles/${roleId}?tab=screenings` },
+    { key: 'activity', label: 'History', href: `${base}/roles/${roleId}?tab=activity` },
     ...(consultant ? [{ key: 'review', label: 'Consultant review', href: `${base}/roles/${roleId}?tab=review` }] : []),
   ];
+  // Unknown or old tab names show the candidates instead of a blank page.
+  if (!tabs.some((t) => t.key === tab)) tab = 'matches';
   let body: React.ReactNode = null;
   if (tab === 'matches') {
     const { strong, worth } = await roleMatches(ctx, roleId);
@@ -75,16 +78,16 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
     const scrLimit = ch!.screeningsUsed >= ch!.includedScreenings ? 'All five included screenings are used or booked.' : null;
     const card = (m: (typeof strong)[number]) => (
       <MatchCard key={m.roleScopedReference} m={m} href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} actions={<>
-        <LinkButton href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} variant="secondary">View evidence</LinkButton>
+        <LinkButton href={`${base}/roles/${roleId}/candidates/${m.roleScopedReference}`} variant="secondary">See profile</LinkButton>
         {!m.introState && <RequestIntro roleId={roleId} candidateRef={m.roleScopedReference} depositPaid={ch!.depositPaid} holdExists={!!ch!.holdUnits} depositUnits={ch!.depositUnits} depositPence={ch!.depositPence} disabledReason={m.permittedActionFlags.canRequestIntro ? null : intoLimit ?? 'Not available'} />}
         {(!m.screeningStatus || m.screeningStatus === 'cancelled') && <RequestScreening roleId={roleId} candidateRef={m.roleScopedReference} disabledReason={m.permittedActionFlags.canRequestScreening ? null : scrLimit ?? 'Not available'} />}
       </>} />
     );
     body = (
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[14px] text-muted">Evidence is shown against each thing that matters. Unknown means not enough evidence yet, never a weak candidate.</p>{role.status === 'open' && <AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} />}</div>
-        <section><h3 className="mb-3">Evidence-backed matches</h3>{strong.length ? <div className="space-y-3">{strong.map(card)}</div> : <Empty>No suitable profiles to show yet. Your consultant can review the brief.</Empty>}</section>
-        <section><h3 className="mb-1">Worth a conversation</h3><p className="mb-3 text-[14px] text-muted">Little evidence so far, but relevant to this role. A conversation could show more.</p>{worth.length ? <div className="space-y-3">{worth.map(card)}</div> : <Empty>No low-information profiles for this role.</Empty>}</section>
+        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[15px]">People who fit this role. Names stay hidden until they agree to meet you. “Not known yet” just means we haven’t seen evidence, not that they can’t do it.</p>{role.status === 'open' && <AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch!.screeningsUsed} />}</div>
+        <section><h3 className="mb-3">Best fits</h3>{strong.length ? <div className="space-y-3">{strong.map(card)}</div> : <Empty>No one fits yet. Your consultant can help you adjust the role.</Empty>}</section>
+        <section><h3 className="mb-1">Worth a chat</h3><p className="mb-3 text-[14px] text-muted">We don’t know much about these people yet, but what we know is relevant. A phone screening could tell you more.</p>{worth.length ? <div className="space-y-3">{worth.map(card)}</div> : <Empty>No one else to suggest right now.</Empty>}</section>
       </div>
     );
   } else if (tab === 'pipeline') {
@@ -95,7 +98,7 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
     const past = rows.filter((r) => !['accepted', 'pending'].includes(r.state) && !r.hired);
     body = (
       <div className="space-y-6">
-        {pending.length > 0 && <Card title="Awaiting candidate response">{pending.map((r) => <div key={r.introId} className="flex flex-wrap items-center justify-between gap-2 border-b border-line py-2 last:border-0"><span>{r.label} · requested {relative(r.requestedAt, ctx.now)} · expires {date(r.expiresAt)}</span><CancelIntro introId={r.introId} /></div>)}</Card>}
+        {pending.length > 0 && <Card title="Waiting for them to answer">{pending.map((r) => <div key={r.introId} className="flex flex-wrap items-center justify-between gap-2 border-b border-line py-2 last:border-0"><span>{r.label} · requested {relative(r.requestedAt, ctx.now)} · expires {date(r.expiresAt)}</span><CancelIntro introId={r.introId} /></div>)}</Card>}
         <div className="grid gap-3 md:grid-cols-4">
           {stages.map((st) => (
             <div key={st} className="rounded-xl border border-line bg-surface p-3">
@@ -113,12 +116,12 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
             </div>
           ))}
         </div>
-        {past.length > 0 && <details className="rounded-xl border border-line bg-surface p-4"><summary className="cursor-pointer font-medium">Rejected, withdrawn, declined and expired ({past.length})</summary><ul className="mt-2 text-[14px]">{past.map((r) => <li key={r.introId} className="py-1">{r.label} · {label(r.state)}{r.stage === 'rejected' ? ' · rejected' : ''}</li>)}</ul></details>}
+        {past.length > 0 && <details className="rounded-xl border border-line bg-surface p-4"><summary className="cursor-pointer font-medium">No longer in the running ({past.length})</summary><ul className="mt-2 text-[14px]">{past.map((r) => <li key={r.introId} className="py-1">{r.label} · {label(r.state)}{r.stage === 'rejected' ? ' · rejected' : ''}</li>)}</ul></details>}
       </div>
     );
   } else if (tab === 'screenings') {
     const rows = await screeningsForRole(ctx, roleId);
-    body = rows.length === 0 ? <Empty>No screenings yet. Five human screenings are included for this role.</Empty> : (
+    body = rows.length === 0 ? <Empty>No phone screenings yet. Five are included with this role: a BondMoran consultant calls the candidate and tells you what they found.</Empty> : (
       <div className="space-y-3">{rows.map((s) => (
         <Card key={s.id} title={`Candidate ${s.ref.slice(0, 9)}`} action={<Badge tone={s.status === 'completed' ? 'success' : 'neutral'}>{label(s.status)}</Badge>}>
           <p className="text-[15px]">{s.status === 'completed' ? s.summarySafe : s.status === 'cancelled' ? 'Cancelled before completion. The slot was released.' : 'Your consultant has this request.'}</p>
@@ -128,7 +131,7 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
     );
   } else if (tab === 'activity') {
     const rows = await activityForRole(ctx, roleId);
-    body = rows.length === 0 ? <Empty>No activity yet.</Empty> : <ul className="divide-y divide-line rounded-xl border border-line bg-surface">{rows.map((r) => <li key={r.id} className="flex justify-between gap-3 px-4 py-3 text-[15px]"><span>{r.label}</span><span className="text-muted">{date(r.at)}</span></li>)}</ul>;
+    body = rows.length === 0 ? <Empty>Nothing has happened on this role yet.</Empty> : <ul className="divide-y divide-line rounded-xl border border-line bg-surface">{rows.map((r) => <li key={r.id} className="flex justify-between gap-3 px-4 py-3 text-[15px]"><span>{r.label}</span><span className="text-muted">{date(r.at)}</span></li>)}</ul>;
   } else if (tab === 'review' && consultant) {
     const { ConsultantRoleReview } = await import('./consultant-review');
     body = <ConsultantRoleReview ctx={ctx} roleId={roleId} />;
@@ -136,10 +139,10 @@ export async function RoleDetail({ ctx, roleId, tab, base, consultant }: { ctx: 
   return (
     <>
       {header}
-      <div className="mb-4 lg:hidden">{ch && <CompactPrice ch={ch} />}<details className="mt-2"><summary className="cursor-pointer text-[15px] text-link">Full charges</summary><div className="mt-2"><ChargesPanel ch={ch!} replacementOf={replacementOf} /></div></details></div>
+      <div className="mb-4 lg:hidden">{ch && <CompactPrice ch={ch} />}<details className="mt-2"><summary className="cursor-pointer text-[15px] text-link">What it costs</summary><div className="mt-2"><SimplePrice ch={ch!} replacementOf={replacementOf} /></div></details></div>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0"><Tabs current={tab} tabs={tabs} />{body}</div>
-        <aside className="hidden lg:block"><div className="sticky top-4"><ChargesPanel ch={ch!} replacementOf={replacementOf} /></div></aside>
+        <aside className="hidden lg:block"><div className="sticky top-4"><SimplePrice ch={ch!} replacementOf={replacementOf} /></div></aside>
       </div>
     </>
   );

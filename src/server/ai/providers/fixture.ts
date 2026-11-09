@@ -62,7 +62,7 @@ export const fixtureProvider: AiProvider = {
       const spec = rel.filter((e) => e.strength === 'specific');
       const level = spec.length ? 'specific' : rel.length ? 'partial' : 'unknown';
       const ids = (spec.length ? spec : rel).map((e) => e.id);
-      const reasonSafe = level === 'specific' ? `Approved example with a described outcome relevant to ${c.label.toLowerCase()}.` : level === 'partial' ? `Relevant approved example, but the outcome or scope is not fully described.` : `No approved evidence yet for ${c.label.toLowerCase()}.`;
+      const reasonSafe = level === 'specific' ? `Gave a real example of ${c.label.toLowerCase()}, with the result.` : level === 'partial' ? 'Gave a related example, but not much detail on the result.' : `We haven’t seen evidence of ${c.label.toLowerCase()} yet.`;
       return { criterionId: c.criterionId, level: level as 'specific' | 'partial' | 'unknown', evidenceIds: ids, reasonSafe };
     });
     return { provider: 'fixture', usage, output: { criteria } };

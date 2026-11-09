@@ -34,7 +34,7 @@ export async function rolesForClient(ctx: Ctx, clientId: string) {
     const ch = r.status === 'draft' ? null : await roleCharges(ctx, r.id);
     const pipe = await ctx.tx.select({ stage: S.pipelineEntries.stage }).from(S.pipelineEntries).innerJoin(S.introductions, eq(S.introductions.id, S.pipelineEntries.introductionId)).where(eq(S.introductions.roleId, r.id));
     const activePipe = pipe.filter((p) => !['rejected', 'withdrawn', 'hired'].includes(p.stage)).length;
-    const next = r.status === 'draft' ? 'Finish the brief and activate' : ch && ch.pending ? `${ch.pending} awaiting a candidate response` : activePipe ? `${activePipe} in your pipeline` : ch && ch.accepted === 0 ? 'Review matched candidates' : 'Keep your pipeline moving';
+    const next = r.status === 'draft' ? 'Check it and make it live' : ch && ch.pending ? `Waiting for ${ch.pending} ${ch.pending === 1 ? 'person' : 'people'} to answer` : activePipe ? `${activePipe} ${activePipe === 1 ? 'person' : 'people'} to interview` : ch && ch.accepted === 0 ? 'Look at your candidates' : 'Keep interviews moving';
     out.push({ id: r.id, title: r.title, vacancyKey: r.vacancyKey, status: r.status, salaryPence: r.salaryPence.toString(), workMode: r.workMode, isExtra: r.isExtraRole, isReplacement: r.isReplacementRole, mode: r.defaultServiceMode, charges: ch, activePipe, next });
   }
   return out;

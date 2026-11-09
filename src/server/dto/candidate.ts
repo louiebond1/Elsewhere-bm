@@ -60,7 +60,7 @@ export async function anonymousDTO(ctx: Ctx, args: { roleId: string; candidateId
       const ids = (r?.evidenceIds ?? []).filter((id) => validIds.has(id));
       // If evidence was withdrawn since computation, never show the old level as supported.
       const level = r && (r.aiLevel === 'unknown' || r.aiLevel === 'contradictory' || ids.length) ? r.aiLevel : 'unknown';
-      return { key: c.criterionKey, label: c.label, level, humanLevel: r?.humanLevel ?? null, evidenceIds: ids.map(evRef), reasonSafe: r && level === r.aiLevel ? r.reasonSafe : `No approved evidence yet for ${c.label.toLowerCase()}.` };
+      return { key: c.criterionKey, label: c.label, level, humanLevel: r?.humanLevel ?? null, evidenceIds: ids.map(evRef), reasonSafe: r && level === r.aiLevel ? r.reasonSafe : `We haven’t seen evidence of ${c.label.toLowerCase()} yet.` };
     }),
     unknowns: args.match?.missingEvidence ?? [],
     confidence: args.match?.confidence ?? null,

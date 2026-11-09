@@ -56,8 +56,8 @@ export function ReopenRole({ roleId }: { roleId: string }) {
 
 export function UpgradeRole({ roleId, ch }: { roleId: string; ch: { fullSearchPreview: { totalUnits: string; totalPence: string; remainingPence: string; remainingUnits: string }; paidPence: string; firstHirePaid: boolean } }) {
   return (
-    <ActionButton path={`roles/${roleId}/upgrade`} label="Request full search" variant="secondary"
-      confirm={{ title: 'Upgrade to full search', confirmLabel: 'Upgrade, no charge now', body: ch.firstHirePaid
+    <ActionButton path={`roles/${roleId}/upgrade`} label="Ask BondMoran to search for you" variant="secondary"
+      confirm={{ title: 'Ask BondMoran to search for you', confirmLabel: 'Yes, no charge now', body: ch.firstHirePaid
         ? <><p>The first hire on this role is already paid and its price does not change.</p><p>Any further hire on this role will be priced as full search at {creditsLabel(ch.fullSearchPreview.totalUnits)}.</p></>
         : <><p>Full search is 1.5 times the standard credit price.</p><p className="font-semibold">New total: {creditsLabel(ch.fullSearchPreview.totalUnits)} / {gbp(ch.fullSearchPreview.totalPence)}. Already paid: {gbp(ch.paidPence)}. Remaining on hire: {creditsLabel(ch.fullSearchPreview.remainingUnits)} / {gbp(ch.fullSearchPreview.remainingPence)}.</p><p>Nothing is charged when you upgrade. A downgrade is not supported in this prototype.</p></> }} />
   );
@@ -67,13 +67,13 @@ export function RequestIntro({ roleId, candidateRef, depositPaid, holdExists, de
   const [msg, setMsg] = useState('We would like to talk to you about this role.');
   const effect = depositPaid ? 'This role’s deposit is already paid. Nothing more is reserved or charged.' : holdExists ? 'This request shares the role’s existing reservation. Nothing more is reserved or charged.' : `${creditsLabel(depositUnits)} (${gbp(depositPence)}) will be reserved now and charged only when the first candidate accepts. A reservation is not a charge.`;
   return (
-    <ActionButton path="intros/request" body={{ roleId, candidateRef, message: msg }} label="Request intro" disabledReason={disabledReason}
-      confirm={{ title: 'Request an introduction', confirmLabel: 'Send request', body: <><p>The candidate sees your organisation, the role, salary and work location, then chooses whether to share their name and email for this role only.</p><p className="font-semibold">{effect}</p><p className="text-muted">Requests expire after 7 days. An in-app notification is sent; no email is sent in this demo.</p><label className="block text-[14px] font-medium">Message to the candidate<textarea className="mt-1 w-full rounded-lg border border-line p-2" rows={3} maxLength={600} value={msg} onChange={(e) => setMsg(e.target.value)} /></label></> }} />
+    <ActionButton path="intros/request" body={{ roleId, candidateRef, message: msg }} label="Ask to meet" disabledReason={disabledReason}
+      confirm={{ title: 'Ask to meet this person', confirmLabel: 'Send request', body: <><p>The candidate sees your organisation, the role, salary and work location, then chooses whether to share their name and email for this role only.</p><p className="font-semibold">{effect}</p><p className="text-muted">Requests expire after 7 days. An in-app notification is sent; no email is sent in this demo.</p><label className="block text-[14px] font-medium">Message to the candidate<textarea className="mt-1 w-full rounded-lg border border-line p-2" rows={3} maxLength={600} value={msg} onChange={(e) => setMsg(e.target.value)} /></label></> }} />
   );
 }
 
 export function RequestScreening({ roleId, candidateRef, disabledReason }: { roleId: string; candidateRef: string; disabledReason?: string | null }) {
-  return <ActionButton path="screenings/request" body={{ roleId, candidateRef }} label="Request screening" variant="secondary" disabledReason={disabledReason} confirm={{ title: 'Request a screening', confirmLabel: 'Request screening', body: <><p>This uses one of the five included human screenings for this role. Nothing is charged.</p><p>You can cancel before it is completed to free the slot.</p></> }} />;
+  return <ActionButton path="screenings/request" body={{ roleId, candidateRef }} label="Book phone screening" variant="ghost" disabledReason={disabledReason} confirm={{ title: 'Book a phone screening', confirmLabel: 'Book it', body: <><p>A BondMoran consultant calls this person and tells you what they found. This uses one of the five included with this role. Nothing is charged.</p><p>You can cancel before it is completed to free the slot.</p></> }} />;
 }
 
 type Pick = { ref: string; confidence: string; discoverySlot: boolean };
@@ -86,8 +86,8 @@ export function AutoPicks({ roleId, slotsLeft }: { roleId: string; slotsLeft: nu
   if (slotsLeft <= 0) return <span className="text-[14px] text-muted">All five included screenings are used or booked. Further screening pricing is not agreed yet, so ask your consultant.</span>;
   return (
     <>
-      <button type="button" className={buttonClass('secondary')} disabled={loading} onClick={async () => { setLoading(true); const r = await api<{ picks: Pick[]; shortfall: number }>('screenings/auto-picks/preview', { body: { roleId }, csrf }); setLoading(false); if (r.ok) { setPicks(r.data.picks); setShortfall(r.data.shortfall); } }}>{loading ? 'Choosing…' : `Auto-select ${slotsLeft}`}</button>
-      <Dialog open={!!picks} onClose={() => setPicks(null)} title="Proposed screenings">
+      <button type="button" className={buttonClass('secondary')} disabled={loading} onClick={async () => { setLoading(true); const r = await api<{ picks: Pick[]; shortfall: number }>('screenings/auto-picks/preview', { body: { roleId }, csrf }); setLoading(false); if (r.ok) { setPicks(r.data.picks); setShortfall(r.data.shortfall); } }}>{loading ? 'Choosing…' : `Pick ${slotsLeft} phone screenings for me`}</button>
+      <Dialog open={!!picks} onClose={() => setPicks(null)} title="Suggested phone screenings">
         {picks && picks.length === 0 ? <p>No suitable profiles to screen yet.</p> : (
           <ul className="space-y-2 text-[15px]">{picks?.map((p) => <li key={p.ref} className="rounded-lg border border-line px-3 py-2">Candidate {p.ref.slice(0, 9)} · {p.confidence} evidence coverage{p.discoverySlot ? ' · reserved discovery slot: little evidence yet, but relevant' : p.confidence === 'low' ? ' · next highest ranked' : ''}</li>)}</ul>
         )}

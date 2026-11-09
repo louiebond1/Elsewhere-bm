@@ -15,10 +15,12 @@ test('S01 anonymous match: no name or employer anywhere before acceptance, inclu
   const bodies: string[] = [];
   page.on('response', async (r) => { try { if (r.url().startsWith(new URL(page.url()).origin)) bodies.push(await r.text()); } catch {} });
   await page.getByRole('link', { name: /Assistant Accountant/ }).first().click();
-  const rail = page.locator('aside').filter({ hasText: 'Your hire price' });
+  const rail = page.locator('aside').filter({ hasText: 'What it costs' });
   await expect(rail).toBeVisible();
+  await expect(rail.getByText('£3,800', { exact: true })).toBeVisible();
+  await rail.getByText('See the full breakdown').click();
   await expect(rail.getByText(/£8,800/)).toBeVisible();
-  await page.getByRole('link', { name: 'View evidence' }).first().click();
+  await page.getByRole('link', { name: 'See profile' }).first().click();
   await expect(page.getByText(/18 to 4/).first()).toBeVisible();
   const html = await page.content();
   for (const s of ['Maya', 'Ellis', 'Mallow', 'candidate.c01']) expect(html).not.toContain(s);
@@ -169,14 +171,14 @@ test('B4: in the empty workspace the default contract start allows a role to be 
   await page.waitForURL(/consultant\/roles\/[0-9a-f-]{36}/);
   await page.getByRole('button', { name: 'Make role live' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Make it live' }).click();
-  await expect(page.getByText('Open', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
 });
 
 test('Demo checkout: decline keeps input and balance; success adds credits once and survives reload', async ({ page }) => {
   await loadScenario(page, null);
   await switchTo(page, 'Emma Stone');
   await page.goto('/client/credits');
-  const spendable = page.locator('div').filter({ hasText: /^Spendable/ }).first();
+  const spendable = page.locator('div').filter({ hasText: /^Credits you can use/ }).first();
   const before = await spendable.textContent();
   await page.getByRole('link', { name: 'Buy credits (demo)' }).click();
   await expect(page.getByText(/Demo only: no money charged/)).toBeVisible();
@@ -192,7 +194,7 @@ test('Demo checkout: decline keeps input and balance; success adds credits once 
   await expect(page.getByLabel('Credits to buy')).toHaveValue('2');
   await page.goto('/client/credits');
   expect(await spendable.textContent()).toBe(before);
-  await expect(page.getByRole('link', { name: 'Simulated purchase' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Credits bought (demo)' })).toHaveCount(0);
   await page.goto('/client/credits/buy?credits=2');
   await page.getByRole('button', { name: 'Continue to demo checkout' }).click();
   await page.waitForURL(/\/client\/credits\/checkout\/[0-9a-f-]{36}/);
@@ -202,7 +204,7 @@ test('Demo checkout: decline keeps input and balance; success adds credits once 
   await expect(page.getByText(/Simulated success\. 2 credits were added/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Simulate success' })).toHaveCount(0);
   await page.goto('/client/credits');
-  await expect(page.getByRole('link', { name: 'Simulated purchase' })).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'Credits bought (demo)' })).toHaveCount(1);
 });
 
 test('Guided walkthrough: gated, read-only, reachable from demo accounts, labels the unrun hire flow @phone', async ({ page }) => {
@@ -253,7 +255,7 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await expect(page.getByText('What matters')).toBeVisible();
   await page.getByRole('button', { name: 'Make role live' }).click();
   await page.getByRole('dialog').getByRole('button', { name: /make it live/i }).click();
-  await expect(page.getByText('Open', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Live', { exact: true }).first()).toBeVisible();
   await page.goto('/client/roles/new');
   await expect(page.getByText(/Welcome back, Emma/)).toBeVisible();
   await page.getByText(/What I’ve learned about how you hire/).click();

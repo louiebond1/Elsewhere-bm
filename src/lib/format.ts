@@ -35,3 +35,10 @@ export function relative(d: string | Date, now = new Date()): string {
 }
 export const label = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 export const REGION: Record<string, string> = { london: 'London', hertfordshire: 'Hertfordshire', manchester: 'Manchester', remote_uk: 'Remote, UK' };
+
+/** Plain names for credit history entries. */
+export const TX_LABEL: Record<string, string> = {
+  grant: 'Credits added', simulated_purchase: 'Credits bought (demo)', deposit_debit: 'Deposit paid', hire_balance_debit: 'Hire paid',
+  second_hire_debit: 'Another hire paid', outside_hire_debit: 'Outside hire paid', reversal: 'Correction',
+};
+export const txLabel = (t: string) => TX_LABEL[t] ?? label(t);

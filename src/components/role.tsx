@@ -5,10 +5,10 @@ import { Badge, Card, KV, Avatar, cx } from './ui';
 import { credits, creditsLabel, gbp } from '../lib/format';
 
 const LEVEL: Record<string, { label: string; tone: 'success' | 'neutral' | 'warning' | 'danger' }> = {
-  specific: { label: 'Specific evidence', tone: 'success' },
-  partial: { label: 'Partial evidence', tone: 'neutral' },
-  unknown: { label: 'Unknown', tone: 'warning' },
-  contradictory: { label: 'Conflicting', tone: 'danger' },
+  specific: { label: 'Strong example', tone: 'success' },
+  partial: { label: 'Some evidence', tone: 'neutral' },
+  unknown: { label: 'Not known yet', tone: 'warning' },
+  contradictory: { label: 'Mixed signals', tone: 'danger' },
 };
 
 export function LevelBadge({ level }: { level: string }) {
@@ -62,37 +62,62 @@ export function ChargesPanel({ ch, replacementOf }: { ch: RoleCharges; replaceme
   );
 }
 
+/** The price in one sentence, with the full breakdown one tap away. */
+export function SimplePrice({ ch, replacementOf }: { ch: RoleCharges; replacementOf?: string | null }) {
+  const remaining = gbp(ch.remainingPence);
+  const line = ch.isReplacementRole ? `Free: this replaces an earlier hire${replacementOf ? ` (${replacementOf})` : ''}.`
+    : ch.firstHirePaid ? 'Your hire is paid. Hiring another person for this role would be a new full price.'
+    : ch.depositPaid ? `${gbp(ch.depositPence)} already paid. ${remaining} left to pay when you hire.`
+    : ch.holdUnits ? `${gbp(ch.depositPence)} is set aside (not spent) while you wait for an answer.`
+    : `${gbp(ch.depositPence)} of that is paid when someone agrees to meet you. The rest when you hire.`;
+  return (
+    <Card title="What it costs">
+      <p className="text-[28px] font-semibold leading-tight">{ch.isReplacementRole ? '£0' : gbp(ch.totalPence)}</p>
+      <p className="text-[14px] text-muted">{ch.isReplacementRole ? 'Replacement role' : 'if you hire someone for this role'}</p>
+      <p className="mt-3 text-[15px]">{line}</p>
+      <dl className="mt-4 space-y-2 border-t border-line pt-3 text-[15px]">
+        <div className="flex justify-between gap-2"><dt className="text-muted">People you can meet</dt><dd>{ch.accepted} of {ch.maxIntros}</dd></div>
+        <div className="flex justify-between gap-2"><dt className="text-muted">Phone screenings</dt><dd>{ch.screeningsUsed} of {ch.includedScreenings}</dd></div>
+        {ch.pending > 0 && <div className="flex justify-between gap-2"><dt className="text-muted">Waiting for an answer</dt><dd>{ch.pending}</dd></div>}
+      </dl>
+      <details className="mt-4"><summary className="cursor-pointer text-[14px] text-link">See the full breakdown</summary><div className="mt-2"><ChargesPanel ch={ch} replacementOf={replacementOf} /></div></details>
+    </Card>
+  );
+}
+
 export function CompactPrice({ ch }: { ch: RoleCharges }) {
-  if (ch.isReplacementRole) return <p className="text-[14px] text-muted">Replacement role · £0 · {ch.accepted} of {ch.maxIntros} intros</p>;
-  return <p className="text-[14px] text-muted">{creditsLabel(ch.totalUnits)} / {gbp(ch.totalPence)} · Deposit {ch.depositPaid ? 'paid' : gbp(ch.depositPence)} · {ch.accepted} of {ch.maxIntros} intros · {ch.screeningsUsed} of {ch.includedScreenings} screenings</p>;
+  if (ch.isReplacementRole) return <p className="text-[15px]">Free replacement role · {ch.accepted} of {ch.maxIntros} people met</p>;
+  return <p className="text-[15px]"><span className="font-semibold">{gbp(ch.totalPence)}</span> if you hire · {ch.accepted} of {ch.maxIntros} people met · {ch.screeningsUsed} of {ch.includedScreenings} phone screenings</p>;
 }
 
 export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href: string; actions?: React.ReactNode }) {
+  const known = m.criteria.filter((c) => c.level !== 'unknown' || c.humanLevel);
   return (
     <article className="rounded-xl border border-line bg-surface p-4 md:p-5">
       <div className="flex items-start gap-3">
         <Avatar label={m.identity?.fullName ?? null} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href={href} className="font-semibold no-underline">{m.identity ? m.identity.fullName : `Candidate ${m.roleScopedReference.slice(0, 9)}`}</Link>
-            {m.confidence && <Badge tone={m.confidence === 'low' ? 'warning' : 'success'}>{m.confidence === 'high' ? 'High' : m.confidence === 'medium' ? 'Medium' : 'Low'} evidence coverage</Badge>}
+          <Link href={href} className="text-[17px] font-semibold leading-snug text-ink no-underline hover:underline">{m.identity ? m.identity.fullName : m.safeHeadline}</Link>
+          <p className="mt-0.5 text-[14px] text-muted">{m.identity ? m.safeHeadline : 'Name hidden until they agree to meet you'} · {m.experienceBand} · {m.broadRegion}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {m.confidence && <Badge tone={m.confidence === 'low' ? 'warning' : 'success'}>{m.confidence === 'low' ? 'Little evidence so far' : 'Good evidence'}</Badge>}
             {m.needsClarification && <Badge tone="warning">{m.needsClarification}</Badge>}
-            {m.introState && <Badge tone={m.introState === 'accepted' ? 'success' : 'neutral'}>Intro {m.introState}</Badge>}
-            {m.screeningStatus && m.screeningStatus !== 'cancelled' && <Badge>Screening {m.screeningStatus}</Badge>}
+            {m.introState && <Badge tone={m.introState === 'accepted' ? 'success' : 'neutral'}>{m.introState === 'accepted' ? 'Agreed to meet you' : m.introState === 'pending' ? 'Asked to meet' : `Meeting request ${m.introState}`}</Badge>}
+            {m.screeningStatus && m.screeningStatus !== 'cancelled' && <Badge>Phone screening {m.screeningStatus}</Badge>}
           </div>
-          <p className="mt-1 text-[15px]">{m.safeHeadline}</p>
-          <p className="text-[13px] text-muted">{m.experienceBand} · {m.broadRegion} · {m.workModes.join(', ')}</p>
         </div>
       </div>
-      <ul className="mt-3 space-y-2">
-        {m.criteria.map((c) => (
-          <li key={c.key} className="text-[14px]">
-            <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Screened: {LEVEL[c.humanLevel]?.label ?? c.humanLevel}</Badge>}</div>
-            <p className="text-muted">{c.reasonSafe}</p>
-          </li>
-        ))}
-      </ul>
-      {m.unknowns.length > 0 && <p className="mt-2 text-[14px]"><span className="font-medium">Not enough evidence yet:</span> {m.unknowns.join(', ')}</p>}
+      {known.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {known.map((c) => (
+            <li key={c.key} className="text-[14px]">
+              <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Phone screening: {LEVEL[c.humanLevel]?.label ?? c.humanLevel}</Badge>}</div>
+              <p className="text-muted">{c.reasonSafe}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-[14px] text-muted">{known.length === 0 ? 'Not much known yet. A phone screening could tell you more.' : m.unknowns.length ? `Not known yet: ${m.unknowns.join(', ').toLowerCase()}.` : ''}</p>
       {actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
     </article>
   );
