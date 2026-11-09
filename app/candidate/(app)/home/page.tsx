@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { candidateOverview } from '@/server/views/candidate';
+import { aiHelperStatus } from '@/server/connectors/status';
 import { PageHeader, Card, Notice, LinkButton, Badge } from '@/components/ui';
 import { ActionButton, JobPoller } from '@/components/client';
 
@@ -17,6 +18,7 @@ const REASON: Record<string, string> = {
 export default async function CandidateHome() {
   const { ctx } = await pageViewer('candidate');
   const o = await candidateOverview(ctx);
+  const ai = await aiHelperStatus(ctx);
   const fb = (o.profile?.feedbackLive ?? o.profile?.feedback ?? null) as { strengths: { text: string }[]; gaps: { text: string }[]; nextQuestion?: string } | null;
   const initial = o.conversations.find((c) => c.kind === 'initial_screening');
   const steps = [
@@ -57,6 +59,10 @@ export default async function CandidateHome() {
           <Card title="Introduction requests">
             <p className="text-[15px]">{o.pendingIntros ? `${o.pendingIntros} request${o.pendingIntros > 1 ? 's' : ''} waiting for your decision.` : 'You control which employers see your name.'}</p>
             <div className="mt-3"><LinkButton href="/candidate/introductions" variant="secondary">View requests</LinkButton></div>
+          </Card>
+          <Card title="Your AI helper">
+            <p className="text-[15px]">{ai.waiting.length ? `${ai.waiting.length} answer${ai.waiting.length > 1 ? 's' : ''} drafted by your AI ${ai.waiting.length > 1 ? 'are' : 'is'} ready to check.` : ai.connections.length ? `Connected to ${ai.connections[0].name}. Ask it to help with your questions.` : 'Let your own ChatGPT or Claude draft your answers. You check them and press Send.'}</p>
+            <div className="mt-3"><LinkButton href="/candidate/ai" variant={ai.waiting.length ? 'primary' : 'secondary'}>{ai.waiting.length ? 'Check them' : ai.connections.length ? 'Open' : 'Set it up'}</LinkButton></div>
           </Card>
           <Card title="Your controls"><div className="flex flex-col gap-2"><LinkButton href="/candidate/profile" variant="secondary">Review profile</LinkButton><LinkButton href="/candidate/privacy" variant="secondary">Privacy</LinkButton></div></Card>
         </div>

@@ -6,8 +6,7 @@ import { organisations } from '@/server/db/schema';
 import { PageHeader, Card, Notice, Badge } from '@/components/ui';
 import { ActionButton } from '@/components/client';
 import { EmployerPicker, BlockPicker, PreferencesForm } from '@/components/candidate-forms';
-import { myConnections, issuer } from '@/server/connectors/oauth';
-import { date } from '@/lib/format';
+import { myConnections } from '@/server/connectors/oauth';
 
 export default async function Privacy({ searchParams }: { searchParams: Promise<{ onboarding?: string }> }) {
   const { ctx } = await pageViewer('candidate');
@@ -16,7 +15,6 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
   const orgs = (await ctx.tx.select({ id: organisations.id, name: organisations.displayName }).from(organisations).where(eq(organisations.datasetId, ctx.datasetId))).sort((a, b) => a.name.localeCompare(b.name));
   const er = o.candidate.employerResolutionStatus;
   const apps = await myConnections(ctx);
-  const connectorUrl = `${issuer()}/mcp`;
   return (
     <>
       <PageHeader title="Privacy" subtitle="You decide who can discover you and who sees your name." />
@@ -49,26 +47,8 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
           <PreferencesForm initial={{ region: o.candidate.region, workModes: o.candidate.workModes, roleFamilies: o.candidate.preferredRoleFamilies, minSalaryPounds: o.candidate.minSalaryPence ? Number(o.candidate.minSalaryPence / 100n) : null, noticeWeeks: o.candidate.noticeWeeks, workAuthorisation: o.candidate.workAuthorisation, experienceBand: o.candidate.experienceBand }} />
         </Card>
         <Card title="Your AI assistant" className="lg:col-span-2">
-          <p className="text-[15px]">Let your own Claude or ChatGPT help answer your Elsewhere questions. It saves drafts here; you check them and press Send. It uses your own plan and can’t see anyone else.</p>
-          {apps.length > 0 ? (
-            <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
-              {apps.map((a) => (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-[15px]">
-                  <span><span className="font-medium">{a.name}</span> <span className="text-muted">· connected {date(a.createdAt)}{a.lastUsedAt ? ` · last used ${date(a.lastUsedAt)}` : ''}</span></span>
-                  <ActionButton path={`connectors/${a.id}/disconnect`} label="Disconnect" variant="secondary" confirm={{ title: 'Disconnect?', body: <p>{a.name} will lose access straight away. Drafts it already saved stay here for you.</p>, confirmLabel: 'Disconnect' }} />
-                </li>
-              ))}
-            </ul>
-          ) : <p className="mt-3 text-[14px] text-muted">Not connected.</p>}
-          <details className="mt-3 text-[14px]">
-            <summary className="cursor-pointer text-link">How to connect</summary>
-            <ol className="mt-2 list-decimal space-y-1 pl-5">
-              <li>In Claude or ChatGPT, open Settings, then Connectors (in ChatGPT: Apps &amp; Connectors).</li>
-              <li>Add a custom connector and paste this address: <code className="rounded bg-page px-1">{connectorUrl}</code></li>
-              <li>Sign in here when asked and press Allow.</li>
-              <li>Then ask it: “Help me answer my Elsewhere questions.”</li>
-            </ol>
-          </details>
+          <p className="text-[15px]">{apps.length ? `Connected: ${apps.map((a) => a.name).join(', ')}. It can read your questions and save drafts, never send.` : 'Not connected.'}</p>
+          <div className="mt-3"><Link href="/candidate/ai">{apps.length ? 'Manage or disconnect' : 'Set up your AI helper'}</Link></div>
         </Card>
         <Card title="Delete profile" className="lg:col-span-2"><p className="text-[15px]">Remove your profile, CV, answers and evidence.</p><div className="mt-3"><Link href="/candidate/delete" className="text-danger">Delete profile</Link></div></Card>
       </div>

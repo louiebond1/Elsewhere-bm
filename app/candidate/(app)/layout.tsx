@@ -13,6 +13,7 @@ export default async function CandidateLayout({ children }: { children: React.Re
     { href: '/candidate/introductions', label: 'Requests', icon: 'intros' },
     { href: '/candidate/check-ins', label: 'Check-ins', icon: 'checkins' },
     { href: '/candidate/cv', label: 'CV', icon: 'cv' },
+    { href: '/candidate/ai', label: 'AI helper', icon: 'ai' },
     { href: '/candidate/privacy', label: 'Privacy', icon: 'privacy' },
   ];
   return <AppShell nav={nav} base="/candidate" csrf={csrf} who={`${self.identity?.fullName ?? ''} · ${self.candidate.publicRef}`} brandSub="Your Elsewhere profile">{children}</AppShell>;
