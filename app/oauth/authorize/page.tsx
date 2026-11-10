@@ -24,7 +24,7 @@ export default async function Authorize({ searchParams }: { searchParams: Promis
   const app = providerName(checked.client.clientName);
   return (
     <Shell>
-      <h1 className="text-[26px] leading-tight">Let {app} help with your answers?</h1>
+      <h1 className="text-[26px] leading-tight">Let {app} build your Elsewhere profile?</h1>
       <p className="mt-2 text-[15px] text-muted">Signed in as {viewer.displayName ?? viewer.email}. {app} uses your own plan; it costs Elsewhere nothing.</p>
       <ul className="mt-5 space-y-2 text-[16px]">
         {scopes.map((s) => <li key={s} className="flex gap-2"><span aria-hidden className="text-success">✓</span>{SCOPE_TEXT[s]}</li>)}

@@ -33,7 +33,7 @@ test('Let my AI do this: connect from inside the question, the draft appears, Us
   let redirected = '';
   await tab.route('https://claude.ai/**', (r) => { redirected = r.request().url(); return r.fulfill({ status: 200, body: 'ok' }); });
   await tab.goto(`/oauth/authorize?${q}`);
-  await expect(tab.getByRole('heading', { name: 'Let Claude help with your answers?' })).toBeVisible();
+  await expect(tab.getByRole('heading', { name: 'Let Claude build your Elsewhere profile?' })).toBeVisible();
   await tab.getByRole('button', { name: 'Allow Claude' }).click();
   await expect.poll(() => redirected).toContain(CALLBACK);
   await tab.close();
