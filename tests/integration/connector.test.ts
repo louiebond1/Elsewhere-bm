@@ -72,7 +72,7 @@ describe('AI assistant connector (Claude and ChatGPT)', () => {
     const init = await rpc(tokens.access_token, 'initialize', { protocolVersion: '2025-06-18' });
     expect(init.result).toMatchObject({ protocolVersion: '2025-06-18', serverInfo: { name: 'elsewhere' } });
     const list = await rpc(tokens.access_token, 'tools/list');
-    expect(list.result!.tools!.map((t) => t.name)).toEqual(['get_my_unanswered_questions', 'get_my_profile', 'get_my_onboarding_checklist', 'save_onboarding_answers', 'add_to_my_mini_me', 'next_mini_me_questions', 'remember_for_my_mini_me', 'review_my_recent_interviews', 'save_draft_answer']);
+    expect(list.result!.tools!.map((t) => t.name)).toEqual(['get_my_unanswered_questions', 'get_my_profile', 'get_my_onboarding_checklist', 'save_onboarding_answers', 'add_to_my_mini_me', 'next_mini_me_questions', 'remember_for_my_mini_me', 'review_my_recent_interviews', 'get_my_cv', 'update_my_job_preferences', 'save_draft_answer']);
     const qs = (await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.structuredContent as { questions: { question_id: string }[] };
     expect(qs.questions.length).toBeGreaterThan(0);
     // Guidance tells their AI to start from what it already knows about them.

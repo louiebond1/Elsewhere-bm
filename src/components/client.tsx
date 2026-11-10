@@ -1,6 +1,7 @@
 'use client';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { buttonClass, cx } from './ui';
 
 const CsrfContext = createContext<string>('');
@@ -98,14 +99,16 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
     return () => { document.removeEventListener('keydown', onKey); (opener.current as HTMLElement | null)?.focus?.(); };
   }, [open]);
   if (!open) return null;
-  return (
+  // Rendered at the end of the page, so it always covers the whole screen.
+  return createPortal(
     <div className="backdrop-in fixed inset-0 z-50 flex items-end justify-center bg-[rgb(9_23_16/0.32)] p-0 backdrop-blur-[6px] md:items-center md:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="sheet-in relative max-h-[90dvh] w-full overflow-y-auto rounded-t-[32px] bg-surface px-6 pb-[max(28px,env(safe-area-inset-bottom))] pt-7 shadow-[0_24px_64px_rgb(18_37_29/0.2)] md:max-w-[520px] md:rounded-[28px]">
         <h2 className="mb-2 pr-10">{title}</h2>
         {children}
         <button type="button" aria-label="Close" onClick={onClose} className="absolute right-4 top-5 flex h-11 w-11 items-center justify-center rounded-full text-[26px] leading-none text-ink hover:bg-page">&times;</button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

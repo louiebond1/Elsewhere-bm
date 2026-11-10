@@ -1,0 +1,1 @@
+ALTER TABLE "candidates" ADD COLUMN "preferences_confirmed" boolean DEFAULT true NOT NULL;

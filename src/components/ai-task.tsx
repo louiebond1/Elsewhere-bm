@@ -67,7 +67,7 @@ export function AiConnectSheet({ open, onClose, connectorUrl, onConnected, task,
             })}
           </div>
           <p className="mt-6 font-display text-[20px] font-extrabold">You stay in control</p>
-          <p className="text-[15px] text-muted">Drafts only. You send the final answer.</p>
+          <p className="text-[15px] text-muted">It can only see and add to your own profile. You can edit or remove anything it saves, and disconnect any time.</p>
           <button type="button" className={cx(buttonClass('primary', true), 'mt-5 text-[17px]')} onClick={() => setStep(2)}>Connect {how.name}</button>
           <button type="button" className={cx(buttonClass('ghost', true), 'mt-1 text-ink')} onClick={close}>Keep writing myself</button>
         </div>

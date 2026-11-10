@@ -23,7 +23,7 @@ export function SignupForm() {
     <form className="rounded-[28px] bg-surface p-6 shadow-[0_24px_64px_rgb(18_37_29/0.2)] lg:p-8" noValidate onSubmit={async (e) => {
       e.preventDefault(); setBusy(true); setErr(null);
       // Where and what they want comes later (from their AI, or the Practical details on their mini-me).
-      const r = await api('auth/candidate-signup', { body: { ...f, region: 'london', workModes: ['hybrid'], roleFamilies: ['finance'], minSalaryPounds: null, noticeWeeks: null, fictionalConfirmed: false, acceptTerms: agree, acceptAi: agree, wantsDiscovery: true, aggregateInsights: false } });
+      const r = await api('auth/candidate-signup', { body: { ...f, region: 'london', workModes: ['hybrid'], roleFamilies: ['finance'], minSalaryPounds: null, noticeWeeks: null, fictionalConfirmed: false, acceptTerms: agree, acceptAi: agree, wantsDiscovery: true, aggregateInsights: false, preferencesConfirmed: false } });
       setBusy(false);
       if (r.ok) router.push('/candidate/welcome'); else setErr(r.error);
     }}>

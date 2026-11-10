@@ -96,6 +96,8 @@ export const signupInput = z.object({
   acceptAi: z.literal(true, { message: 'Accept AI processing to continue' }),
   wantsDiscovery: z.boolean().default(false),
   aggregateInsights: z.boolean().default(false),
+  /** The short sign-up sends placeholders; they are not the person's real preferences yet. */
+  preferencesConfirmed: z.boolean().default(true),
 });
 
 export const preferencesInput = z.object({

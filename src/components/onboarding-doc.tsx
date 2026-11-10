@@ -21,7 +21,7 @@ export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waitin
   // While their AI might be saving answers, quietly refresh so they appear without reloading.
   useEffect(() => {
     if (!connected || !waiting) return;
-    const t = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, 6000);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, 15000);
     return () => clearInterval(t);
   }, [connected, waiting, router]);
   if (!connected) return (
@@ -213,7 +213,7 @@ export function ConnectBanner({ connected: initial, connectorUrl, autoOpen, wait
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!connected || !waiting) return;
-    const t = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, 6000);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, 15000);
     return () => clearInterval(t);
   }, [connected, waiting, router]);
   const app = connected ?? 'ChatGPT';

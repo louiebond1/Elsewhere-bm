@@ -92,6 +92,13 @@
       "when": 1794244427430,
       "tag": "0012_mini_me_extras",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794271952743,
+      "tag": "0013_preferences_confirmed",
+      "breakpoints": true
     }
   ]
 }

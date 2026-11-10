@@ -8,28 +8,34 @@ import { buttonClass, cx } from './ui';
 export function CvUpload({ hasCv }: { hasCv: boolean }) {
   const csrf = useCsrf();
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [over, setOver] = useState(false);
+  const [name, setName] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [job, setJob] = useState<string | null>(null);
   const [paste, setPaste] = useState(false);
   const [text, setText] = useState('');
+  // Uploads straight away: drop a file or tap to choose. No separate Upload button to miss.
+  const send = async (file: File | undefined) => {
+    if (!file) return;
+    setName(file.name); setBusy(true); setErr(null); setJob(null);
+    const fd = new FormData(); fd.append('file', file);
+    const r = await api<{ jobId: string }>('files/upload', { form: fd, csrf, key: crypto.randomUUID() });
+    setBusy(false);
+    if (r.ok) setJob(r.data.jobId); else setErr(r.error.message);
+  };
   return (
     <div className="space-y-3">
-      <p className="text-[14px] text-muted">Text-based PDF or DOCX, up to 5 MB and 15 pages. Scanned images cannot be read.</p>
-      <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="CV file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-[15px]" />
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={buttonClass('primary')} disabled={!file || busy} onClick={async () => {
-          if (!file) return; setBusy(true); setErr(null);
-          const fd = new FormData(); fd.append('file', file);
-          const r = await api<{ jobId: string }>('files/upload', { form: fd, csrf, key: crypto.randomUUID() });
-          setBusy(false);
-          if (r.ok) setJob(r.data.jobId); else setErr(r.error.message);
-        }}>{busy ? 'Uploading…' : hasCv ? 'Replace' : 'Upload'}</button>
-        <button type="button" className={buttonClass('secondary')} onClick={() => setPaste(!paste)}>Paste CV instead</button>
-      </div>
-      {job && <JobPoller jobId={job} pendingText="Reading your CV" failText="We could not read text from this file. Upload a text PDF or paste your CV." />}
-      {err && <p role="alert" className="text-[14px] text-danger">{err}</p>}
+      <label onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={(e) => { e.preventDefault(); setOver(false); void send(e.dataTransfer.files?.[0]); }}
+        className={cx('flex cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed px-6 py-10 text-center transition-colors', over ? 'border-primary bg-success-tint' : 'border-control/50 bg-page hover:border-primary')}>
+        <input type="file" className="sr-only" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="CV file" onChange={(e) => void send(e.target.files?.[0])} disabled={busy} />
+        <span aria-hidden className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-[26px] text-white">↑</span>
+        <span className="font-display text-[20px] font-semibold">{busy ? `Uploading ${name}…` : name && !err ? `${name} uploaded` : hasCv ? 'Drop a new CV here, or tap to choose' : 'Drop your CV here, or tap to choose'}</span>
+        <span className="text-[15px] text-muted">PDF or Word (.docx), up to 5 MB. Photos or scans can’t be read.</span>
+      </label>
+      {job && <JobPoller jobId={job} pendingText="Reading your CV" failText="We couldn’t read text from this file. Try a text PDF, or paste your CV below." />}
+      {err && <p role="alert" className="text-[15px] text-danger">{err}</p>}
+      <button type="button" className={cx(buttonClass('ghost'), 'px-0')} onClick={() => setPaste(!paste)}>{paste ? 'Hide' : 'Or paste your CV as text'}</button>
       {paste && (
         <div className="space-y-2">
           <textarea className={textareaClass} rows={8} maxLength={30000} value={text} onChange={(e) => setText(e.target.value)} aria-label="CV text" />

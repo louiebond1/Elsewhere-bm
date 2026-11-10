@@ -28,7 +28,7 @@ export async function signupCandidate(ctx: Ctx, raw: unknown) {
   const [{ n }] = (await ctx.tx.execute(sql`select count(*)::int as n from candidates where dataset_id = ${ctx.datasetId}`)).rows as { n: number }[];
   const [user] = await ctx.tx.insert(users).values({ datasetId: ctx.datasetId, emailNormalized: email, passwordHash: await argon2.hash(input.password, { type: argon2.argon2id }), userType: 'candidate', displayName: null }).returning();
   const [cand] = await ctx.tx.insert(candidates).values({
-    datasetId: ctx.datasetId, userId: user.id, publicRef: `CAND-${String(n + 1).padStart(3, '0')}`, status: 'onboarding', discoveryEnabled: false, employerResolutionStatus: 'not_supplied',
+    datasetId: ctx.datasetId, userId: user.id, publicRef: `CAND-${String(n + 1).padStart(3, '0')}`, status: 'onboarding', discoveryEnabled: false, employerResolutionStatus: 'not_supplied', preferencesConfirmed: input.preferencesConfirmed,
     preferredRoleFamilies: input.roleFamilies, region: input.region, workModes: input.workModes, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: 'unknown',
   }).returning();
   await ctx.tx.insert(candidateIdentity).values({ datasetId: ctx.datasetId, candidateId: cand.id, fullName: input.fullName, email });
@@ -45,7 +45,7 @@ export async function updatePreferences(ctx: Ctx, raw: unknown) {
   const id = candidateIdOf(ctx);
   const input = preferencesInput.parse(raw);
   await lockCandidates(ctx.tx, [id]);
-  await ctx.tx.update(candidates).set({ region: input.region, workModes: input.workModes, preferredRoleFamilies: input.roleFamilies, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: input.workAuthorisation, experienceBand: input.experienceBand, updatedAt: new Date() }).where(eq(candidates.id, id));
+  await ctx.tx.update(candidates).set({ region: input.region, workModes: input.workModes, preferredRoleFamilies: input.roleFamilies, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: input.workAuthorisation, experienceBand: input.experienceBand, preferencesConfirmed: true, updatedAt: new Date() }).where(eq(candidates.id, id));
   await recomputeCandidate(ctx, id);
   await logActivity(ctx, { subjectType: 'candidate', subjectId: id, action: 'candidate.preferences_updated' });
 }

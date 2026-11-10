@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { gateOk } from '@/server/page-auth';
 import { getActiveDataset } from '@/server/services/context';
 import { personaDirectory, SCENARIOS } from '@/server/services/demo';
 import { Brand } from '@/components/shell';
+import { PhotoBackdrop } from '@/components/photo-backdrop';
 import { Personas } from './personas';
 import { providerLabel } from '@/server/ai';
 
@@ -14,18 +14,15 @@ export default async function PersonasPage() {
   const ds = await getActiveDataset();
   const people = ds ? await personaDirectory(ds.id) : [];
   return (
-    <>
-      <div className="bg-primary px-4 py-1.5 text-[13px] text-white">Demo using fictional data · {providerLabel()}</div>
-      <main className="mx-auto max-w-[1240px] px-4 py-6 md:px-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <Brand />
-          <div className="text-[13px] text-muted">{ds ? `Dataset generation ${ds.generation}${ds.scenarioCode ? ` · Scenario ${ds.scenarioCode}` : ' · Baseline'} · Business date 6 November 2026` : 'Demo setup is not complete yet.'}</div>
-        </div>
-        <h1>Choose a fictional demo account</h1>
-        <p className="mt-1 text-[15px] text-muted">Switching signs you in as that fictional account. Every switch is recorded.</p>
-        <p className="mt-2 text-[15px]"><Link href="/demo/guide">Read the guided walkthrough</Link> <span className="text-muted">(read-only: explains the workflow without changing anything)</span></p>
+    <main className="relative isolate min-h-screen overflow-x-clip px-5 pb-16 pt-8 lg:px-10">
+      <PhotoBackdrop height={460} />
+      <div className="mx-auto max-w-[1180px]">
+        <span className="[&_*]:text-white"><Brand sub="Elsewhere" /></span>
+        <h1 className="mt-10 text-[40px] leading-[1.05] text-white lg:text-[56px]">Welcome to BondMoran</h1>
+        <p className="mt-3 text-[18px] text-white/90">A private test version. {ds ? '' : 'Setup is not complete yet.'}</p>
         <Personas people={people} scenarios={SCENARIOS.map(({ code, title, persona, personaCode, action, expected }) => ({ code, title, persona, personaCode, action, expected }))} activeScenario={ds?.scenarioCode ?? null} />
-      </main>
-    </>
+        <p className="mt-8 text-center text-[13px] text-muted">{providerLabel()}{ds ? ` · data version ${ds.generation}${ds.scenarioCode ? ` · ${ds.scenarioCode}` : ''}` : ''}</p>
+      </div>
+    </main>
   );
 }

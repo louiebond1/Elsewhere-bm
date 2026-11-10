@@ -40,7 +40,7 @@ export default async function CandidateHome() {
   const sections = [
     { label: 'Experience', hint: o.cv ? 'CV added' : 'Add your CV', done: !!o.cv, href: '/candidate/cv', Icon: Briefcase },
     { label: 'Examples', hint: approved ? `${approved} approved` : o.drafts.length ? `${o.drafts.length} to review` : 'Answer a question', done: approved > 0, href: '/candidate/profile?tab=evidence', Icon: FileText },
-    { label: 'Preferences', hint: o.candidate.preferredRoleFamilies.length ? 'Set' : 'Roles, pay, where', done: o.candidate.preferredRoleFamilies.length > 0 && o.candidate.workModes.length > 0, href: '/candidate/privacy#preferences', Icon: SlidersHorizontal },
+    { label: 'Preferences', hint: o.candidate.preferencesConfirmed ? 'Set' : 'Not asked yet: roles, pay, where', done: o.candidate.preferencesConfirmed, href: '/candidate/privacy#preferences', Icon: SlidersHorizontal },
     { label: 'Availability', hint: o.candidate.noticeWeeks != null ? `${o.candidate.noticeWeeks} weeks’ notice` : 'Your notice period', done: o.candidate.noticeWeeks != null, href: '/candidate/privacy#preferences', Icon: CalendarDays },
   ];
   const ready = sections.filter((s) => s.done).length;

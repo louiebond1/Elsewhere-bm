@@ -189,6 +189,8 @@ export const candidates = pgTable('candidates', {
   userId: uuid('user_id').notNull().unique().references(() => users.id),
   publicRef: text('public_ref').notNull(),
   status: candidateStatus('status').notNull().default('onboarding'),
+  /** False until they (or their AI, on their word) actually tell us where, how and what they want. */
+  preferencesConfirmed: boolean('preferences_confirmed').notNull().default(true),
   discoveryEnabled: boolean('discovery_enabled').notNull().default(false),
   employerResolutionStatus: employerResolution('employer_resolution_status').notNull().default('not_supplied'),
   currentOrganisationId: uuid('current_organisation_id').references(() => organisations.id),

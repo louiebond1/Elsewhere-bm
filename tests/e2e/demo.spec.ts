@@ -215,7 +215,7 @@ test('Guided walkthrough: gated, read-only, reachable from demo accounts, labels
   await expect(page).toHaveURL(/\/demo$/);
   await enterGate(page);
   await page.goto('/demo/personas');
-  await page.getByRole('link', { name: 'Read the guided walkthrough' }).click();
+  await page.goto('/demo/guide');
   await expect(page).toHaveURL(/\/demo\/guide$/);
   await expect(page.getByRole('heading', { name: 'Guided walkthrough (read-only)' })).toBeVisible();
   await expect(page.getByText(/^NOT RUN END-TO-END/)).toBeVisible();

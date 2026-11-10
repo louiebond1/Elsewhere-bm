@@ -148,3 +148,33 @@ describe('always-on mode', () => {
     expect(story.map((x) => x.text)).toEqual(expect.arrayContaining(['You answered something yourself', 'ChatGPT added 1 thing', 'ChatGPT added 2 things beyond the usual questions']));
   });
 });
+
+describe('job preferences', () => {
+  it('a quick sign-up has no preferences yet; their AI sees that, asks, and saves real ones; it can see their own name', async () => {
+    const w = await load();
+    const r = await w.T(w.consultant(), (c) => signupCandidate(c, { fullName: 'Louie Test', email: 'louie@new.test', password: 'long-enough-pw', region: 'london', workModes: ['hybrid'], roleFamilies: ['finance'], acceptTerms: true, acceptAi: true, preferencesConfirmed: false }));
+    const [cand] = await db().select().from(S.candidates).where(eq(S.candidates.id, r.candidate.id));
+    expect(cand.preferencesConfirmed).toBe(false);
+    const base = { ...w.cand('C01'), actor: { kind: 'user' as const, userId: r.user.id, userType: 'candidate' as const, candidateId: r.candidate.id } };
+    const client = await registerClient({ client_name: 'ChatGPT', redirect_uris: [CB] });
+    const v = randomBytes(32).toString('base64url');
+    const { params } = await checkAuthorizeRequest({ client_id: client.client_id, redirect_uri: CB, response_type: 'code', code_challenge: createHash('sha256').update(v).digest('base64url'), code_challenge_method: 'S256', scope: 'questions:read profile:read drafts:write' });
+    const { redirectTo } = await w.T(base, (c) => approve(c, params));
+    const t = await tokenRequest({ grant_type: 'authorization_code', code: new URL(redirectTo).searchParams.get('code')!, code_verifier: v, client_id: client.client_id, redirect_uri: CB });
+    const prof = await call(t.access_token, 'get_my_profile');
+    expect(prof.result.structuredContent).toMatchObject({ your_name: 'Louie Test', job_preferences: expect.stringMatching(/NOT SET YET/) });
+    const saved = await call(t.access_token, 'update_my_job_preferences', { region: 'manchester', work_modes: ['remote', 'hybrid'], role_families: ['operations'], minimum_salary_pounds: 35000, notice_weeks: 4, right_to_work: 'confirmed' });
+    expect(saved.result.isError).toBeUndefined();
+    const [after] = await db().select().from(S.candidates).where(eq(S.candidates.id, r.candidate.id));
+    expect(after).toMatchObject({ preferencesConfirmed: true, region: 'manchester', workModes: ['remote', 'hybrid'], preferredRoleFamilies: ['operations'], noticeWeeks: 4 });
+    const bad = await call(t.access_token, 'update_my_job_preferences', { region: 'mars', work_modes: [], role_families: [] });
+    // Their AI starts from their CV.
+    expect((await call(t.access_token, 'get_my_cv')).result.structuredContent).toMatchObject({ has_cv: false });
+    const { pasteCvText } = await import('../../src/server/services/files');
+    await w.T(base, (c) => pasteCvText(c, 'Recruitment Consultant, 2021 to now. Placed 40 finance hires a year. BA History.'));
+    const cv = await call(t.access_token, 'get_my_cv');
+    expect(cv.result.structuredContent).toMatchObject({ has_cv: true });
+    expect(cv.result.content[0].text).toMatch(/Placed 40 finance hires/);
+    expect(bad.result.isError).toBe(true);
+  });
+});
