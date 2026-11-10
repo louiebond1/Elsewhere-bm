@@ -7,7 +7,7 @@ import * as S from '../../src/server/db/schema';
 import { readCtx } from '../../src/server/services/context';
 import { onboardingView } from '../../src/server/services/onboarding';
 import { registerClient, checkAuthorizeRequest, approve, tokenRequest, authenticate } from '../../src/server/connectors/oauth';
-import { handleRpc, CONFIRM_RULE } from '../../src/server/connectors/mcp';
+import { handleRpc, TRANSPARENCY_RULE } from '../../src/server/connectors/mcp';
 
 type W = Awaited<ReturnType<typeof load>>;
 const CB = 'https://chatgpt.com/connector_platform_oauth_redirect';
@@ -26,20 +26,26 @@ const rpc = async (tok: string, method: string, params: Record<string, unknown> 
 const call = (tok: string, name: string, args: Record<string, unknown> = {}) => rpc(tok, 'tools/call', { name, arguments: args });
 const nameOf = async (w: W, code: string) => (await db().select().from(S.candidateIdentity).where(eq(S.candidateIdentity.candidateId, w.ids.candidates[code])))[0].fullName;
 
-describe('the connector never saves from memory on its own, and says whose account and what is saved', () => {
-  it('instructions and tool descriptions ask before saving anything remembered; the old "fill it in from memory" wording is gone', async () => {
+describe('memory-first, but open about it; every reply says whose account and what is saved', () => {
+  it('keeps the memory-first guidance and adds the transparency rule everywhere ChatGPT is guided', async () => {
     const w = await load();
     const tok = await token(w, 'C01');
     const init = await rpc(tok, 'initialize', { protocolVersion: '2025-06-18' });
-    const tools = (await rpc(tok, 'tools/list')).result.tools!;
     const checklist = (await call(tok, 'get_my_onboarding_checklist')).result.content[0].text;
-    const profile = (await call(tok, 'get_my_profile')).result.content[0].text;
-    const everything = [init.result.instructions!, ...tools.map((t) => t.description), checklist, profile].join('\n');
-    expect(init.result.instructions).toContain(CONFIRM_RULE);
-    expect(checklist).toContain(CONFIRM_RULE);
-    expect(CONFIRM_RULE).toMatch(/shall I save that\?/);
-    for (const banned of [/answer every question you can from what you/i, /FIRST look at what you already know/i, /prefer a new or better example you know from your own memory/i, /Skip anything you already know about them from memory/i, /what you remember about them is more useful/i, /fill in the whole checklist in one go/i])
-      expect(everything).not.toMatch(banned);
+    const questions = (await call(tok, 'get_my_unanswered_questions')).result.content[0].text;
+    // Memory-first is kept.
+    expect(checklist).toMatch(/answer every question you can from what you genuinely remember about this person/);
+    expect(init.result.instructions).toMatch(/FIRST look at what you already know about this person from your memory/);
+    // ...and every guidance text carries the transparency rule.
+    for (const t of [init.result.instructions!, checklist]) expect(t).toContain(TRANSPARENCY_RULE);
+    // The draft guidance comes with unanswered check-in questions (none waiting here gives a short reply instead).
+    if (/unanswered check-in question/.test(questions)) expect(questions).toContain(TRANSPARENCY_RULE);
+    expect(TRANSPARENCY_RULE).toMatch(/came from your memory of earlier chats/);
+    expect(TRANSPARENCY_RULE).toMatch(/remove any item on their Elsewhere Mini-me page/);
+    expect(TRANSPARENCY_RULE).toMatch(/Never call something you saved in this conversation "already saved"/);
+    expect(TRANSPARENCY_RULE).toMatch(/Saved just now/);
+    // The ask-first wording from the reverted change is not served.
+    expect([init.result.instructions, checklist, questions].join('\n')).not.toMatch(/shall I save that\?/);
   });
 
   it('every read starts with "Account: name. Saved so far: N", N matching what the Mini-me page counts', async () => {

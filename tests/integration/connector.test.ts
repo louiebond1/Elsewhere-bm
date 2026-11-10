@@ -76,7 +76,9 @@ describe('AI assistant connector (Claude and ChatGPT)', () => {
     const qs = (await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.structuredContent as { questions: { question_id: string }[] };
     expect(qs.questions.length).toBeGreaterThan(0);
     // Guidance tells their AI to start from what it already knows about them.
-    expect((await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.content[0].text).toMatch(/ask whether to use it/);
+    expect((await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.content[0].text).toMatch(/remember about this person/);
+    // ...and to say plainly what it saved from memory, never calling it "already saved".
+    expect((await rpc(tokens.access_token, 'tools/call', { name: 'get_my_unanswered_questions', arguments: {} })).result!.content[0].text).toMatch(/came from your memory of earlier chats/);
     expect(init.result).toMatchObject({ instructions: expect.stringMatching(/memory/) });
     expect(init.result).toMatchObject({ instructions: expect.stringMatching(/build up my profile/) });
     const qid = qs.questions[0].question_id;
