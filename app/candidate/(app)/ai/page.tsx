@@ -9,7 +9,7 @@ import { AI_APPS } from '@/lib/ai-connect';
 
 export const dynamic = 'force-dynamic';
 
-const STARTER = 'Help me answer my Elsewhere questions.';
+const STARTER = 'Let’s build up my Elsewhere profile.';
 
 export default async function AiHelper({ searchParams }: { searchParams: Promise<{ app?: string }> }) {
   const { ctx } = await pageViewer('candidate');
@@ -18,7 +18,7 @@ export default async function AiHelper({ searchParams }: { searchParams: Promise
   const how = AI_APPS[app];
   return (
     <div className="mx-auto max-w-[760px]">
-      <PageHeader title="Your AI" subtitle="Your own ChatGPT or Claude prepares drafts. You check them and send them yourself." back={{ href: '/candidate/home', label: 'Home' }} />
+      <PageHeader title="Your AI" subtitle="Chat with your own ChatGPT or Claude. What it learns goes into your profile, and you can edit or remove anything." back={{ href: '/candidate/home', label: 'Home' }} />
 
       {s.waiting.length > 0 && (
         <Card title={`${s.waiting.length} answer${s.waiting.length > 1 ? 's' : ''} ready to check`} className="mb-4">
@@ -39,7 +39,7 @@ export default async function AiHelper({ searchParams }: { searchParams: Promise
             {s.connections.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-[15px]">
                 <span><span className="font-medium">{a.name}</span> <span className="text-muted">· since {date(a.createdAt)}{a.lastUsedAt ? ` · last used ${date(a.lastUsedAt)}` : ''}</span></span>
-                <ActionButton path={`connectors/${a.id}/disconnect`} label="Disconnect" variant="secondary" confirm={{ title: 'Disconnect?', body: <p>{a.name} will lose access straight away. Drafts it already saved stay here for you.</p>, confirmLabel: 'Disconnect' }} />
+                <ActionButton path={`connectors/${a.id}/disconnect`} label="Disconnect" variant="secondary" confirm={{ title: 'Disconnect?', body: <p>{a.name} will lose access straight away. What it already added stays in your profile.</p>, confirmLabel: 'Disconnect' }} />
               </li>
             ))}
           </ul>
@@ -65,7 +65,7 @@ export default async function AiHelper({ searchParams }: { searchParams: Promise
 
       <ul className="mt-4 grid gap-2 text-[14px] sm:grid-cols-3">
         <li className="rounded-lg bg-page p-3">✓ Uses your own {how.name} plan</li>
-        <li className="rounded-lg bg-page p-3">✓ Never sends anything for you</li>
+        <li className="rounded-lg bg-page p-3">✓ Never applies or contacts anyone</li>
         <li className="rounded-lg bg-page p-3">✓ Can’t see anyone else</li>
       </ul>
     </div>
