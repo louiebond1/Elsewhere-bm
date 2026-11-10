@@ -1,6 +1,6 @@
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import * as argon2 from 'argon2';
-import { users, candidates, candidateIdentity, consentEvents, candidateBlocks, organisations, organisationAliases, evidenceItems, introductions, identityGrants, sessions, screenings, matches, pipelineEntries, checkInAnswers, onboardingAnswers, conversations, files, profileVersions, aiRuns, jobs, hires } from '../db/schema';
+import { users, candidates, candidateIdentity, consentEvents, candidateBlocks, organisations, organisationAliases, evidenceItems, introductions, identityGrants, sessions, screenings, matches, pipelineEntries, checkInAnswers, onboardingAnswers, miniMeChat, conversations, files, profileVersions, aiRuns, jobs, hires } from '../db/schema';
 import { AppError, conflict, invalid, notFound } from '../lib/errors';
 import { lockCandidates, requireUser, type Ctx } from './context';
 import { logActivity, notify, consultantUserIds } from './audit';
@@ -294,6 +294,7 @@ export async function purgeCandidate(ctx: Ctx, candidateId: string) {
   await ctx.tx.delete(profileVersions).where(eq(profileVersions.candidateId, candidateId));
   await ctx.tx.delete(checkInAnswers).where(eq(checkInAnswers.candidateId, candidateId));
   await ctx.tx.delete(onboardingAnswers).where(eq(onboardingAnswers.candidateId, candidateId));
+  await ctx.tx.delete(miniMeChat).where(eq(miniMeChat.candidateId, candidateId));
   await ctx.tx.delete(conversations).where(eq(conversations.candidateId, candidateId));
   await ctx.tx.delete(candidateIdentity).where(eq(candidateIdentity.candidateId, candidateId));
   await ctx.tx.delete(candidateBlocks).where(eq(candidateBlocks.candidateId, candidateId));

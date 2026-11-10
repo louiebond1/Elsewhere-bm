@@ -303,6 +303,15 @@ export const onboardingAnswers = pgTable('onboarding_answers', {
   approvedAt: ts('approved_at'),
 }, (t) => [uniqueIndex('onboarding_answer_once').on(t.candidateId, t.questionKey)]);
 
+/** The in-app mini-me chat (for people not using ChatGPT or Claude). */
+export const miniMeChat = pgTable('mini_me_chat', {
+  ...common(),
+  candidateId: uuid('candidate_id').notNull().references(() => candidates.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(),
+  text: text('text').notNull(),
+  askedKey: text('asked_key'),
+}, (t) => [index('mini_me_chat_idx').on(t.candidateId, t.createdAt)]);
+
 export const evidenceItems = pgTable('evidence_items', {
   ...common(),
   candidateId: uuid('candidate_id').notNull().references(() => candidates.id, { onDelete: 'cascade' }),

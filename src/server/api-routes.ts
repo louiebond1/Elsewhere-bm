@@ -65,6 +65,13 @@ export const ROUTES: R[] = [
   { method: 'POST', path: 'oauth/approve', types: ['candidate'], h: ({ base, body }) => { const b = parse(z.object({ clientId: z.string().min(3).max(80), redirectUri: z.string().url().max(500), state: z.string().max(500).nullable(), codeChallenge: z.string().min(43).max(128), scope: z.string().max(200) }), body); return T(base, (c) => connectors.approve(c, b)); } },
   { method: 'GET', path: 'onboarding/status', types: ['candidate'], h: async ({ base }) => { const { onboardingView } = await import('./services/onboarding'); const v = await onboardingView(readCtx(base)); return { answered: v.answered, approved: v.approved, toCheck: v.toCheck, total: v.total }; } },
   { method: 'POST', path: 'onboarding/answer', types: ['candidate'], h: async ({ base, body }) => { const { saveOwnAnswer } = await import('./services/onboarding'); const b = parse(z.object({ key: z.string().min(1).max(60), answer: z.string().max(4000) }), body); return T(base, (c) => saveOwnAnswer(c, b.key, b.answer)); } },
+  { method: 'POST', path: 'minime/chat', types: ['candidate'], h: async ({ base, body, viewer }) => {
+    const { rateLimitHit } = await import('./auth');
+    if (await rateLimitHit(`minime:${viewer.actor.kind === 'user' ? viewer.actor.userId : 'x'}`, 'minime_chat', 60, 60)) throw new AppError('RATE_LIMITED', 429, 'That’s a lot of messages. Take a short break and try again.');
+    const b = parse(z.object({ text: z.string().max(3000).nullable().default(null) }), body);
+    const { chatTurn } = await import('./services/mini-me-chat');
+    return chatTurn(base, b.text);
+  } },
   { method: 'POST', path: 'onboarding/extra', types: ['candidate'], h: async ({ base, body }) => { const { addExtras } = await import('./services/onboarding'); const b = parse(z.object({ topic: z.string().trim().min(2, 'Add a short heading').max(200), answer: z.string().trim().min(1, 'Write something').max(1500) }), body); return T(base, (c) => addExtras(c, [b], 'self')); } },
   { method: 'POST', path: 'onboarding/approve', types: ['candidate'], h: async ({ base, body }) => { const { approveAnswers } = await import('./services/onboarding'); const b = parse(z.object({ keys: z.union([z.literal('all'), z.array(z.string().max(60)).max(60)]) }), body); return T(base, (c) => approveAnswers(c, b.keys)); } },
   { method: 'GET', path: 'ai/status', types: ['candidate'], h: async ({ base }) => { const c = readCtx(base); return { connected: await aiDrafts.connectedAi(c), ready: await aiDrafts.draftsWaiting(c) }; } },

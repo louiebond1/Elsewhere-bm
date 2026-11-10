@@ -99,6 +99,13 @@
       "when": 1794271952743,
       "tag": "0013_preferences_confirmed",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794273634093,
+      "tag": "0014_mini_me_chat",
+      "breakpoints": true
     }
   ]
 }

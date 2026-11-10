@@ -226,7 +226,7 @@ export function ConnectBanner({ connected: initial, connectorUrl, autoOpen, wait
         <div className="min-w-0 flex-1">
           <h2 className="text-[24px] leading-8 lg:text-[28px]">Let your {app} do the talking</h2>
           <p className="mt-1 text-[16px] text-muted">Say ‘Let’s build up my Elsewhere profile’ and just chat. Voice works too. What it learns goes straight into your profile as you chat.</p>
-          {!connected && <button type="button" className="mt-1 text-[16px] font-semibold text-primary underline underline-offset-2" onClick={() => setSheet('claude')}>Use Claude instead</button>}
+          {!connected && <p className="mt-1 flex flex-wrap gap-x-4 text-[16px] font-semibold"><button type="button" className="text-primary underline underline-offset-2" onClick={() => setSheet('claude')}>Use Claude instead</button><a href="/candidate/onboarding/chat" className="text-primary underline underline-offset-2">No ChatGPT or Claude? Chat here</a></p>}
         </div>
         <div className="flex shrink-0 flex-col gap-2 lg:absolute lg:right-6 lg:top-1/2 lg:-translate-y-1/2">
           {connected ? (<>

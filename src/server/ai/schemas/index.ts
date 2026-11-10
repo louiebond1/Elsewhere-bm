@@ -62,9 +62,24 @@ export type HiringTurnOutput = z.infer<typeof hiringTurnOutput>;
 
 /** One simulated interview: answers drawn only from the candidate's own approved examples. */
 export const simulationOutput = z.object({
-  answers: z.array(z.object({ questionIndex: z.number().int().min(0).max(9), answer: z.string().max(600), evidenceIds: z.array(z.string()).max(4) })).max(6),
+  answers: z.array(z.object({ questionIndex: z.number().int().min(0).max(19), answer: z.string().max(600), evidenceIds: z.array(z.string()).max(4) })).max(20),
   fitScore: z.number().int().min(0).max(100),
   summary: z.string().max(400),
   concerns: z.array(z.string().max(200)).max(3),
 });
 export type SimulationOutput = z.infer<typeof simulationOutput>;
+
+/** One turn of the in-app "build my mini-me" chat: a reply, what to save, and any job preferences they stated. */
+export const miniMeChatOutput = z.object({
+  reply: z.string().max(900),
+  askedKey: z.string().max(60).nullable(),
+  save: z.array(z.object({ topic: z.string().max(200), detail: z.string().max(1500), questionKey: z.string().max(60).nullable() })).max(12),
+  preferences: z.object({
+    region: z.enum(['london', 'hertfordshire', 'manchester', 'remote_uk']),
+    workModes: z.array(z.enum(['onsite', 'hybrid', 'remote'])).min(1),
+    roleFamilies: z.array(z.enum(['finance', 'operations', 'commercial'])).min(1),
+    minSalaryPounds: z.number().int().nullable(),
+    noticeWeeks: z.number().int().nullable(),
+  }).nullable(),
+});
+export type MiniMeChatOutput = z.infer<typeof miniMeChatOutput>;
