@@ -24,6 +24,7 @@ export function NotificationBell({ base }: { base: string }) {
   }, []);
   const unread = items.filter((i) => !i.readAt).length;
   const hrefFor = (n: N) => {
+    if (n.ref === 'interview') return base === '/candidate' ? `/candidate/interviews/${n.refId}` : `${base}/home`;
     if (n.ref === 'role') return `${base}/roles/${n.refId}`;
     if (n.ref === 'introduction') return base === '/candidate' ? '/candidate/introductions' : `${base}/introductions/${n.refId}/prep`;
     if (n.ref === 'screening') return base === '/consultant' ? `/consultant/screenings/${n.refId}` : `${base}/home`;
@@ -65,7 +66,7 @@ export function NotificationBell({ base }: { base: string }) {
 export function SignOut() {
   const csrf = useCsrf();
   return (
-    <button type="button" className="inline-flex h-11 items-center rounded-lg px-3 text-[15px] hover:bg-page" onClick={async () => { await api('auth/logout', { body: {}, csrf }); try { sessionStorage.clear(); } catch {} window.location.replace('/login'); }}>
+    <button type="button" className="inline-flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-[15px] hover:bg-page" onClick={async () => { await api('auth/logout', { body: {}, csrf }); try { sessionStorage.clear(); } catch {} window.location.replace('/login'); }}>
       Sign out
     </button>
   );
@@ -140,7 +141,7 @@ export function TopNav({ items }: { items: NavItem[] }) {
         const active = path === i.href || path.startsWith(i.href + '/');
         return (
           <li key={i.href}>
-            <Link href={i.href} aria-current={active ? 'page' : undefined} className={cx('inline-flex h-11 items-center whitespace-nowrap rounded-full px-5 text-[16px] font-medium no-underline transition-colors', active ? 'bg-[#E3E9DC] text-ink' : 'text-ink hover:bg-surface')}>{i.label}{i.count ? <span aria-label={`${i.count} waiting`} className="tnum ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-[13px] font-semibold text-white">{i.count}</span> : null}</Link>
+            <Link href={i.href} aria-current={active ? 'page' : undefined} className={cx('inline-flex h-11 items-center whitespace-nowrap rounded-full px-3.5 text-[16px] font-medium no-underline transition-colors xl:px-5', active ? 'bg-[#E3E9DC] text-ink' : 'text-ink hover:bg-surface')}>{i.label}{i.count ? <span aria-label={`${i.count} waiting`} className="tnum ml-2 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-[13px] font-semibold text-white">{i.count}</span> : null}</Link>
           </li>
         );
       })}

@@ -116,6 +116,12 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
   const summary = clean(a.summary) || (answers.some((x) => x.grounded) ? 'Has relevant examples for this job.' : 'Not much to go on yet.');
   const concerns = a.concerns.map(clean).filter(Boolean).slice(0, 3);
   const fitScore = Math.max(0, Math.min(100, Math.round(a.fitScore)));
+  // The first time their mini-me is interviewed for a job, tell them. No score: just that it happened.
+  const [before] = await ctx.tx.select({ id: simulatedInterviews.id }).from(simulatedInterviews).where(and(eq(simulatedInterviews.roleId, a.roleId), eq(simulatedInterviews.candidateId, a.candidateId)));
+  if (!before && cand.userId) {
+    const { notify } = await import('./audit');
+    await notify(ctx, [cand.userId], { type: 'system', subjectRefType: 'interview', subjectRefId: a.roleId, safeTitle: `Your mini-me was interviewed for ${role.title}` });
+  }
   const row = { datasetId: ctx.datasetId, roleId: a.roleId, candidateId: a.candidateId, roleVersion: a.roleVersion, profileVersionId: a.profileVersionId, answers, fitScore, summarySafe: summary, concernsSafe: concerns, provider: a.provider };
   await ctx.tx.insert(simulatedInterviews).values(row).onConflictDoUpdate({ target: [simulatedInterviews.roleId, simulatedInterviews.candidateId], set: { ...row, updatedAt: new Date() } });
   return { stored: true };

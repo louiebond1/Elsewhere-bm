@@ -16,6 +16,7 @@ export default async function CandidateLayout({ children }: { children: React.Re
     { href: '/candidate/home', label: 'Home', icon: 'home' },
     { href: '/candidate/onboarding', label: 'Mini-me', icon: 'checklist', count: toCheck },
     { href: '/candidate/profile', label: 'Profile', icon: 'profile' },
+    { href: '/candidate/interviews', label: 'Interviews', icon: 'checkins' },
     { href: '/candidate/introductions', label: 'Requests', icon: 'intros', count: (await candidateOverview(ctx)).pendingIntros },
     { href: '/candidate/check-ins', label: 'Check-ins', icon: 'checkins' },
     { href: '/candidate/cv', label: 'CV', icon: 'cv' },
