@@ -50,7 +50,7 @@ export function LinkButton({ href, children, variant = 'primary', className }: {
  * The page header. With a title it is a photo banner (the brand look on every screen): big white
  * title, short subtitle, and the page's buttons on the right. Without a title, just the back link.
  */
-export function PageHeader({ title, subtitle, actions, back, plain }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: { href: string; label: string }; plain?: boolean }) {
+export function PageHeader({ title, subtitle, actions, back, plain, compact }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: { href: string; label: string }; plain?: boolean; compact?: boolean }) {
   const backLink = back && <Link href={back.href} className="mb-4 inline-flex items-center gap-2 text-[16px] text-ink no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>;
   if (!title) return <div className="mb-6">{backLink}</div>;
   if (plain) return (
@@ -63,12 +63,12 @@ export function PageHeader({ title, subtitle, actions, back, plain }: { title: R
     </div>
   );
   return (
-    <div className="relative -mt-4 mb-8 pt-8 lg:-mt-6 lg:pt-12">
-      <PhotoBackdrop height={400} />
-      {back && <Link href={back.href} className="mb-5 inline-flex items-center gap-2 text-[16px] text-white/90 no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>}
-      <header className="flex flex-col gap-5 pb-6 text-white lg:flex-row lg:items-end lg:justify-between lg:pb-10">
+    <div className={cx('relative -mt-4 lg:-mt-6', compact ? 'mb-5 pt-5 lg:pt-7' : 'mb-8 pt-8 lg:pt-12')}>
+      <PhotoBackdrop height={compact ? 300 : 400} />
+      {back && <Link href={back.href} className="mb-3 inline-flex items-center gap-2 text-[16px] text-white/90 no-underline"><span aria-hidden className="text-[20px] leading-none">&larr;</span> {back.label}</Link>}
+      <header className={cx('flex flex-col gap-5 text-white lg:flex-row lg:items-end lg:justify-between', compact ? 'pb-4 lg:pb-6' : 'pb-6 lg:pb-10')}>
         <div className="min-w-0">
-          <h1 className="text-[40px] leading-[1.05] text-white lg:text-[60px]">{title}</h1>
+          <h1 className={cx('text-white', compact ? 'text-[32px] leading-[1.1] lg:text-[44px]' : 'text-[40px] leading-[1.05] lg:text-[60px]')}>{title}</h1>
           {subtitle && <div className="mt-3 max-w-[60ch] text-[17px] text-white/90 lg:text-[19px] [&_a]:text-white [&_a]:underline">{subtitle}</div>}
         </div>
         {actions && <div className="shelf -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [&_.press]:shrink-0 [&_.press]:whitespace-nowrap [&_.press]:rounded-full [&_.press]:border-transparent [&_.press]:bg-white [&_.press]:text-ink [&_.press:hover]:bg-white/90 lg:flex-wrap lg:justify-end">{actions}</div>}

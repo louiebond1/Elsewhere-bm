@@ -133,6 +133,7 @@ test('Onboarding: welcome page, answer one yourself, your AI saves others straig
   await page.goto('/candidate/onboarding');
   await expect(page.getByText('Your AI wrote')).toHaveCount(0);
   await expect(page.getByText('From your ChatGPT').first()).toBeVisible();
+  await page.getByText(/How your mini-me has grown/).click();
   await expect(page.getByText('ChatGPT added 2 things')).toBeVisible();
   await expect(page.getByText('6%', { exact: true })).toBeVisible();
 });

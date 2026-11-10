@@ -43,3 +43,34 @@ describe('candidates see their mini-me interviews', () => {
     expect(after).toHaveLength(1);
   });
 });
+
+describe('interviews: at least 10 questions, 24 hours to change answers', () => {
+  it('has 10+ questions with screening; an edit within 24h updates the interview; after 24h it is final', async () => {
+    const w = await load();
+    const R1 = w.ids.roles.R1;
+    await w.T(w.client('A'), (c) => requestSimulations(c, R1));
+    await drainJobs();
+    const [sim] = await db().select().from(S.simulatedInterviews).where(eq(S.simulatedInterviews.roleId, R1));
+    const code = Object.entries(w.ids.candidates).find(([, id]) => id === sim.candidateId)![0];
+    let one = await myInterview(readCtx(w.cand(code)), R1);
+    expect(one.answers.length).toBeGreaterThanOrEqual(10);
+    expect(one.answers.filter((a) => a.kind === 'screening').map((a) => a.key)).toEqual(['notice', 'salary', 'work_mode', 'right_to_work']);
+    expect(one.open).toBe(true);
+    const salaryQ = one.answers.find((a) => a.key === 'salary')!;
+
+    // Within 24 hours: answer the salary question; the interview is redone with it.
+    const { saveOwnAnswer } = await import('../../src/server/services/onboarding');
+    await w.T(w.cand(code), (c) => saveOwnAnswer(c, 'salary', 'Around £38,000'));
+    await drainJobs();
+    one = await myInterview(readCtx(w.cand(code)), R1);
+    expect(one.answers.find((a) => a.question === salaryQ.question)!.answer).toBe('Around £38,000');
+
+    // After 24 hours: final. A change to their mini-me no longer redoes this interview.
+    await db().update(S.simulatedInterviews).set({ createdAt: new Date(Date.now() - 25 * 3600 * 1000) }).where(eq(S.simulatedInterviews.id, sim.id));
+    await w.T(w.cand(code), (c) => saveOwnAnswer(c, 'salary', 'Around £45,000'));
+    await drainJobs();
+    one = await myInterview(readCtx(w.cand(code)), R1);
+    expect(one.open).toBe(false);
+    expect(one.answers.find((a) => a.question === salaryQ.question)!.answer).toBe('Around £38,000');
+  });
+});

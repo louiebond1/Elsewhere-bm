@@ -99,14 +99,24 @@ describe('mini-me: follow-ups and extras, and everyone gets interviewed', () => 
     expect(v.extras).toHaveLength(1);
   });
 
-  it('mini-me answers become interview material straight away; practical details are left out', async () => {
+  it('mini-me answers become interview material straight away; practical details only answer screening questions', async () => {
     const w = await load();
     const { miniMeEvidence } = await import('../../src/server/services/mini-me');
     await w.T(w.cand('C01'), (c) => saveAiAnswers(c, 'ChatGPT', [{ key: 'ex_improvement', answer: 'I rebuilt the month-end reconciliation checklist in Excel.' }, { key: 'salary', answer: '£40k' }]));
     const ev = await miniMeEvidence(readCtx(w.cand('C01')), w.ids.candidates.C01);
-    expect(ev).toHaveLength(1);
-    expect(ev[0]).toMatchObject({ id: 'mm:ex_improvement', strength: 'partial' });
-    expect(ev[0].tags).toEqual(expect.arrayContaining(['reconciliations', 'month_end', 'excel', 'process_design']));
+    expect(ev).toHaveLength(2);
+    expect(ev.find((e) => e.id === 'mm:ex_improvement')).toMatchObject({ strength: 'partial', practical: false });
+    expect(ev.find((e) => e.id === 'mm:ex_improvement')!.tags).toEqual(expect.arrayContaining(['reconciliations', 'month_end', 'excel', 'process_design']));
+    // Salary only answers the salary screening question, never a skills question.
+    expect(ev.find((e) => e.id === 'mm:salary')).toMatchObject({ practical: true, key: 'salary' });
+    const { interviewQuestions, demoSimulation } = await import('../../src/server/services/simulation');
+    const qs = interviewQuestions({ title: 'Assistant Accountant', outcomes: ['Own month-end'] }, []);
+    expect(qs.length).toBeGreaterThanOrEqual(10);
+    expect(qs.filter((q) => q.kind === 'screening')).toHaveLength(4);
+    const sim = demoSimulation(qs, ev);
+    expect(sim.built.find((x) => x.key === 'salary')).toMatchObject({ answer: '£40k', grounded: true, kind: 'screening' });
+    expect(sim.built.find((x) => x.key === 'ex_improvement')).toMatchObject({ grounded: true });
+    expect(sim.built.filter((x) => x.kind !== 'screening').every((x) => x.answer !== '£40k')).toBe(true);
   });
 });
 

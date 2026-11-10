@@ -22,17 +22,48 @@ export const SIM_LIMIT = 500;
 export const NOT_SHARED = 'They haven’t shared an example of this yet.';
 
 type Crit = Awaited<ReturnType<typeof criteriaFor>>[number];
-type Evidence = { id: string; safeClaim: string; tags: string[]; strength: string };
+type Evidence = { id: string; safeClaim: string; tags: string[]; strength: string; key?: string | null; topic?: string | null; practical?: boolean };
 /** A company name the dataset doesn't know about usually ends like this; such answers aren't shown. */
 const COMPANY = /\b(ltd|limited|plc|inc|llp|gmbh)\b\.?/i;
-export type SimAnswer = { question: string; answer: string; evidenceIds: string[]; grounded: boolean };
+export type SimAnswer = { question: string; answer: string; evidenceIds: string[]; grounded: boolean; key?: string | null; kind?: 'interview' | 'screening' };
 
-/** Up to three questions from what matters most, plus one about the role's main goal. */
+/** Standard behavioural questions, answered from the matching part of their mini-me. */
+const GENERAL: { key: string; text: string }[] = [
+  { key: 'ex_problem', text: 'Tell me about a problem you solved at work. How did you work it out?' },
+  { key: 'ex_pressure', text: 'Tell me about a time you had a tight deadline or a lot on. How did you handle it?' },
+  { key: 'ex_teamwork', text: 'Describe a time you worked with other people to get something done.' },
+  { key: 'ex_learning', text: 'Tell me about a time you had to learn something new quickly.' },
+  { key: 'ex_mistake', text: 'Tell me about a mistake you made or spotted, and what you did about it.' },
+  { key: 'ex_improvement', text: 'Describe something you improved at work. What changed because of you?' },
+  { key: 'ex_customer', text: 'Tell me about helping a customer or colleague with something tricky.' },
+];
+/** Screening questions every interview includes, answered from their practical details. */
+export const SCREENING: { key: string; text: string }[] = [
+  { key: 'notice', text: 'How much notice do you need to give, or when could you start?' },
+  { key: 'salary', text: 'What salary are you looking for?' },
+  { key: 'work_mode', text: 'Where are you based, and does the way this job is worked (office, hybrid or remote) suit you?' },
+  { key: 'right_to_work', text: 'Do you have the right to work in the UK?' },
+];
+export const MIN_INTERVIEW_QUESTIONS = 7;
+/** After their mini-me is interviewed for a job, they have 24 hours to fill gaps or change answers. */
+export const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The interview: up to five questions from what matters most for the job, one about its main goal,
+ * standard behavioural questions to make at least seven, then four screening questions. Never fewer than 11.
+ */
 export function interviewQuestions(role: { title: string; outcomes: string[] }, crit: Crit[]) {
-  const top = [...crit].sort((a, b) => b.weight - a.weight || a.ordinal - b.ordinal).slice(0, 3);
-  const qs = top.map((c) => ({ text: `Tell me about a time you worked on ${c.label.toLowerCase()}. What did you do, and what happened?`, crit: c as Crit | null }));
-  if (role.outcomes[0]) qs.push({ text: `In this job you would need to: ${role.outcomes[0].replace(/[.!]$/, '')}. How would you approach that?`, crit: null });
+  const top = [...crit].sort((a, b) => b.weight - a.weight || a.ordinal - b.ordinal).slice(0, 5);
+  const qs: { text: string; crit: Crit | null; key: string | null; kind: 'interview' | 'screening' }[] = top.map((c) => ({ text: `Tell me about a time you worked on ${c.label.toLowerCase()}. What did you do, and what happened?`, crit: c as Crit | null, key: null, kind: 'interview' }));
+  if (role.outcomes[0]) qs.push({ text: `In this job you would need to: ${role.outcomes[0].replace(/[.!]$/, '')}. How would you approach that?`, crit: null, key: null, kind: 'interview' });
+  for (const g of GENERAL) { if (qs.length >= MIN_INTERVIEW_QUESTIONS) break; qs.push({ text: g.text, crit: null, key: g.key, kind: 'interview' }); }
+  for (const sq of SCREENING) qs.push({ text: sq.text, crit: null, key: sq.key, kind: 'screening' });
   return qs;
+}
+
+/** An answer straight from their mini-me: the exact question they answered, or the matching checklist answer. */
+function direct(q: { text: string; key: string | null }, evidence: Evidence[]) {
+  return evidence.find((e) => e.topic && e.topic.trim().toLowerCase() === q.text.trim().toLowerCase()) ?? (q.key ? evidence.find((e) => e.key === q.key) : undefined);
 }
 
 const STRENGTH: Record<string, number> = { specific: 1, partial: 0.6, assertion: 0.3 };
@@ -40,15 +71,20 @@ const STRENGTH: Record<string, number> = { specific: 1, partial: 0.6, assertion:
 /** Demo mode: answers are the candidate's own approved examples, matched to each question by skill. */
 export function demoSimulation(questions: ReturnType<typeof interviewQuestions>, evidence: Evidence[]): SimulationOutput & { built: SimAnswer[] } {
   const rank = (list: Evidence[]) => [...list].sort((a, b) => (STRENGTH[b.strength] ?? 0) - (STRENGTH[a.strength] ?? 0));
-  const best = (tags: string[] | null) => rank(evidence.filter((e) => !tags || e.tags.some((t) => tags.includes(t))))[0];
+  const pool = evidence.filter((e) => !e.practical);
+  const best = (tags: string[] | null) => rank(pool.filter((e) => !tags || e.tags.some((t) => tags.includes(t))))[0];
   // Use each example once where possible, so answers don't repeat; fall back to the best fit if nothing else is left.
   const used = new Set<string>();
   const built: SimAnswer[] = questions.map((q) => {
-    const fits = rank(evidence.filter((e) => !q.crit || e.tags.some((t) => q.crit!.evidenceTags.includes(t))));
+    const meta = { key: q.key, kind: q.kind };
+    const d = direct(q, evidence);
+    if (d) { used.add(d.id); return { question: q.text, answer: d.safeClaim, evidenceIds: [d.id], grounded: true, ...meta }; }
+    if (q.kind === 'screening' || q.key) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false, ...meta };
+    const fits = rank(pool.filter((e) => !q.crit || e.tags.some((t) => q.crit!.evidenceTags.includes(t))));
     const e = fits.find((x) => !used.has(x.id)) ?? (q.crit ? fits[0] : undefined);
-    if (!e) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false };
+    if (!e) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false, ...meta };
     used.add(e.id);
-    return { question: q.text, answer: e.safeClaim, evidenceIds: [e.id], grounded: true };
+    return { question: q.text, answer: e.safeClaim, evidenceIds: [e.id], grounded: true, ...meta };
   });
   const scored = questions.filter((q) => q.crit);
   const total = scored.reduce((a, q) => a + q.crit!.weight, 0) || 1;
@@ -70,7 +106,10 @@ export async function simulationTargets(ctx: Ctx, roleId: string) {
   const existing = await ctx.tx.select().from(simulatedInterviews).where(eq(simulatedInterviews.roleId, roleId));
   // An interview is redone when the job, their profile, or their mini-me has changed since.
   const mini = await miniMeUpdatedAt(ctx, existing.map((s) => s.candidateId));
-  const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.profileVersionId === info.get(s.candidateId)?.pv && !(mini.get(s.candidateId) && mini.get(s.candidateId)! > s.updatedAt)).map((s) => s.candidateId));
+  // Mini-me changes only count during the 24 hours after they were first interviewed; then that interview is final.
+  const now = Date.now();
+  const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.profileVersionId === info.get(s.candidateId)?.pv
+    && !(mini.get(s.candidateId) && mini.get(s.candidateId)! > s.updatedAt && now < s.createdAt.getTime() + EDIT_WINDOW_MS)).map((s) => s.candidateId));
   const targets: { candidateId: string }[] = [];
   let considered = 0;
   for (const r of ranked) {
@@ -86,7 +125,9 @@ export async function simulationTargets(ctx: Ctx, roleId: string) {
 export async function requestSimulations(ctx: Ctx, roleId: string) {
   const { role, targets } = await simulationTargets(ctx, roleId);
   if (!role || !targets.length) return { queued: false };
-  await enqueue(ctx, 'simulate_interviews', roleId, `simulate:${roleId}:${role.roleVersion}:${Math.floor(Date.now() / 600000)}`);
+  const j = await enqueue(ctx, 'simulate_interviews', roleId, `simulate:${roleId}:${role.roleVersion}:${Math.floor(Date.now() / 600000)}`);
+  // Someone still needs interviewing but this window's job already ran (e.g. they just edited an answer): run it again.
+  if (j.status === 'succeeded') await ctx.tx.update(jobs).set({ status: 'queued', availableAt: new Date(), updatedAt: new Date() }).where(eq(jobs.id, j.id));
   return { queued: true };
 }
 
@@ -110,7 +151,7 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
   const answers = a.answers.map((x) => {
     const ids = x.evidenceIds.filter((i) => allowed.has(i));
     const ok = ids.length > 0 && x.answer.trim() && !safeClaimProblems(x.answer, forbidden).length && !COMPANY.test(x.answer);
-    return ok ? { ...x, evidenceIds: ids, grounded: true } : { question: x.question, answer: NOT_SHARED, evidenceIds: [], grounded: false };
+    return ok ? { ...x, evidenceIds: ids, grounded: true } : { question: x.question, answer: NOT_SHARED, evidenceIds: [], grounded: false, key: x.key ?? null, kind: x.kind ?? 'interview' };
   });
   const clean = (t: string) => (safeClaimProblems(t, forbidden).length || COMPANY.test(t) ? '' : t.trim());
   const summary = clean(a.summary) || (answers.some((x) => x.grounded) ? 'Has relevant examples for this job.' : 'Not much to go on yet.');
@@ -138,16 +179,16 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
     const prep = await assessmentInput(readCtx(base), roleId, t.candidateId);
     if (!prep || !prep.profileVersionId) continue;
     // Their approved examples plus their approved mini-me answers.
-    const evidence = [...prep.input.evidence, ...(await miniMeEvidence(readCtx(base), t.candidateId))];
+    const evidence: Evidence[] = [...prep.input.evidence, ...(await miniMeEvidence(readCtx(base), t.candidateId))];
     const demo = demoSimulation(questions, evidence);
     let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
     if (live && evidence.length) {
       try {
-        const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q) => q.text), examples: evidence.map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
+        const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q) => q.text), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
         const res = await runAi({ task: 'simulate', datasetId: base.datasetId, roleId, candidateId: t.candidateId, input }, (p) => p.simulateInterview(input));
         const out = res.output;
         result = {
-          answers: questions.map((q, i) => { const a = out.answers.find((x) => x.questionIndex === i); return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length }; }),
+          answers: questions.map((q, i) => { const d = demo.built[i]; if (q.key || q.kind === 'screening' || direct(q, evidence)) return d; const a = out.answers.find((x) => x.questionIndex === i); return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length, key: q.key, kind: q.kind }; }),
           fitScore: out.fitScore, summary: out.summary, concerns: out.concerns, provider: res.provider,
         };
       } catch (e) {

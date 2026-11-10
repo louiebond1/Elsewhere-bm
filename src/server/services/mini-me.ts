@@ -14,17 +14,19 @@ const QUESTION = new Map(ONBOARDING_QUESTIONS.map((q) => [q.key, q.text]));
  * approved; identifying details are still caught when each interview is stored.
  */
 export async function miniMeEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: string) {
-  const rows = await ctx.tx.select().from(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.status, 'approved')));
-  return rows.filter((r) => !NOT_FOR_INTERVIEWS.has(r.questionKey)).map((r) => {
+  // Newest first, so a fresh answer to an interview question wins over an older one.
+  const rows = (await ctx.tx.select().from(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.status, 'approved')))).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  return rows.map((r) => {
     const about = r.questionText ?? QUESTION.get(r.questionKey) ?? '';
-    return { id: `mm:${r.questionKey}`, safeClaim: r.answer.slice(0, 900), tags: inferTags(`${about} ${r.answer}`), strength: 'partial' };
+    // Practical details (salary, notice...) only ever answer screening questions.
+    return { id: `mm:${r.questionKey}`, safeClaim: r.answer.slice(0, 900), tags: inferTags(`${about} ${r.answer}`), strength: 'partial', key: r.questionKey.startsWith('extra:') ? null : r.questionKey, topic: r.questionText, practical: NOT_FOR_INTERVIEWS.has(r.questionKey) };
   });
 }
 
 /** When each candidate last approved something in their mini-me, so their interviews can be redone. */
 export async function miniMeUpdatedAt(ctx: Pick<Ctx, 'tx'>, candidateIds: string[]) {
   if (!candidateIds.length) return new Map<string, Date>();
-  const rows = await ctx.tx.select({ c: onboardingAnswers.candidateId, at: max(onboardingAnswers.approvedAt) }).from(onboardingAnswers).where(and(inArray(onboardingAnswers.candidateId, candidateIds), eq(onboardingAnswers.status, 'approved'))).groupBy(onboardingAnswers.candidateId);
+  const rows = await ctx.tx.select({ c: onboardingAnswers.candidateId, at: max(onboardingAnswers.updatedAt) }).from(onboardingAnswers).where(and(inArray(onboardingAnswers.candidateId, candidateIds), eq(onboardingAnswers.status, 'approved'))).groupBy(onboardingAnswers.candidateId);
   return new Map(rows.filter((r) => r.at).map((r) => [r.c, r.at as Date]));
 }
 

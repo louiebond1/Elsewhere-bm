@@ -3,7 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { simulatedInterviews, roles } from '../db/schema';
 import { requireUser, type Ctx } from './context';
 import { notFound } from '../lib/errors';
-import { NOT_SHARED } from './simulation';
+import { NOT_SHARED, EDIT_WINDOW_MS } from './simulation';
 
 const me = (ctx: Ctx) => (requireUser(ctx.actor, 'candidate') as { candidateId?: string }).candidateId ?? '';
 
@@ -17,7 +17,8 @@ export async function myInterviews(ctx: Ctx) {
     .where(eq(simulatedInterviews.candidateId, me(ctx))).orderBy(desc(simulatedInterviews.updatedAt));
   return rows.map((r) => {
     const answers = r.s.answers as { question: string; answer: string; grounded: boolean }[];
-    return { roleId: r.s.roleId, title: r.title, region: r.region, mode: r.mode, at: r.s.updatedAt.toISOString(), asked: answers.length, gaps: answers.filter((a) => !a.grounded).length };
+    const deadline = r.s.createdAt.getTime() + EDIT_WINDOW_MS;
+    return { roleId: r.s.roleId, title: r.title, region: r.region, mode: r.mode, at: r.s.createdAt.toISOString(), asked: answers.length, gaps: answers.filter((a) => !a.grounded).length, deadline: new Date(deadline).toISOString(), open: Date.now() < deadline };
   });
 }
 
@@ -26,6 +27,8 @@ export async function myInterview(ctx: Ctx, roleId: string) {
     .from(simulatedInterviews).innerJoin(roles, eq(roles.id, simulatedInterviews.roleId))
     .where(and(eq(simulatedInterviews.candidateId, me(ctx)), eq(simulatedInterviews.roleId, roleId)));
   if (!r) throw notFound();
-  const answers = (r.s.answers as { question: string; answer: string; grounded: boolean }[]).map((a) => ({ question: a.question, answer: a.grounded ? a.answer : null }));
-  return { roleId, title: r.title, region: r.region, mode: r.mode, at: r.s.updatedAt.toISOString(), answers, notShared: NOT_SHARED };
+  const answers = (r.s.answers as { question: string; answer: string; grounded: boolean; key?: string | null; kind?: 'interview' | 'screening' }[])
+    .map((a) => ({ question: a.question, answer: a.grounded ? a.answer : null, key: a.key ?? null, kind: a.kind ?? 'interview' }));
+  const deadline = r.s.createdAt.getTime() + EDIT_WINDOW_MS;
+  return { roleId, title: r.title, region: r.region, mode: r.mode, at: r.s.createdAt.toISOString(), updatedAt: r.s.updatedAt.toISOString(), answers, notShared: NOT_SHARED, deadline: new Date(deadline).toISOString(), open: Date.now() < deadline };
 }

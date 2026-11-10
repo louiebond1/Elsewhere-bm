@@ -11,7 +11,7 @@ import { ApproveAll, Extras, QuestionDeck, AddSomething, ConnectBanner, AlwaysOn
 const AREA_ICONS: Record<string, typeof MapPin> = { all: LayoutGrid, now: MapPin, experience: Briefcase, examples: Trophy, skills: Wrench, style: Users, next: Target, practical: FileText, extras: MoreHorizontal };
 
 export const dynamic = 'force-dynamic';
-const PAGE = 12;
+const PAGE = 6;
 
 /**
  * Your mini-me. By default: what it knows, as a feed of short topics, built up over relaxed chats with
@@ -142,8 +142,8 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
           </div>
         </section>
 
-        <section aria-labelledby="story" className="pt-8">
-          <h2 id="story" className="text-[26px] leading-8">How your mini-me has grown</h2>
+        <details className="mt-8 rounded-3xl bg-surface px-5 py-4 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:px-7">
+          <summary className="cursor-pointer font-display text-[20px] font-semibold">How your mini-me has grown{story.length ? ` · ${story.length} update${story.length === 1 ? '' : 's'}` : ''}</summary>
           {story.length === 0 ? <p className="mt-3 text-[16px] text-muted">Nothing yet. Every time your AI saves something, or you approve it, it shows up here.</p> : (
             <ol className="mt-4 space-y-0 border-l-2 border-line pl-6">
               {story.map((e, i) => (
@@ -155,7 +155,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
               ))}
             </ol>
           )}
-        </section>
+        </details>
       </div>
     </div>
   );
