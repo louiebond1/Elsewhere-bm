@@ -11,6 +11,22 @@ import { AI_APPS } from '@/lib/ai-connect';
 type Q = { key: string; text: string; hint: string | null; answer: string | null; source: 'ai' | 'self' | null; provider: string | null; approved: boolean };
 type Section = { key: string; title: string; questions: Q[] };
 
+
+/**
+ * While their AI is connected, keep the page up to date: refresh the moment they come back to this tab
+ * (e.g. from ChatGPT), and every 15 seconds while it is open and visible.
+ */
+export function useLiveRefresh(connected: boolean, waiting: boolean, refresh: () => void) {
+  useEffect(() => {
+    if (!connected) return;
+    const onShow = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('focus', onShow);
+    const t = waiting ? setInterval(onShow, 15000) : null;
+    return () => { document.removeEventListener('visibilitychange', onShow); window.removeEventListener('focus', onShow); if (t) clearInterval(t); };
+  }, [connected, waiting, refresh]);
+}
+
 export const CHECKLIST_PROMPT = 'Let’s build up my Elsewhere profile. Use what you already know about me, then get to know me with a relaxed chat about whatever’s missing, and save everything as we go.';
 
 /** Ask their AI to fill in the checklist, or connect it first. Refreshes while answers arrive. */
@@ -19,11 +35,7 @@ export function ChecklistAi({ connected: initial, connectorUrl, autoOpen, waitin
   const [connected, setConnected] = useState(initial);
   const [sheet, setSheet] = useState(autoOpen && !initial);
   // While their AI might be saving answers, quietly refresh so they appear without reloading.
-  useEffect(() => {
-    if (!connected || !waiting) return;
-    const t = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, 15000);
-    return () => clearInterval(t);
-  }, [connected, waiting, router]);
+  useLiveRefresh(!!connected, waiting, router.refresh);
   if (!connected) return (
     <>
       <LetMyAiButton connected={null} note="No one knows you better than your ChatGPT. Let it do the typing, you check it." onClick={() => setSheet(true)} />
@@ -211,11 +223,7 @@ export function ConnectBanner({ connected: initial, connectorUrl, autoOpen, wait
   const [connected, setConnected] = useState(initial);
   const [sheet, setSheet] = useState<null | 'chatgpt' | 'claude'>(autoOpen && !initial ? 'chatgpt' : null);
   const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!connected || !waiting) return;
-    const t = setInterval(() => { if (document.visibilityState === 'visible') router.refresh(); }, 15000);
-    return () => clearInterval(t);
-  }, [connected, waiting, router]);
+  useLiveRefresh(!!connected, waiting, router.refresh);
   const app = connected ?? 'ChatGPT';
   const copy = async () => { try { await navigator.clipboard.writeText(CHECKLIST_PROMPT); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { setCopied(false); } };
   return (

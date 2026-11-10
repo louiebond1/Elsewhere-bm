@@ -138,7 +138,7 @@ export async function rememberForMiniMe(ctx: Ctx, provider: string, items: { top
   const toExtras = items.filter((i) => !(i.questionKey && ONBOARDING_KEYS.has(i.questionKey))).map((i) => ({ topic: i.topic, answer: i.detail }));
   const a = toChecklist.length ? await saveAiAnswers(ctx, provider, toChecklist) : { saved: [], skipped: [] };
   const b = toExtras.length ? await addExtras(ctx, toExtras, { provider }) : { saved: [], skipped: [] };
-  return { savedToChecklist: a.saved.length, savedAsExtras: b.saved.length, skipped: [...a.skipped.map((x) => x.key + ' (' + x.reason + ')'), ...b.skipped.map((x) => x.topic + ' (' + x.reason + ')')] };
+  return { savedKeys: [...a.saved, ...b.saved], savedToChecklist: a.saved.length, savedAsExtras: b.saved.length, skipped: [...a.skipped.map((x) => x.key + ' (' + x.reason + ')'), ...b.skipped.map((x) => x.topic + ' (' + x.reason + ')')] };
 }
 
 /** A few questions not yet answered, for their AI to slip into conversation when it fits. */
