@@ -214,7 +214,7 @@ test('Guided walkthrough: gated, read-only, reachable from demo accounts, labels
   await page.goto('/demo/guide');
   await expect(page).toHaveURL(/\/demo$/);
   await enterGate(page);
-  await page.goto('/demo/personas');
+  await page.goto('/demo/tools');
   await page.goto('/demo/guide');
   await expect(page).toHaveURL(/\/demo\/guide$/);
   await expect(page.getByRole('heading', { name: 'Guided walkthrough (read-only)' })).toBeVisible();
@@ -277,6 +277,7 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
 
 test('Start my own test: the whole journey from a clean start, as you would do it yourself', async ({ page }) => {
   await enterGate(page);
+  await page.goto('/demo/tools');
   await page.getByRole('button', { name: 'Start my own test' }).click();
   await page.waitForURL(/\/client\/home$/, { timeout: 60_000 });
   await expect(page.getByRole('heading', { name: 'Hi Emma' })).toBeVisible();
@@ -309,7 +310,7 @@ test('Start my own test: the whole journey from a clean start, as you would do i
   await page.getByRole('dialog').getByRole('button', { name: 'Send request' }).click();
   await expect(page.getByText(/You’ve asked to meet/)).toBeVisible();
   // 5. Answer as the candidate, found at the top of the demo accounts page.
-  await page.goto('/demo/personas');
+  await page.goto('/demo/tools');
   await page.getByText('To answer a meeting request as the candidate, use:').getByRole('button').first().click();
   await page.waitForURL(/\/candidate\/home$/);
   await page.goto('/candidate/introductions');

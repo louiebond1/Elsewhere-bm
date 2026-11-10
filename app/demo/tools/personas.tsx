@@ -45,13 +45,13 @@ export function Personas({ people, scenarios, activeScenario }: { people: P[]; s
     setBusy('FRESH');
     const r = await api('demo/scenario/FRESH/load', { body: {} });
     if (!r.ok) { setBusy(null); return setErr(r.error); }
-    window.location.replace('/demo/personas#go-emma');
+    window.location.replace('/demo/tools#go-emma');
     window.location.reload();
   };
   useEffect(() => {
     if (activeScenario !== 'FRESH' || window.location.hash !== '#go-emma') return;
     const emma = people.find((p) => p.type === 'client' && p.email.includes('alder'));
-    history.replaceState(null, '', '/demo/personas');
+    history.replaceState(null, '', '/demo/tools');
     if (emma) void api<{ userType: string }>('demo/switch-persona', { body: { userId: emma.userId } }).then((r) => { if (r.ok) window.location.replace(`/${r.data.userType}/home`); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -15,11 +15,11 @@ export async function loadScenario(page: Page, code: string | null) {
   await enterGate(page);
   const res = await page.request.post(code ? `/api/demo/scenario/${code}/load` : '/api/demo/reset', { data: { confirm: 'RESET' }, headers: { origin: new URL(page.url()).origin } });
   expect(res.ok()).toBeTruthy();
-  await page.goto('/demo/personas');
+  await page.goto('/demo/tools');
 }
 
 export async function switchTo(page: Page, label: string) {
-  await page.goto('/demo/personas');
+  await page.goto('/demo/tools');
   if (/^CAND-/.test(label)) {
     await page.locator('summary', { hasText: 'All fictional candidates' }).click();
     await page.getByRole('button', { name: new RegExp(label) }).click();

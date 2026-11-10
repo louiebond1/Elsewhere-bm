@@ -46,16 +46,18 @@ export async function latestConsents(ex: Ex, candidateId: string) {
   return out;
 }
 
-export type DiscoveryState = { discoverable: boolean; reasons: string[] };
+export type DiscoveryState = { discoverable: boolean; reasons: string[]; warnings: string[] };
 
 /** Discoverability for new matching and new introduction requests. */
 export async function discoveryState(ex: Ex, candidateId: string): Promise<DiscoveryState> {
   const [c] = await ex.tx.select().from(candidates).where(eq(candidates.id, candidateId));
   const reasons: string[] = [];
-  if (!c) return { discoverable: false, reasons: ['missing'] };
+  const warnings: string[] = [];
+  if (!c) return { discoverable: false, reasons: ['missing'], warnings };
   if (c.status !== 'active') reasons.push(`status_${c.status}`);
   if (!c.discoveryEnabled) reasons.push('discovery_off');
-  if (!['resolved', 'not_employed'].includes(c.employerResolutionStatus)) reasons.push('employer_unresolved');
+  // Visible without waiting for anyone to check them. Until we know their employer we can't hide them from it, so we say so.
+  if (!['resolved', 'not_employed'].includes(c.employerResolutionStatus)) warnings.push(c.employerResolutionStatus === 'unresolved' ? 'employer_unresolved' : 'employer_not_supplied');
   if (!c.latestProfileVersionId) reasons.push('no_approved_profile');
   else {
     const [pv] = await ex.tx.select({ s: profileVersions.reviewState }).from(profileVersions).where(eq(profileVersions.id, c.latestProfileVersionId));
@@ -64,7 +66,7 @@ export async function discoveryState(ex: Ex, candidateId: string): Promise<Disco
   const cons = await latestConsents(ex, candidateId);
   if (!cons.terms?.granted) reasons.push('terms_missing');
   if (!cons.ai_processing?.granted) reasons.push('ai_consent_missing');
-  return { discoverable: reasons.length === 0, reasons };
+  return { discoverable: reasons.length === 0, reasons, warnings };
 }
 
 /** Candidates eligible for new discovery by a specific client: discoverable and not blocked. */

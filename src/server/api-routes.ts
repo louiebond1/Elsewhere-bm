@@ -80,6 +80,7 @@ export const ROUTES: R[] = [
   { method: 'POST', path: 'connectors/:id/disconnect', types: ['candidate'], h: ({ base, p }) => T(base, (c) => connectors.disconnect(c, p.id)) },
   { method: 'POST', path: 'candidate/preferences', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.updatePreferences(c, parse(preferencesInput, body))) },
   { method: 'POST', path: 'candidate/discovery', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.setDiscovery(c, parse(z.object({ enabled: z.boolean() }), body).enabled)) },
+  { method: 'POST', path: 'candidate/reset-profile', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.resetMyProfile(c, parse(z.object({ confirm: z.string().max(20) }), body).confirm)) },
   { method: 'POST', path: 'candidate/insights', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.setAggregateInsights(c, parse(z.object({ granted: z.boolean() }), body).granted)) },
   { method: 'POST', path: 'candidate/employer', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.setCurrentEmployer(c, body)) },
   { method: 'POST', path: 'candidate/blocks', types: ['candidate'], h: ({ base, body }) => T(base, (c) => cands.addBlock(c, parse(z.object({ organisationId: z.string().uuid() }), body).organisationId)) },

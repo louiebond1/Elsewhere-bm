@@ -179,7 +179,7 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
     const prep = await assessmentInput(readCtx(base), roleId, t.candidateId);
     if (!prep || !prep.profileVersionId) continue;
     // Their approved examples plus their approved mini-me answers.
-    const evidence: Evidence[] = [...prep.input.evidence, ...(await miniMeEvidence(readCtx(base), t.candidateId))];
+    const evidence: Evidence[] = [...prep.input.evidence.filter((e) => !e.id.startsWith('mm:')), ...(await miniMeEvidence(readCtx(base), t.candidateId))];
     const demo = demoSimulation(questions, evidence);
     let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
     if (live && evidence.length) {

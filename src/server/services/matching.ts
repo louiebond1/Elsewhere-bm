@@ -7,7 +7,8 @@ import { eligibilityFor, combinedScore, confidenceFor, type Level } from '../lib
 import { fixtureProvider } from '../ai/providers/fixture';
 import { aiMode } from '../ai';
 import { enqueue } from './jobs';
-import { permittedCandidateIdsForClient } from '../policies/privacy';
+import { permittedCandidateIdsForClient, discoveryState, isBlockedForClient } from '../policies/privacy';
+import { miniMeMatchEvidence, miniMeUpdatedAt } from './mini-me';
 import { criteriaFor } from './roles';
 import type { Ctx } from './context';
 
@@ -19,6 +20,17 @@ export async function validEvidenceForProfile(ctx: Pick<Ctx, 'tx'>, candidateId:
   return ev.filter((e) => (e.reviewState === 'candidate_approved' || e.reviewState === 'consultant_verified') && e.anonymityReview === 'approved' && !!e.safeClaim);
 }
 
+/** Everything a match may use: approved profile examples plus what their mini-me knows (identifiers removed). */
+export async function matchEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: string, profileVersionId: string | null) {
+  return [...(await validEvidenceForProfile(ctx, candidateId, profileVersionId)), ...(await miniMeMatchEvidence(ctx, candidateId))];
+}
+
+/** Until they've told us their job preferences, nothing rules a job out: it's flagged to discuss instead. */
+function eligibilityOf(role: typeof roles.$inferSelect, cand: typeof candidates.$inferSelect) {
+  if (cand.preferencesConfirmed) return eligibilityFor(role, cand);
+  return { eligibility: 'needs_clarification' as const, reason: 'preferences_not_set' };
+}
+
 export async function latestAdjustment(ctx: Pick<Ctx, 'tx'>, roleId: string, candidateId: string) {
   const [a] = await ctx.tx.select().from(rankingAdjustments).where(and(eq(rankingAdjustments.roleId, roleId), eq(rankingAdjustments.candidateId, candidateId))).orderBy(desc(rankingAdjustments.createdAt)).limit(1);
   return a ?? null;
@@ -28,13 +40,15 @@ export type CriterionResult = { criterionId: string; aiLevel: Level; evidenceIds
 
 /** Deterministic pair computation. Fixture assessment inline; live AI results are applied by the worker. */
 async function computePair(ctx: Ctx, role: typeof roles.$inferSelect, crit: Awaited<ReturnType<typeof criteriaFor>>, cand: typeof candidates.$inferSelect) {
-  const evidence = await validEvidenceForProfile(ctx, cand.id, cand.latestProfileVersionId);
-  const el = eligibilityFor(role, cand);
+  const evidence = await matchEvidence(ctx, cand.id, cand.latestProfileVersionId);
+  const el = eligibilityOf(role, cand);
+  const miniAt = (await miniMeUpdatedAt(ctx, [cand.id])).get(cand.id);
   // Reuse a live AI assessment while the profile and role versions are unchanged (cache key: profile, role, prompt, model).
   const [prev] = await ctx.tx.select().from(matches).where(and(eq(matches.roleId, role.id), eq(matches.candidateId, cand.id)));
   const validIds = new Set(evidence.map((e) => e.id));
   const prevResults = (prev?.criterionResults as CriterionResult[] | undefined) ?? [];
   const reuse = !!prev && prev.provider === 'anthropic' && prev.profileVersionId === cand.latestProfileVersionId && prev.roleVersion === role.roleVersion
+    && !(miniAt && miniAt > prev.computedAt)
     && crit.every((c) => prevResults.some((r) => r.criterionId === c.id)) && prevResults.every((r) => r.evidenceIds.every((id) => validIds.has(id)));
   const assess = reuse
     ? { output: { criteria: prevResults.map((r) => ({ criterionId: r.criterionId, level: r.aiLevel, evidenceIds: r.evidenceIds, reasonSafe: r.reasonSafe })) } }
@@ -52,7 +66,7 @@ async function computePair(ctx: Ctx, role: typeof roles.$inferSelect, crit: Awai
   const results: CriterionResult[] = assess.output.criteria.map((c) => ({ criterionId: c.criterionId, aiLevel: c.level as Level, evidenceIds: c.evidenceIds, humanLevel: human?.get(c.criterionId) ?? null, reasonSafe: c.reasonSafe }));
   const unknownLabels = crit.filter((c) => (ai.get(c.id) ?? 'unknown') === 'unknown').map((c) => c.label);
   const known = crit.filter((c) => ['specific', 'partial'].includes(ai.get(c.id) ?? 'unknown')).map((c) => c.label.toLowerCase());
-  const rationale = known.length ? `Approved evidence relates to ${known.join(', ')}.${unknownLabels.length ? ` Not enough evidence yet for ${unknownLabels.join(', ').toLowerCase()}.` : ''}` : 'Not enough evidence yet for this role. A conversation could show more.';
+  const rationale = known.length ? `Their examples relate to ${known.join(', ')}.${unknownLabels.length ? ` Not enough evidence yet for ${unknownLabels.join(', ').toLowerCase()}.` : ''}` : 'Not enough evidence yet for this role. A conversation could show more.';
   return { awaitingAi, row: {
     datasetId: ctx.datasetId, roleId: role.id, candidateId: cand.id, profileVersionId: cand.latestProfileVersionId!, roleVersion: role.roleVersion,
     eligibility: el.eligibility, incompatibilityReason: el.reason, score: s.score, aiScore: s.aiScore, humanScore: s.humanScore, coverageBps: Math.round(s.coverage * 10000),
@@ -89,9 +103,11 @@ export async function queueAssessment(ctx: Ctx, roleId: string) {
 export async function recomputeCandidate(ctx: Ctx, candidateId: string) {
   const rs = await ctx.tx.select().from(roles).where(and(eq(roles.datasetId, ctx.datasetId), ne(roles.status, 'draft')));
   const [cand] = await ctx.tx.select().from(candidates).where(eq(candidates.id, candidateId));
+  // Checked once for this candidate, then per client for blocks: no need to look at everyone else.
+  const discoverable = !!cand && !!cand.latestProfileVersionId && (await discoveryState(ctx, candidateId)).discoverable;
   for (const role of rs) {
-    const permitted = cand && cand.latestProfileVersionId ? await permittedCandidateIdsForClient(ctx, role.clientId) : new Set<string>();
-    if (!cand || !permitted.has(candidateId)) {
+    const allowed = discoverable && !(await isBlockedForClient(ctx, candidateId, role.clientId));
+    if (!cand || !allowed) {
       await ctx.tx.delete(matches).where(and(eq(matches.roleId, role.id), eq(matches.candidateId, candidateId)));
       continue;
     }
@@ -113,7 +129,7 @@ export async function assessmentInput(ctx: Pick<Ctx, 'tx'>, roleId: string, cand
   const [role] = await ctx.tx.select().from(roles).where(eq(roles.id, roleId));
   if (!cand || !role) return null;
   const crit = await criteriaFor(ctx as Ctx, roleId);
-  const evidence = await validEvidenceForProfile(ctx, candidateId, cand.latestProfileVersionId);
+  const evidence = await matchEvidence(ctx, candidateId, cand.latestProfileVersionId);
   return {
     profileVersionId: cand.latestProfileVersionId,
     roleVersion: role.roleVersion,
@@ -134,7 +150,7 @@ export async function applyAssessment(ctx: Ctx, args: { roleId: string; candidat
   if (!role || !cand || cand.status === 'deleting' || cand.status === 'deleted') return { applied: false, reason: 'unavailable' as const };
   if (cand.latestProfileVersionId !== args.profileVersionId || role.roleVersion !== args.roleVersion) return { applied: false, reason: 'stale_discarded' as const };
   const crit = await criteriaFor(ctx, args.roleId);
-  const evidence = await validEvidenceForProfile(ctx, args.candidateId, cand.latestProfileVersionId);
+  const evidence = await matchEvidence(ctx, args.candidateId, cand.latestProfileVersionId);
   const v = validateAssessment(args.output, crit.map((c) => c.id), evidence.map((e) => e.id));
   if (!v.ok) return { applied: false, reason: v.reason };
   const [idn] = await ctx.tx.select({ n: candidateIdentity.fullName, e: candidateIdentity.currentEmployerLabel }).from(candidateIdentity).where(eq(candidateIdentity.candidateId, args.candidateId));
@@ -153,7 +169,7 @@ export async function applyAssessment(ctx: Ctx, args: { roleId: string; candidat
   const known = crit.filter((c) => ['specific', 'partial'].includes(ai.get(c.id) ?? 'unknown')).map((c) => c.label.toLowerCase());
   await ctx.tx.update(matches).set({
     criterionResults: results, aiScore: s.aiScore, humanScore: s.humanScore, score: s.score, coverageBps: Math.round(s.coverage * 10000), confidence: confidenceFor(s.coverage),
-    missingEvidence: unknown, rationaleSafe: known.length ? `Approved evidence relates to ${known.join(', ')}.${unknown.length ? ` Not enough evidence yet for ${unknown.join(', ').toLowerCase()}.` : ''}` : 'Not enough evidence yet for this role. A conversation could show more.',
+    missingEvidence: unknown, rationaleSafe: known.length ? `Their examples relate to ${known.join(', ')}.${unknown.length ? ` Not enough evidence yet for ${unknown.join(', ').toLowerCase()}.` : ''}` : 'Not enough evidence yet for this role. A conversation could show more.',
     provider: 'anthropic', stale: false, computedAt: new Date(), updatedAt: new Date(),
   }).where(eq(matches.id, prev.id));
   return { applied: true as const, reason: null };

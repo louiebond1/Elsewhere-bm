@@ -28,12 +28,14 @@ export async function signupCandidate(ctx: Ctx, raw: unknown) {
   const [{ n }] = (await ctx.tx.execute(sql`select count(*)::int as n from candidates where dataset_id = ${ctx.datasetId}`)).rows as { n: number }[];
   const [user] = await ctx.tx.insert(users).values({ datasetId: ctx.datasetId, emailNormalized: email, passwordHash: await argon2.hash(input.password, { type: argon2.argon2id }), userType: 'candidate', displayName: null }).returning();
   const [cand] = await ctx.tx.insert(candidates).values({
-    datasetId: ctx.datasetId, userId: user.id, publicRef: `CAND-${String(n + 1).padStart(3, '0')}`, status: 'onboarding', discoveryEnabled: false, employerResolutionStatus: 'not_supplied', preferencesConfirmed: input.preferencesConfirmed,
+    datasetId: ctx.datasetId, userId: user.id, publicRef: `CAND-${String(n + 1).padStart(3, '0')}`, status: 'active', discoveryEnabled: input.wantsDiscovery, employerResolutionStatus: 'not_supplied', preferencesConfirmed: input.preferencesConfirmed,
     preferredRoleFamilies: input.roleFamilies, region: input.region, workModes: input.workModes, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: 'unknown',
   }).returning();
   await ctx.tx.insert(candidateIdentity).values({ datasetId: ctx.datasetId, candidateId: cand.id, fullName: input.fullName, email });
   const consent = (kind: 'terms' | 'ai_processing' | 'discovery' | 'aggregate_insights', granted: boolean) => ({ datasetId: ctx.datasetId, candidateId: cand.id, kind, granted, termsVersion: TERMS_VERSION, actorUserId: user.id, eventAt: ctx.now });
   await ctx.tx.insert(consentEvents).values([consent('terms', true), consent('ai_processing', true), consent('discovery', input.wantsDiscovery), consent('aggregate_insights', input.aggregateInsights)]);
+  // Visible straight away (if they chose discovery): an empty anonymous profile, matched on what their mini-me learns.
+  await rebuildProfile(ctx, cand.id);
   await logActivity(ctx, { subjectType: 'candidate', subjectId: cand.id, action: 'candidate.signed_up' });
   // The welcome email: recorded in the outbox (the demo sends nothing unless email is set up and allowed).
   const { queueEmails } = await import('../email');
@@ -46,7 +48,8 @@ export async function updatePreferences(ctx: Ctx, raw: unknown) {
   const input = preferencesInput.parse(raw);
   await lockCandidates(ctx.tx, [id]);
   await ctx.tx.update(candidates).set({ region: input.region, workModes: input.workModes, preferredRoleFamilies: input.roleFamilies, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: input.workAuthorisation, experienceBand: input.experienceBand, preferencesConfirmed: true, updatedAt: new Date() }).where(eq(candidates.id, id));
-  await recomputeCandidate(ctx, id);
+  const { refreshInterviews } = await import('./mini-me');
+  await refreshInterviews(ctx, id);
   await logActivity(ctx, { subjectType: 'candidate', subjectId: id, action: 'candidate.preferences_updated' });
 }
 
@@ -314,4 +317,35 @@ export async function candidateSelf(ctx: Ctx) {
   const ev = await ctx.tx.select().from(evidenceItems).where(and(eq(evidenceItems.candidateId, id), ne(evidenceItems.reviewState, 'superseded')));
   const [pv] = c.latestProfileVersionId ? await ctx.tx.select().from(profileVersions).where(eq(profileVersions.id, c.latestProfileVersionId)) : [];
   return { candidate: c, identity: idn ?? null, evidence: ev, profile: pv ?? null };
+}
+
+/**
+ * Full reset, from their own settings: start again with an empty mini-me. Clears everything their AI or they
+ * added (answers, chats, conversations, examples, CV, interviews, matches) and their job preferences. Keeps the
+ * login, their name, their connected ChatGPT or Claude, who they've hidden from, and past introductions.
+ */
+export async function resetMyProfile(ctx: Ctx, confirm: string) {
+  const id = candidateIdOf(ctx);
+  if (confirm !== 'RESET') throw invalid('Type RESET to confirm.');
+  await lockCandidates(ctx.tx, [id]);
+  const { simulatedInterviews } = await import('../db/schema');
+  const fl = await ctx.tx.select().from(files).where(eq(files.candidateId, id));
+  for (const f of fl) {
+    if (f.uploadState === 'deleted') continue;
+    await storage().delete(f.objectKey);
+    await ctx.tx.update(files).set({ uploadState: 'deleted', extractedTextPrivate: null, originalFilename: 'deleted', deletedAt: new Date(), candidateId: null, updatedAt: new Date() }).where(eq(files.id, f.id));
+  }
+  await ctx.tx.delete(simulatedInterviews).where(eq(simulatedInterviews.candidateId, id));
+  await ctx.tx.delete(matches).where(eq(matches.candidateId, id));
+  await ctx.tx.delete(checkInAnswers).where(eq(checkInAnswers.candidateId, id));
+  await ctx.tx.delete(onboardingAnswers).where(eq(onboardingAnswers.candidateId, id));
+  await ctx.tx.delete(miniMeChat).where(eq(miniMeChat.candidateId, id));
+  await ctx.tx.delete(evidenceItems).where(eq(evidenceItems.candidateId, id));
+  await ctx.tx.delete(conversations).where(eq(conversations.candidateId, id));
+  await ctx.tx.update(candidates).set({ preferencesConfirmed: false, preferredRoleFamilies: [], workModes: ['hybrid'], minSalaryPence: null, noticeWeeks: null, workAuthorisation: 'unknown', updatedAt: new Date() }).where(eq(candidates.id, id));
+  await logActivity(ctx, { subjectType: 'candidate', subjectId: id, action: 'candidate.profile_reset' });
+  // Still visible: an empty profile, and matching starts again from what they add next.
+  await rebuildProfile(ctx, id);
+  await recomputeCandidate(ctx, id);
+  return { reset: true };
 }

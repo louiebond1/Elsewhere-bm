@@ -6,7 +6,7 @@ import 'server-only';
 import { and, eq, isNull } from 'drizzle-orm';
 import { candidates, candidateIdentity, profileVersions, screenings, introductions, identityGrants, roles } from '../db/schema';
 import type { Ctx } from '../services/context';
-import { validEvidenceForProfile } from '../services/matching';
+import { matchEvidence } from '../services/matching';
 import { roleScopedRef, roleScopedEvidenceRef } from './refs';
 import { activeGrant } from '../policies/privacy';
 import { criteriaFor } from '../services/roles';
@@ -40,7 +40,7 @@ type MatchRow = { criterionResults: unknown; confidence: string; eligibility: st
 export async function anonymousDTO(ctx: Ctx, args: { roleId: string; candidateId: string; match: MatchRow; actionFlags?: AnonymousMatchDTO['permittedActionFlags'] }): Promise<AnonymousMatchDTO> {
   const [cand] = await ctx.tx.select({ id: candidates.id, region: candidates.region, workModes: candidates.workModes, experienceBand: candidates.experienceBand, latestProfileVersionId: candidates.latestProfileVersionId }).from(candidates).where(eq(candidates.id, args.candidateId));
   const [pv] = cand?.latestProfileVersionId ? await ctx.tx.select({ headlineSafe: profileVersions.headlineSafe, summarySafe: profileVersions.summarySafe }).from(profileVersions).where(eq(profileVersions.id, cand.latestProfileVersionId)) : [];
-  const evidence = cand ? await validEvidenceForProfile(ctx, cand.id, cand.latestProfileVersionId) : [];
+  const evidence = cand ? await matchEvidence(ctx, cand.id, cand.latestProfileVersionId) : [];
   const crit = await criteriaFor(ctx, args.roleId);
   const results = ((args.match?.criterionResults as { criterionId: string; aiLevel: string; humanLevel: string | null; evidenceIds: string[]; reasonSafe: string }[]) ?? []);
   const validIds = new Set(evidence.map((e) => e.id));
@@ -65,7 +65,7 @@ export async function anonymousDTO(ctx: Ctx, args: { roleId: string; candidateId
     unknowns: args.match?.missingEvidence ?? [],
     confidence: args.match?.confidence ?? null,
     eligibility: args.match?.eligibility ?? null,
-    needsClarification: args.match?.eligibility === 'needs_clarification' ? 'Right to work to be discussed' : null,
+    needsClarification: args.match?.eligibility === 'needs_clarification' ? (args.match.incompatibilityReason === 'preferences_not_set' ? 'Hasn’t set job preferences yet' : 'Right to work to be discussed') : null,
     screeningStatus: scr?.status ?? null,
     screeningSummary: scr?.status === 'completed' ? scr.summarySafe : null,
     introState: intro?.state ?? null,

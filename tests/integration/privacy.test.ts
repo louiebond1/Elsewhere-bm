@@ -8,6 +8,7 @@ import { roleMatches, candidateOnRole, pipelineForRole } from '../../src/server/
 import { acceptIntroduction, withdrawIntroduction, requestIntroduction } from '../../src/server/services/intros';
 import { requestDeletion, setCurrentEmployer, addBlock, setDiscovery, reviseEvidence } from '../../src/server/services/candidates';
 import { fileForDownload } from '../../src/server/services/files';
+import { discoveryState } from '../../src/server/policies/privacy';
 import { grantCredits } from '../../src/server/services/hires';
 import { roleForActor } from '../../src/server/services/roles';
 import { prepFor } from '../../src/server/services/prep';
@@ -69,12 +70,13 @@ describe('employer blocks (P07, P08, S12)', () => {
     const m = await roleMatches(readCtx(w.client('A')), w.ids.roles.R1);
     expect(JSON.stringify(m)).not.toContain(w.ref('R1', 'C02'));
   });
-  it('an unresolved typed employer pauses discovery (P09)', async () => {
+  it('an unresolved typed employer keeps them visible, with a warning to the candidate (P09)', async () => {
     const w = await load();
     const r = await w.T(w.cand('C04'), (c) => setCurrentEmployer(c, { mode: 'typed', label: 'Some Unknown Firm' }));
     expect(r.status).toBe('unresolved');
-    const m = await roleMatches(readCtx(w.client('A')), w.ids.roles.R1);
-    expect(JSON.stringify(m)).not.toContain(w.ref('R1', 'C04'));
+    const ds = await discoveryState(readCtx(w.cand('C04')), w.ids.candidates.C04);
+    expect(ds.discoverable).toBe(true);
+    expect(ds.warnings).toContain('employer_unresolved');
   });
 });
 

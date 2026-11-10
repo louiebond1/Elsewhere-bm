@@ -1,6 +1,8 @@
 import 'server-only';
 import { and, eq, inArray, max } from 'drizzle-orm';
-import { onboardingAnswers, matches, roles } from '../db/schema';
+import { onboardingAnswers, matches, roles, candidates, candidateIdentity, organisations, consentEvents } from '../db/schema';
+import { desc } from 'drizzle-orm';
+import { safeClaimProblems } from '../ai/validate';
 import type { Ctx } from './context';
 import { inferTags } from '../../lib/tags';
 import { ONBOARDING_QUESTIONS } from '../../config/onboarding';
@@ -30,8 +32,54 @@ export async function miniMeUpdatedAt(ctx: Pick<Ctx, 'tx'>, candidateIds: string
   return new Map(rows.filter((r) => r.at).map((r) => [r.c, r.at as Date]));
 }
 
-/** After they approve something: re-run their interviews for every live job they're matched to. */
+const COMPANY = /\b(ltd|limited|plc|inc|llp|gmbh)\b\.?/i;
+
+/** Names and organisations that must never reach a client: theirs, anyone's in this dataset, any organisation. */
+export async function identifyingStrings(ctx: Pick<Ctx, 'tx'>, candidateId: string) {
+  const [c] = await ctx.tx.select({ ds: candidates.datasetId }).from(candidates).where(eq(candidates.id, candidateId));
+  if (!c) return [];
+  const [idn] = await ctx.tx.select({ n: candidateIdentity.fullName, e: candidateIdentity.currentEmployerLabel }).from(candidateIdentity).where(eq(candidateIdentity.candidateId, candidateId));
+  const orgNames = (await ctx.tx.select({ n: organisations.displayName }).from(organisations).where(eq(organisations.datasetId, c.ds))).map((o) => o.n);
+  const people = await ctx.tx.select({ n: candidateIdentity.fullName }).from(candidateIdentity).innerJoin(candidates, eq(candidates.id, candidateIdentity.candidateId)).where(eq(candidates.datasetId, c.ds));
+  return [...(idn ? [idn.n, ...idn.n.split(/\s+/).filter((x) => x.length >= 3)] : []), ...(idn?.e ? [idn.e] : []), ...orgNames, ...people.map((p) => p.n).filter(Boolean)];
+}
+
+/**
+ * Mini-me answers as matching evidence: everything they told it about their work (not salary, notice and the like),
+ * minus any answer that names a person or organisation, or holds contact details. No one has to review it first:
+ * the more they add, the more of a job's criteria it can cover, and the higher they rank.
+ */
+export async function miniMeMatchEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: string) {
+  const all = (await miniMeEvidence(ctx, candidateId)).filter((e) => !e.practical);
+  if (!all.length) return [];
+  const forbidden = await identifyingStrings(ctx, candidateId);
+  return all.filter((e) => !safeClaimProblems(e.safeClaim, forbidden).length && !COMPANY.test(e.safeClaim))
+    .map((e) => ({ id: e.id, safeClaim: e.safeClaim.slice(0, 600), tags: e.tags, strength: e.strength, uncertainty: null as string | null }));
+}
+
+/**
+ * Visible from the moment they sign up: an active account with a published (possibly empty) anonymous profile.
+ * Discovery still follows their own choice, and they can turn it off at any time.
+ */
+export async function ensureLive(ctx: Ctx, candidateId: string) {
+  const [c] = await ctx.tx.select().from(candidates).where(eq(candidates.id, candidateId));
+  if (!c || c.status === 'deleting' || c.status === 'deleted' || c.status === 'paused') return;
+  if (c.status === 'onboarding') {
+    const [consent] = await ctx.tx.select({ g: consentEvents.granted }).from(consentEvents).where(and(eq(consentEvents.candidateId, candidateId), eq(consentEvents.kind, 'discovery'))).orderBy(desc(consentEvents.eventAt), desc(consentEvents.createdAt)).limit(1);
+    await ctx.tx.update(candidates).set({ status: 'active', discoveryEnabled: !!consent?.g, updatedAt: new Date() }).where(eq(candidates.id, candidateId));
+  }
+  const { rebuildProfile } = await import('./profiles');
+  // Publishes a profile if they have none; otherwise this just refreshes their matches.
+  if (!c.latestProfileVersionId) await rebuildProfile(ctx, candidateId);
+  else {
+    const { recomputeCandidate } = await import('./matching');
+    await recomputeCandidate(ctx, candidateId);
+  }
+}
+
+/** After they add or change something: refresh their matches, then (re)run their interviews for every live job they match. */
 export async function refreshInterviews(ctx: Ctx, candidateId: string) {
+  await ensureLive(ctx, candidateId);
   const { requestSimulations } = await import('./simulation');
   const live = await ctx.tx.select({ roleId: matches.roleId }).from(matches).innerJoin(roles, eq(roles.id, matches.roleId)).where(and(eq(matches.candidateId, candidateId), eq(roles.status, 'open')));
   for (const r of live) await requestSimulations(ctx, r.roleId);

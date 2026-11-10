@@ -8,7 +8,9 @@ import { env } from '@/server/env';
 import { prototype } from '@/config/prototype';
 import { withTx, baseCtx, getActiveDataset } from '@/server/services/context';
 import { signupCandidate } from '@/server/services/candidates';
-import { resetDemo, SCENARIOS } from '@/server/services/demo';
+import { resetDemo, SCENARIOS, createDemoClient } from '@/server/services/demo';
+import { ensureLive } from '@/server/services/mini-me';
+import { candidates as candidatesT } from '@/server/db/schema';
 import { db } from '@/server/db/client';
 import { users, activityEvents } from '@/server/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -84,11 +86,30 @@ async function preSession(req: NextRequest, path: string): Promise<Response | nu
     if (!ds) throw new AppError('DEMO_NOT_SEEDED', 503, 'Demo setup is not complete yet.');
     const [u] = await db().select().from(users).where(and(eq(users.id, userId), eq(users.datasetId, ds.id), eq(users.status, 'active')));
     if (!u) throw new AppError('NOT_FOUND', 404, 'Not found.');
+    // A candidate made before sign-up went live straight away is brought live now (visible, matched on their mini-me).
+    if (u.userType === 'candidate') {
+      const [c] = await db().select({ id: candidatesT.id }).from(candidatesT).where(eq(candidatesT.userId, u.id));
+      if (c) await withTx(await baseCtx({ kind: 'user', userId: u.id, userType: 'candidate', candidateId: c.id }), (x) => ensureLive(x, c.id));
+    }
     const old = req.cookies.get(SESSION_COOKIE)?.value;
     if (old) await logout(old);
     const token = await createSession(ds.id, u.id, true);
     await db().insert(activityEvents).values({ datasetId: ds.id, actorUserId: u.id, subjectType: 'user', subjectId: u.id, action: 'demo.persona_switched', metadata: { userType: u.userType }, eventAt: ds.businessNow ?? new Date() });
     const res = ok({ userType: u.userType });
+    res.cookies.set(SESSION_COOKIE, token, cookieOptions(maxAge));
+    return res;
+  }
+  if (path === 'demo/new-client' && req.method === 'POST') {
+    if (!sameOrigin(req)) throw new AppError('BAD_ORIGIN', 403, 'Cross-origin requests are not allowed.');
+    if (!(await gateValid(req.cookies.get(GATE_COOKIE)?.value))) throw new AppError('UNAUTHENTICATED', 401, 'Enter the private demo first.');
+    if (await rateLimitHit(`demo-client:${ipOf(req)}`, 'demo-client', 60, 20)) throw new AppError('RATE_LIMITED', 429, 'Too many new clients. Try again later.');
+    const ds = await getActiveDataset();
+    if (!ds) throw new AppError('DEMO_NOT_SEEDED', 503, 'Demo setup is not complete yet.');
+    const { userId } = await createDemoClient(ds.id);
+    const old = req.cookies.get(SESSION_COOKIE)?.value;
+    if (old) await logout(old);
+    const token = await createSession(ds.id, userId, true);
+    const res = ok({ userType: 'client' });
     res.cookies.set(SESSION_COOKIE, token, cookieOptions(maxAge));
     return res;
   }

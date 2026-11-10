@@ -13,7 +13,8 @@ import { HandHelping } from 'lucide-react';
 
 const REASON: Record<string, string> = {
   discovery_off: 'Discovery is off, so employers can’t find you for new roles.',
-  employer_unresolved: 'We’re checking your current employer before you can be found.',
+  employer_unresolved: 'You’re visible, but we haven’t matched your employer yet, so we can’t hide you from them. Add or check it in Privacy.',
+  employer_not_supplied: 'You’re visible. Tell us your current employer in Privacy and we’ll hide you from them.',
   no_approved_profile: 'Approve one example so employers can see your anonymous profile.',
   status_onboarding: 'Finish setting up your profile.',
   status_paused: 'Your profile is paused.',
@@ -101,6 +102,7 @@ export default async function CandidateHome() {
             ))}
           </ul>
           {!o.discovery.discoverable && o.discovery.reasons[0] && <p className="mt-3 rounded-2xl bg-warning-tint px-4 py-3 text-[15px] text-warning">{REASON[o.discovery.reasons[0]] ?? o.discovery.reasons[0]}</p>}
+          {o.discovery.discoverable && o.discovery.warnings[0] && <Link href="/candidate/privacy" className="mt-3 block rounded-2xl bg-warning-tint px-4 py-3 text-[15px] text-warning no-underline">{REASON[o.discovery.warnings[0]] ?? o.discovery.warnings[0]}</Link>}
           {o.profileJob && (o.profileJob.status === 'queued' || o.profileJob.status === 'running') && <div className="mt-3"><JobPoller jobId={o.profileJob.id} /></div>}
           {o.profileJob?.status === 'failed' && <div className="mt-3 flex flex-wrap items-center gap-3 text-[15px]"><span>We couldn’t update your profile just now.</span><ActionButton path="conversations/retry-profile" body={{ jobId: o.profileJob.id }} label="Try again" variant="secondary" /></div>}
           <p className="mt-4 text-[14px]"><Link href="/candidate/profile" className={cx(buttonClass('ghost'), 'min-h-0 px-0 text-[15px]')}>See your profile as employers do</Link></p>

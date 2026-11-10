@@ -17,7 +17,7 @@ export async function currentValidEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: st
 /**
  * Builds a new approved profile version when the set of valid evidence changed.
  * Profile text derives only from approved safe claims; no new claims are introduced.
- * If nothing valid remains, the candidate has no published profile and is undiscoverable.
+ * With nothing approved, an empty profile is published: matching then runs on their mini-me alone.
  */
 export async function rebuildProfile(ctx: Ctx, candidateId: string, opts: { headline?: string; summary?: string } = {}) {
   const [cand] = await ctx.tx.select().from(candidates).where(eq(candidates.id, candidateId)).for('update');
@@ -25,12 +25,19 @@ export async function rebuildProfile(ctx: Ctx, candidateId: string, opts: { head
   const ev = (await currentValidEvidence(ctx, candidateId)).sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : 1));
   const [latest] = await ctx.tx.select().from(profileVersions).where(eq(profileVersions.candidateId, candidateId)).orderBy(desc(profileVersions.versionNumber)).limit(1);
   if (!ev.length) {
-    if (cand.latestProfileVersionId) {
-      await ctx.tx.update(profileVersions).set({ reviewState: 'superseded', updatedAt: new Date() }).where(eq(profileVersions.id, cand.latestProfileVersionId));
-      await ctx.tx.update(candidates).set({ latestProfileVersionId: null, updatedAt: new Date() }).where(eq(candidates.id, candidateId));
-      await recomputeCandidate(ctx, candidateId);
-    }
-    return null;
+    // No approved examples (yet, or any more): still published, so they're visible from day one.
+    // Clients then see what their mini-me knows; the profile text itself says nothing about them.
+    if (latest && cand.latestProfileVersionId === latest.id && !latest.evidenceIds.length) return latest;
+    if (cand.latestProfileVersionId) await ctx.tx.update(profileVersions).set({ reviewState: 'superseded', updatedAt: new Date() }).where(eq(profileVersions.id, cand.latestProfileVersionId));
+    const prefs = { region: cand.region, workModes: cand.workModes, minSalaryPence: cand.minSalaryPence?.toString() ?? null, noticeWeeks: cand.noticeWeeks };
+    const [pv] = await ctx.tx.insert(profileVersions).values({
+      datasetId: ctx.datasetId, candidateId, versionNumber: (latest?.versionNumber ?? 0) + 1, headlineSafe: 'Building their profile', summarySafe: '', preferencesSnapshot: prefs,
+      evidenceIds: [], feedback: { strengths: [], gaps: [], suggestedQuestionIds: [], nextQuestion: 'Tell us about a task you took responsibility for.', provider: 'fixture' },
+      reviewState: 'approved', approvalAt: ctx.now, profileHash: createHash('sha256').update(`empty:${candidateId}:${(latest?.versionNumber ?? 0) + 1}`).digest('hex'),
+    }).returning();
+    await ctx.tx.update(candidates).set({ latestProfileVersionId: pv.id, updatedAt: new Date() }).where(eq(candidates.id, candidateId));
+    await recomputeCandidate(ctx, candidateId);
+    return pv;
   }
   const tags = [...new Set(ev.flatMap((e) => e.tags))].slice(0, 3);
   const headline = (opts.headline ?? (latest && cand.latestProfileVersionId ? latest.headlineSafe : `Evidence covering ${tags.map(TAG_LABEL).join(', ')}`)).slice(0, 100);

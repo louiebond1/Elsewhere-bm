@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { QuestionAi, hasGaps } from './ai-task';
-import { api, useCsrf, useCommand, ErrorText, Field, inputClass, textareaClass, Dialog, JobPoller } from './client';
+import { api, useCsrf, useCommand, ErrorText, Field, inputClass, textareaClass, Dialog, JobPoller, type ApiError } from './client';
 import { buttonClass, cx } from './ui';
 
 export function CvUpload({ hasCv }: { hasCv: boolean }) {
@@ -193,5 +193,34 @@ export function PreferencesForm({ initial }: { initial: { region: string; workMo
       {saved && <p role="status" className="text-[14px] text-success">Preferences saved. Matches refreshed.</p>}
       <button className={buttonClass('primary')} disabled={busy}>Save preferences</button>
     </form>
+  );
+}
+
+/** Full reset: start again with an empty mini-me. Typed RESET so it's never an accident. */
+export function ResetProfile() {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<ApiError | null>(null);
+  const csrf = useCsrf();
+  return (
+    <>
+      <button type="button" className={buttonClass('danger')} onClick={() => setOpen(true)}>Full reset</button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Start again from scratch?">
+        <p className="text-[15px]">This clears your mini-me, chats, examples, CV, interviews, matches and job preferences. You keep your login, your name, your connected ChatGPT or Claude, and who you’ve hidden from.</p>
+        <label className="mt-4 block text-[14px] font-medium">Type RESET to confirm<input className={cx(inputClass, 'mt-1')} value={typed} onChange={(e) => setTyped(e.target.value)} /></label>
+        <ErrorText error={err} />
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" className={buttonClass('secondary')} onClick={() => setOpen(false)}>Cancel</button>
+          <button type="button" className={buttonClass('danger')} disabled={typed !== 'RESET' || busy} onClick={async () => {
+            setBusy(true);
+            const r = await api('candidate/reset-profile', { body: { confirm: typed }, csrf });
+            setBusy(false);
+            if (!r.ok) return setErr(r.error);
+            window.location.replace('/candidate/home');
+          }}>{busy ? 'Resetting…' : 'Reset everything'}</button>
+        </div>
+      </Dialog>
+    </>
   );
 }

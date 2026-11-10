@@ -5,7 +5,7 @@ import { candidateOverview } from '@/server/views/candidate';
 import { organisations } from '@/server/db/schema';
 import { PageHeader, Card, Notice, Badge } from '@/components/ui';
 import { ActionButton } from '@/components/client';
-import { EmployerPicker, BlockPicker, PreferencesForm } from '@/components/candidate-forms';
+import { EmployerPicker, BlockPicker, PreferencesForm, ResetProfile } from '@/components/candidate-forms';
 import { myConnections } from '@/server/connectors/oauth';
 
 export default async function Privacy({ searchParams }: { searchParams: Promise<{ onboarding?: string }> }) {
@@ -24,9 +24,10 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
           <p className="text-[15px]">When on, employers using BondMoran can see your anonymous profile for relevant roles. Turning it off removes you from new matches and cancels pending requests. Introductions you already accepted stay active unless you withdraw them.</p>
           <div className="mt-3"><ActionButton path="candidate/discovery" body={{ enabled: !o.candidate.discoveryEnabled }} label={o.candidate.discoveryEnabled ? 'Turn discovery off' : 'Turn discovery on'} variant="secondary" successText="Saved." /></div>
           {!o.discovery.discoverable && o.candidate.discoveryEnabled && <p className="mt-2 text-[14px] text-warning">Discovery is requested but not effective yet: {o.discovery.reasons.join(', ').replace(/_/g, ' ')}.</p>}
+          {o.discovery.discoverable && o.discovery.warnings.length > 0 && <p className="mt-2 text-[14px] text-warning">You’re visible, but we can’t hide you from your current employer until we know who it is. Set it below.</p>}
         </Card>
         <Card title="Current employer" action={er === 'unresolved' ? <Badge tone="warning">Needs confirmation</Badge> : er === 'resolved' ? <Badge tone="success">Hidden from employer</Badge> : null}>
-          <p className="mb-3 text-[15px]">Your profile is hidden from your current employer and its group. An employer we cannot match exactly pauses discovery until BondMoran confirms it.</p>
+          <p className="mb-3 text-[15px]">Your profile is hidden from your current employer and its group. You’re visible to everyone else straight away; if we can’t match the name exactly, BondMoran confirms it and we hide you as soon as it’s matched.</p>
           <EmployerPicker orgs={orgs} current={o.candidate.currentOrganisationId} />
         </Card>
         <Card title="Hidden organisations">
@@ -50,6 +51,7 @@ export default async function Privacy({ searchParams }: { searchParams: Promise<
           <p className="text-[15px]">{apps.length ? `Connected: ${apps.map((a) => a.name).join(', ')}. It can read your questions and save drafts, never send.` : 'Not connected.'}</p>
           <div className="mt-3"><Link href="/candidate/ai">{apps.length ? 'Manage or disconnect' : 'Set up your AI helper'}</Link></div>
         </Card>
+        <Card title="Full reset" className="lg:col-span-2"><p className="text-[15px]">Start again with an empty mini-me. You keep your login and your connected AI.</p><div className="mt-3"><ResetProfile /></div></Card>
         <Card title="Delete profile" className="lg:col-span-2"><p className="text-[15px]">Remove your profile, CV, answers and evidence.</p><div className="mt-3"><Link href="/candidate/delete" className="text-danger">Delete profile</Link></div></Card>
       </div>
     </>

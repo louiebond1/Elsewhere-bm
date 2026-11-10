@@ -26,7 +26,7 @@ export function OnboardClient({ loginUrl }: { loginUrl: string }) {
         <div className="mt-6"><CopyBox text={message} label="Login details to send" /></div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap [&>*]:whitespace-nowrap">
           <Link href={`/consultant/clients/${done.clientId}`} className={cx(buttonClass('primary'), 'no-underline')}>Open {done.company}</Link>
-          <Link href="/demo/personas" className={cx(buttonClass('secondary'), 'no-underline')}>Log in as {first} to try it</Link>
+          <Link href="/demo/clients" className={cx(buttonClass('secondary'), 'no-underline')}>Log in as {first} to try it</Link>
           <button type="button" className={buttonClass('ghost')} onClick={() => { setDone(null); setF({ companyName: '', contactName: '', contactEmail: '', password: '', startingCredits: '10' }); }}>Onboard someone else</button>
         </div>
       </div>

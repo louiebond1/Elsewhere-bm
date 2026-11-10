@@ -153,8 +153,11 @@ export async function miniMeStory(ctx: Ctx, limit = 30) {
   const candidateId = me(ctx);
   const { activityEvents } = await import('../db/schema');
   const { desc, like: lk } = await import('drizzle-orm');
+  const { gt } = await import('drizzle-orm');
+  // After a full reset, the story starts again.
+  const [reset] = await ctx.tx.select({ at: activityEvents.createdAt }).from(activityEvents).where(and(eq(activityEvents.subjectType, 'candidate'), eq(activityEvents.subjectId, candidateId), eq(activityEvents.action, 'candidate.profile_reset'))).orderBy(desc(activityEvents.createdAt)).limit(1);
   const rows = await ctx.tx.select({ action: activityEvents.action, metadata: activityEvents.metadata, at: activityEvents.createdAt }).from(activityEvents)
-    .where(and(eq(activityEvents.subjectType, 'candidate'), eq(activityEvents.subjectId, candidateId), lk(activityEvents.action, 'onboarding.%'))).orderBy(desc(activityEvents.createdAt)).limit(limit);
+    .where(and(eq(activityEvents.subjectType, 'candidate'), eq(activityEvents.subjectId, candidateId), lk(activityEvents.action, 'onboarding.%'), ...(reset ? [gt(activityEvents.createdAt, reset.at)] : []))).orderBy(desc(activityEvents.createdAt)).limit(limit);
   return rows.map((r) => {
     const m = (r.metadata ?? {}) as { count?: number; provider?: string | null };
     const n = m.count ?? 1; const things = `${n} thing${n === 1 ? '' : 's'}`;

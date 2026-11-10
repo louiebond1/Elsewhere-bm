@@ -208,3 +208,50 @@ export async function personaDirectory(datasetId: string) {
 }
 
 export { DEFAULT_OFFER, DEFAULT_START };
+
+/** Seeded fictional accounts all use example.test addresses; anything else was made by a real tester. */
+const isSeeded = (email: string) => email.endsWith('example.test');
+
+/** Accounts testers made themselves (e.g. Louie Bond), newest first, for the simple demo entry. */
+export async function realCandidates(datasetId: string) {
+  const rows = await db().select({ userId: S.users.id, email: S.users.emailNormalized, name: S.candidateIdentity.fullName, createdAt: S.users.createdAt, status: S.candidates.status })
+    .from(S.users).innerJoin(S.candidates, eq(S.candidates.userId, S.users.id)).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.candidates.id))
+    .where(and(eq(S.users.datasetId, datasetId), eq(S.users.status, 'active'), eq(S.users.userType, 'candidate'), inArray(S.candidates.status, ['onboarding', 'active', 'paused'])));
+  return rows.filter((r) => !isSeeded(r.email)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map((r) => ({ userId: r.userId, name: r.name ?? r.email, status: r.status }));
+}
+
+/** Clients testers made (not the seeded ones), with their credit balance. */
+export async function realClients(datasetId: string) {
+  const rows = await db().select({ userId: S.users.id, email: S.users.emailNormalized, contact: S.users.displayName, createdAt: S.users.createdAt, clientId: S.clients.id, company: S.organisations.displayName })
+    .from(S.users).innerJoin(S.clientMemberships, eq(S.clientMemberships.userId, S.users.id)).innerJoin(S.clients, eq(S.clients.id, S.clientMemberships.clientId)).innerJoin(S.organisations, eq(S.organisations.id, S.clients.organisationId))
+    .where(and(eq(S.users.datasetId, datasetId), eq(S.users.status, 'active'), eq(S.users.userType, 'client')));
+  const out = [];
+  for (const r of rows.filter((x) => !isSeeded(x.email)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())) {
+    const [w] = await db().select({ id: S.wallets.id }).from(S.wallets).where(eq(S.wallets.clientId, r.clientId));
+    out.push({ userId: r.userId, company: r.company, contact: r.contact ?? r.email, credits: w ? formatCredits(await postedBalance({ tx: db() } as Ctx, w.id)) : '0' });
+  }
+  return out;
+}
+
+/** The BondMoran login for the demo entry: the first consultant. */
+export async function demoConsultant(datasetId: string) {
+  const [u] = await db().select({ userId: S.users.id, name: S.users.displayName }).from(S.users).where(and(eq(S.users.datasetId, datasetId), eq(S.users.status, 'active'), eq(S.users.userType, 'consultant'))).orderBy(S.users.emailNormalized).limit(1);
+  return u ?? null;
+}
+
+/**
+ * "Add a client" on the demo entry: a blank company with one hiring manager and 10 credits, made the same way
+ * BondMoran onboards a real client. The login password is random and never shown: the tester goes in with one tap.
+ */
+export async function createDemoClient(datasetId: string) {
+  const consultant = await demoConsultant(datasetId);
+  if (!consultant) throw new AppError('DEMO_NOT_SEEDED', 503, 'Demo setup is not complete yet.');
+  const { onboardClient } = await import('./onboard-client');
+  const { baseCtx } = await import('./context');
+  const base = await baseCtx({ kind: 'user', userId: consultant.userId, userType: 'consultant' });
+  const n = (await realClients(datasetId)).length + 1;
+  const tag = randomUUID().slice(0, 6);
+  const r = await withTx(base, (c) => onboardClient(c, { companyName: `Demo Company ${n} (${tag})`, contactName: `Demo hiring manager ${n}`, contactEmail: `client-${tag}@demo.elsewhere.test`, password: randomUUID() + randomUUID(), startingCredits: 10 }));
+  const [u] = await db().select({ id: S.users.id }).from(S.users).where(and(eq(S.users.datasetId, datasetId), eq(S.users.emailNormalized, r.email)));
+  return { userId: u.id };
+}
