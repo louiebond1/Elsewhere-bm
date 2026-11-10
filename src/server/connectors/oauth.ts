@@ -15,9 +15,9 @@ import { logActivity } from '../services/audit';
  */
 export const SCOPES = ['questions:read', 'profile:read', 'drafts:write'] as const;
 export const SCOPE_TEXT: Record<(typeof SCOPES)[number], string> = {
-  'questions:read': 'See the questions you haven’t answered yet',
-  'profile:read': 'See your own approved examples and preferences',
-  'drafts:write': 'Save draft answers for you to check and send yourself',
+  'questions:read': 'See what your mini-me still needs to know, and your interviews',
+  'profile:read': 'See your own profile, CV and job preferences',
+  'drafts:write': 'Add what it learns to your profile (you can edit or remove anything)',
 };
 const CODE_TTL_MS = 5 * 60_000;
 const ACCESS_TTL_MS = 60 * 60_000;
