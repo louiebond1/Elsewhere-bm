@@ -16,8 +16,8 @@ export function QualityView({ report }: { report: Report }) {
   const [view, setView] = useState<'order' | 'ratings'>('order');
   // Places as people say them: 1 + how many scored higher; '=' when tied.
   const place = (v: number, all: number[]) => `#${1 + all.filter((x) => x > v).length}${all.filter((x) => x === v).length > 1 ? '=' : ''}`;
-  const aiScores = job.people.map((x) => x.score), ourScores = job.people.map((x) => x.expected);
   const job = report.jobs[j];
+  const aiScores = job.people.map((x) => x.score), ourScores = job.people.map((x) => x.expected);
   const failed = Object.entries(report.overall).filter(([, ok]) => !ok).map(([k]) => LABEL[k].toLowerCase());
   const unfair = job.bias.filter((b) => b.drift == null || Math.abs(b.drift) > report.thresholds.maxDrift);
   const unsteady = job.people.filter((p) => p.runs.length === 2 && Math.abs(p.runs[0] - p.runs[1]) > report.thresholds.maxDrift);
