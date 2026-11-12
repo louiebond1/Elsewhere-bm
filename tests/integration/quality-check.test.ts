@@ -21,6 +21,20 @@ const standIn: AiProvider = { ...fixtureProvider, name: 'anthropic', simulateInt
 } };
 
 describe('interview quality check', () => {
+  it('answers fixed from their own words keep their words when the AI returns them empty (it only scores them)', async () => {
+    const { runInterview, interviewQuestions } = await import('../../src/server/services/simulation');
+    setProviderForTests({ ...fixtureProvider, name: 'anthropic', simulateInterview: async (i) => ({ provider: 'anthropic', usage, output: { answers: i.questions.map((q, n) => ({ questionIndex: n, answer: q.fixed_answer ? '' : 'Generated.', evidenceIds: q.fixed_ids ?? [], score: q.screening ? null : 6, reason: 'r' })), fitScore: 70, summary: 's', concerns: [] } }) });
+    const crit = [{ id: 'c', criterionKey: 'rec', label: 'Reconciliation ownership', description: '', weight: 5, ordinal: 1, evidenceTags: ['reconciliations'], importance: 'essential' }] as unknown as Parameters<typeof interviewQuestions>[1];
+    const qs = interviewQuestions({ title: 'Assistant Accountant', outcomes: [] }, crit);
+    const ev = [{ id: 'mm:notice', safeClaim: 'Four weeks.', tags: [], strength: 'partial', key: 'notice', topic: null, practical: true }, { id: 'mm:ex_problem', safeClaim: 'I fixed the bank feed.', tags: ['reconciliations'], strength: 'partial', key: 'ex_problem', topic: null, practical: false }];
+    const r = await runInterview({ title: 'Assistant Accountant', outcomes: [] }, qs, ev, { live: true, datasetId: null });
+    expect(r.result.provider).toBe('anthropic');
+    const notice = r.result.answers.find((a) => a.key === 'notice')!;
+    expect(notice.answer).toBe('Four weeks.');
+    const problem = r.result.answers.find((a) => a.key === 'ex_problem')!;
+    expect(problem).toMatchObject({ answer: 'I fixed the bank feed.', score: 6 });
+  });
+
   it('the plan covers every person twice, one-change fairness variants, and thin profiles', () => {
     const plan = buildPlan();
     expect(EVAL_JOBS).toHaveLength(1);

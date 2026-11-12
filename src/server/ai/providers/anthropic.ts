@@ -7,7 +7,7 @@ import { QUESTION_SYSTEM, EXTRACTION_SYSTEM, FEEDBACK_SYSTEM, MATCHING_SYSTEM, R
 import { questionOutput, extractionOutput, feedbackOutput, assessmentOutput, roleStructureOutput, hiringTurnOutput, simulationOutput, miniMeChatOutput } from '../schemas';
 import { AiFailure, type AiProvider, type AiResult } from './types';
 
-export const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500, simulate: 1200, minime: 1200 } as const;
+export const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500, simulate: 4000, minime: 1200 } as const;
 
 let client: Anthropic | null = null;
 function c() {

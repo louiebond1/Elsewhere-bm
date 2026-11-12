@@ -21,7 +21,7 @@ export const aiMode = (): 'fixture' | 'live' => (testProvider || process.env.AI_
 export const provider = (): AiProvider => testProvider ?? (aiMode() === 'live' ? anthropicProvider : fixtureProvider);
 export const providerLabel = () => (aiMode() === 'live' ? 'Live AI on fictional data' : 'Demo responses');
 
-const EST_OUTPUT: Record<string, number> = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500, simulate: 1200, minime: 1200 };
+const EST_OUTPUT: Record<string, number> = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 1500, hiring: 1500, simulate: 3000, minime: 1200 };
 
 /** Deployment-wide daily token admission. Uses the real UTC clock, survives demo resets. */
 async function reserve(task: string, inputChars: number): Promise<string | null> {
