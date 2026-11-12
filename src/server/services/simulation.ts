@@ -156,7 +156,8 @@ export async function simulationTargets(ctx: Ctx, roleId: string) {
   // Mini-me changes only count during the 24 hours after they were first interviewed; then that interview is final.
   const mini = await miniMeRows(ctx, existing.map((s) => s.candidateId));
   const now = Date.now();
-  const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.profileVersionId === info.get(s.candidateId)?.pv
+  // A human correction or preference changes the job's guidance: everyone is re-scored so all are judged the same way.
+  const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.guidanceVersion === role.guidanceVersion && s.profileVersionId === info.get(s.candidateId)?.pv
     && !(now < s.createdAt.getTime() + EDIT_WINDOW_MS && interviewTouched(s, mini.get(s.candidateId) ?? []))).map((s) => s.candidateId));
   const targets: { candidateId: string }[] = [];
   let considered = 0;
@@ -185,7 +186,7 @@ export async function simulationPending(ctx: Ctx, roleId: string) {
 }
 
 /** Validates and stores one simulation. Rejects foreign evidence ids and anything identifying; stale results are discarded. */
-export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId: string; roleVersion: number; profileVersionId: string; answers: SimAnswer[]; fitScore: number; summary: string; concerns: string[]; provider: 'fixture' | 'anthropic'; evidenceIds: string[]; questions?: ReturnType<typeof interviewQuestions> }) {
+export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId: string; roleVersion: number; profileVersionId: string; answers: SimAnswer[]; fitScore: number; summary: string; concerns: string[]; provider: 'fixture' | 'anthropic'; evidenceIds: string[]; questions?: ReturnType<typeof interviewQuestions>; guidanceVersion?: number }) {
   const [role] = await ctx.tx.select().from(roles).where(eq(roles.id, a.roleId)).for('update');
   const [cand] = await ctx.tx.select().from(candidates).where(eq(candidates.id, a.candidateId));
   if (!role || !cand || cand.status === 'deleting' || cand.status === 'deleted') return { stored: false, reason: 'unavailable' };
@@ -216,7 +217,7 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
     await notify(ctx, [cand.userId], { type: 'system', subjectRefType: 'interview', subjectRefId: a.roleId, safeTitle: `Your mini-me was interviewed for ${role.title}` });
   }
   const scoreCard = a.questions ? scoreCardFor(a.questions, answers) : null;
-  const row = { datasetId: ctx.datasetId, roleId: a.roleId, candidateId: a.candidateId, roleVersion: a.roleVersion, profileVersionId: a.profileVersionId, answers, fitScore, summarySafe: summary, concernsSafe: concerns, provider: a.provider, scoreCard };
+  const row = { datasetId: ctx.datasetId, roleId: a.roleId, candidateId: a.candidateId, roleVersion: a.roleVersion, profileVersionId: a.profileVersionId, answers, fitScore, summarySafe: summary, concernsSafe: concerns, provider: a.provider, scoreCard, guidanceVersion: a.guidanceVersion ?? role.guidanceVersion };
   await ctx.tx.insert(simulatedInterviews).values(row).onConflictDoUpdate({ target: [simulatedInterviews.roleId, simulatedInterviews.candidateId], set: { ...row, updatedAt: new Date() } });
   return { stored: true };
 }
@@ -228,14 +229,14 @@ export type Evidence = { id: string; safeClaim: string; tags: string[]; strength
  * evidence; with live AI on, Claude answers and scores every question (fixed answers are scored, not rewritten);
  * otherwise, or if the AI is refused, the basic version is used.
  */
-export async function runInterview(role: { title: string; outcomes: string[] }, questions: ReturnType<typeof interviewQuestions>, evidence: Evidence[], o: { live: boolean; datasetId: string | null; roleId?: string | null; candidateId?: string | null }) {
+export async function runInterview(role: { title: string; outcomes: string[] }, questions: ReturnType<typeof interviewQuestions>, evidence: Evidence[], o: { live: boolean; datasetId: string | null; roleId?: string | null; candidateId?: string | null; guidance?: string[] }) {
   const demo = demoSimulation(questions, evidence);
   let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
   let budgetOut = false;
   if (o.live && evidence.length) {
     try {
       const fixed = (q: (typeof questions)[number]) => !!(q.key || q.kind === 'screening' || direct(q, evidence));
-      const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
+      const input = { role: { title: role.title, outcomes: role.outcomes, ...(o.guidance?.length ? { hiring_manager_guidance: o.guidance } : {}) }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
       const res = await runAi({ task: 'simulate', datasetId: o.datasetId, roleId: o.roleId ?? null, candidateId: o.candidateId ?? null, input }, (p) => p.simulateInterview(input));
       const out = res.output;
       result = {
@@ -262,16 +263,18 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
   if (!role || !targets.length) return;
   const crit = await criteriaFor(readCtx(base), roleId);
   const questions = interviewQuestions({ title: role.title, outcomes: role.outcomes }, crit);
+  const { guidanceFor } = await import('./scoring-feedback');
+  const guidance = await guidanceFor(readCtx(base), role);
   let live = aiMode() === 'live';
   for (const t of targets) {
     const prep = await assessmentInput(readCtx(base), roleId, t.candidateId);
     if (!prep || !prep.profileVersionId) continue;
     // Their approved examples plus their approved mini-me answers.
     const evidence: Evidence[] = [...prep.input.evidence.filter((e) => !e.id.startsWith('mm:')), ...(await miniMeEvidence(readCtx(base), t.candidateId))];
-    const r = await runInterview({ title: role.title, outcomes: role.outcomes }, questions, evidence, { live, datasetId: base.datasetId, roleId, candidateId: t.candidateId });
+    const r = await runInterview({ title: role.title, outcomes: role.outcomes }, questions, evidence, { live, datasetId: base.datasetId, roleId, candidateId: t.candidateId, guidance });
     if (r.budgetOut) live = false; // stop paid calls for the rest of this job
     const result = r.result;
-    await withTx(base, (ctx) => storeSimulation(ctx, { roleId, candidateId: t.candidateId, roleVersion: prep.roleVersion, profileVersionId: prep.profileVersionId!, ...result, evidenceIds: evidence.map((e) => e.id), questions }));
+    await withTx(base, (ctx) => storeSimulation(ctx, { roleId, candidateId: t.candidateId, roleVersion: prep.roleVersion, profileVersionId: prep.profileVersionId!, ...result, evidenceIds: evidence.map((e) => e.id), questions, guidanceVersion: role.guidanceVersion }));
   }
 }
 

@@ -46,7 +46,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
             </Card>
           )}
           {section === 'interview' && sim && (
-            <ClientInterview answers={sim.answers} summary={sim.summary} concerns={sim.concerns} basic={sim.provider !== 'anthropic'} fit={fitLabel(sim.fitScore)} />
+            <ClientInterview answers={sim.answers} summary={sim.summary} concerns={sim.concerns} basic={sim.provider !== 'anthropic'} fit={fitLabel(sim.fitScore)} roleId={roleId} candidateRef={candidateRef} />
           )}
           {section === 'evidence' && (
           <Card title="How they fit this role">

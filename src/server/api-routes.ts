@@ -244,6 +244,8 @@ export const ROUTES: R[] = [
   } },
   { method: 'POST', path: 'consultant/contracts', types: ['consultant'], h: async ({ base, body }) => ({ id: (await T(base, (c) => contracts.createContractDraft(c, parse(contractInput, body)))).id }) },
   { method: 'POST', path: 'consultant/contracts/:id/activate', types: ['consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `contracts/${p.id}/activate`, body, (c) => contracts.activateContract(c, p.id).then((k) => ({ id: k.id }))) },
+  { method: 'POST', path: 'interviews/correct', types: ['client', 'consultant'], h: async ({ base, body }) => { const { correctScore } = await import('./services/scoring-feedback'); return T(base, (c) => correctScore(c, body)); } },
+  { method: 'POST', path: 'taste/choose', types: ['client'], h: async ({ base, body }) => { const { choosePreference } = await import('./services/scoring-feedback'); return T(base, (c) => choosePreference(c, body)); } },
   { method: 'POST', path: 'consultant/quality-check', types: ['consultant'], h: async ({ base }) => {
     const { startQualityRun } = await import('./eval/quality');
     const { latestQualityRuns } = await import('./eval/quality');

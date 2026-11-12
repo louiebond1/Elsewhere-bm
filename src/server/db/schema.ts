@@ -394,6 +394,8 @@ export const roles = pgTable('roles', {
   workAuthorisationRequired: boolean('work_authorisation_required').notNull().default(true),
   /** Must-have: the person must be 18 or over. Clients may add this to a live job; it never re-interviews anyone. */
   requires18: boolean('requires_18').notNull().default(false),
+  /** Goes up when a human corrects a score or teaches a preference; interviews with an older version are re-scored. */
+  guidanceVersion: integer('guidance_version').notNull().default(0),
   briefText: text('brief_text').notNull().default(''),
   outcomes: text('outcomes').array().notNull().default(sql`'{}'::text[]`),
   teachableSkills: text('teachable_skills').array().notNull().default(sql`'{}'::text[]`),
@@ -537,6 +539,8 @@ export const simulatedInterviews = pgTable('simulated_interviews', {
   provider: aiProvider('provider').notNull().default('fixture'),
   /** What decided the score: the job criteria and question keys it drew on (factors) and what was missing (gaps). A mini-me change re-runs the interview only if it touches one of these. */
   scoreCard: jsonb('score_card'),
+  /** The job's guidance version this interview was scored with. */
+  guidanceVersion: integer('guidance_version').notNull().default(0),
 }, (t) => [uniqueIndex('sim_interview_uq').on(t.roleId, t.candidateId), index('sim_interview_rank_idx').on(t.roleId, t.fitScore)]);
 
 export const rankingAdjustments = pgTable('ranking_adjustments', {
@@ -749,6 +753,26 @@ export const jobs = pgTable('jobs', {
   leaseExpiresAt: ts('lease_expires_at'),
   errorCode: text('error_code'),
 }, (t) => [uniqueIndex('job_dedupe_uq').on(t.datasetId, t.dedupeKey), index('jobs_status_idx').on(t.status, t.availableAt)]);
+
+/**
+ * Human feedback on interview scoring. A correction: on one question of one interview, a person says the score is
+ * wrong and gives the right one and why. A preference: in settings, a hiring manager picks which of two answers
+ * suits their jobs better. Both become written guidance the AI follows when scoring that job or client.
+ */
+export const scoringFeedback = pgTable('scoring_feedback', {
+  ...common(),
+  clientId: uuid('client_id').notNull().references(() => clients.id),
+  roleId: uuid('role_id').references(() => roles.id, { onDelete: 'cascade' }),
+  candidateId: uuid('candidate_id').references(() => candidates.id, { onDelete: 'set null' }),
+  kind: text('kind').notNull(),
+  question: text('question').notNull(),
+  answer: text('answer').notNull(),
+  otherAnswer: text('other_answer'),
+  aiScore: integer('ai_score'),
+  humanScore: integer('human_score'),
+  reason: text('reason').notNull().default(''),
+  createdByUserId: uuid('created_by_user_id').notNull().references(() => users.id),
+}, (t) => [index('scoring_feedback_role_idx').on(t.roleId), index('scoring_feedback_client_idx').on(t.clientId)]);
 
 /** Interview quality check runs: the fixed test set put through the real interview code. Deployment-wide; survives demo resets. */
 export const qualityRuns = pgTable('quality_runs', {

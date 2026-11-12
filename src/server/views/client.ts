@@ -155,7 +155,7 @@ export async function awaitingAction(ctx: Ctx, clientId: string) {
 
 export { criteriaFor, isNull };
 
-export type SimView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean; kind: 'interview' | 'screening'; score: number | null; reason: string | null }[]; provider: string };
+export type SimView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean; kind: 'interview' | 'screening'; score: number | null; reason: string | null; human?: { score: number; reason: string } | null }[]; provider: string };
 
 type StoredSim = { fitScore: number; summarySafe: string; concernsSafe: string[]; answers: unknown; provider: string };
 /** What a client sees of an interview: every question, the answer, and its score and reason (screening questions aren't scored). */
@@ -180,5 +180,10 @@ export async function bestPeople(ctx: Ctx, roleId: string, limit = 10) {
 export async function simulationForCandidate(ctx: Ctx, roleId: string, candidateId: string): Promise<SimView | null> {
   const { simulationsForRole } = await import('../services/simulation');
   const s = (await simulationsForRole(ctx, roleId)).get(candidateId);
-  return s ? simView(s) : null;
+  if (!s) return null;
+  // A person's correction is shown next to the AI's score, on the answer it was made for.
+  const { correctionsFor } = await import('../services/scoring-feedback');
+  const fixes = await correctionsFor(ctx, roleId, candidateId);
+  const v = simView(s);
+  return { ...v, answers: v.answers.map((a) => { const f = fixes.get(a.question); return { ...a, human: f ? { score: f.score, reason: f.reason } : null }; }) };
 }
