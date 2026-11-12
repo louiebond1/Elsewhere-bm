@@ -18,6 +18,9 @@ export default async function Operations() {
   const jobs = await ctx.tx.select().from(S.jobs).where(eq(S.jobs.datasetId, ctx.datasetId)).orderBy(desc(S.jobs.createdAt)).limit(30);
   const today = new Date().toISOString().slice(0, 10);
   const usage = await ctx.tx.execute(sql`select model_id, provider, count(*)::int as calls, coalesce(sum(input_tokens),0)::int as input, coalesce(sum(output_tokens),0)::int as output, coalesce(sum(cache_read_tokens),0)::int as cache_read, coalesce(sum(cache_write_tokens),0)::int as cache_write, count(*) filter (where outcome <> 'succeeded')::int as failed from ai_runs where created_at::date = ${today}::date group by 1,2`);
+  // Why calls failed today, by task and error code, with the first and last time: the first place to look when the AI isn't working.
+  const failures = await ctx.tx.execute(sql`select task, error_code, count(*)::int as n, min(created_at) as first_at, max(created_at) as last_at from ai_runs where created_at::date = ${today}::date and outcome <> 'succeeded' group by 1,2 order by n desc`);
+  const lastOk = await ctx.tx.execute(sql`select max(created_at) as at from ai_runs where outcome = 'succeeded' and provider = 'anthropic'`);
   const wallets = await ctx.tx.select({ w: S.wallets, name: S.organisations.displayName }).from(S.wallets).innerJoin(S.clients, eq(S.clients.id, S.wallets.clientId)).innerJoin(S.organisations, eq(S.organisations.id, S.clients.organisationId)).where(eq(S.wallets.datasetId, ctx.datasetId));
   const outbox = await ctx.tx.select({ o: S.emailOutbox, email: S.users.emailNormalized }).from(S.emailOutbox).innerJoin(S.users, eq(S.users.id, S.emailOutbox.recipientUserId)).where(eq(S.emailOutbox.datasetId, ctx.datasetId)).orderBy(desc(S.emailOutbox.createdAt)).limit(20);
   const emailDriver = env().EMAIL_DRIVER;
@@ -34,6 +37,10 @@ export default async function Operations() {
           {(usage.rows as Array<Record<string, string | number>>).length === 0 ? <p className="text-[14px] text-muted">{aiMode() === 'fixture' ? 'No provider calls. Fixture mode uses local demo responses.' : 'No calls yet today.'}</p> : (
             <ul className="text-[14px]">{(usage.rows as Array<Record<string, string | number>>).map((u) => <li key={`${u.model_id}${u.provider}`}>{u.model_id} ({u.provider}): {u.calls} calls, {u.input} input, {u.output} output, {u.cache_read} cache read, {u.cache_write} cache write tokens, {u.failed} failed</li>)}</ul>
           )}
+          {(failures.rows as Array<Record<string, string | number>>).length > 0 && (
+            <ul className="mt-2 text-[14px] text-warning">{(failures.rows as Array<Record<string, string | number | Date>>).map((f) => <li key={`${f.task}${f.error_code}`}>{String(f.task)}: {String(f.n)} failed with “{String(f.error_code ?? 'unknown')}”, {new Date(f.first_at as string).toISOString().slice(11, 16)} to {new Date(f.last_at as string).toISOString().slice(11, 16)} UTC</li>)}</ul>
+          )}
+          {(() => { const at = (lastOk.rows[0] as { at: string | null } | undefined)?.at; return <p className="mt-1 text-[13px] text-muted">Last successful AI call: {at ? new Date(at).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : 'never'}</p>; })()}
           <p className="mt-2 text-[15px]">AI spend this month (UTC): <span className="font-semibold">{usd(spent)}</span> of a {usd(budget)} hard limit shared by web and worker. A call that could pass the limit is refused before anything is sent.</p>
           <p className="mt-1 text-[13px] text-muted">Worked out from published per-token prices and the provider’s usage figures; failed calls count at their worst case. Anthropic’s own bill is the final figure.</p>
         </Card>
