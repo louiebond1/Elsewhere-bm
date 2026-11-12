@@ -74,7 +74,7 @@ export const replacementStatus = pgEnum('replacement_status', ['requested', 'app
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system', 'welcome']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
-export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews']);
+export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews', 'quality_check']);
 export const hiringConversationStatus = pgEnum('hiring_conversation_status', ['active', 'saved', 'abandoned']);
 export const emailStatus = pgEnum('email_status', ['queued', 'recorded', 'sent', 'suppressed', 'failed']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
@@ -749,6 +749,19 @@ export const jobs = pgTable('jobs', {
   leaseExpiresAt: ts('lease_expires_at'),
   errorCode: text('error_code'),
 }, (t) => [uniqueIndex('job_dedupe_uq').on(t.datasetId, t.dedupeKey), index('jobs_status_idx').on(t.status, t.availableAt)]);
+
+/** Interview quality check runs: the fixed test set put through the real interview code. Deployment-wide; survives demo resets. */
+export const qualityRuns = pgTable('quality_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  createdAt: ts('created_at').notNull().defaultNow(),
+  updatedAt: ts('updated_at').notNull().defaultNow(),
+  startedByUserId: uuid('started_by_user_id'),
+  status: text('status').notNull().default('running'),
+  plan: jsonb('plan').notNull(),
+  results: jsonb('results').notNull().default(sql`'[]'::jsonb`),
+  report: jsonb('report'),
+  finishedAt: ts('finished_at'),
+});
 
 // AI usage tables are deployment-wide: dataset_id is nullable so reset never wipes usage.
 export const aiRuns = pgTable('ai_runs', {

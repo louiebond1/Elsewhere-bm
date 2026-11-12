@@ -244,6 +244,14 @@ export const ROUTES: R[] = [
   } },
   { method: 'POST', path: 'consultant/contracts', types: ['consultant'], h: async ({ base, body }) => ({ id: (await T(base, (c) => contracts.createContractDraft(c, parse(contractInput, body)))).id }) },
   { method: 'POST', path: 'consultant/contracts/:id/activate', types: ['consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `contracts/${p.id}/activate`, body, (c) => contracts.activateContract(c, p.id).then((k) => ({ id: k.id }))) },
+  { method: 'POST', path: 'consultant/quality-check', types: ['consultant'], h: async ({ base }) => {
+    const { startQualityRun } = await import('./eval/quality');
+    const { latestQualityRuns } = await import('./eval/quality');
+    if ((await latestQualityRuns(1)).some((r) => r.status === 'running')) throw new AppError('QUALITY_RUNNING', 409, 'A quality check is already running.');
+    const run = await startQualityRun((base.actor as { userId: string }).userId);
+    await T(base, (c) => enqueue(c, 'quality_check', run.id, `quality:${run.id}:0`));
+    return { id: run.id };
+  } },
   { method: 'POST', path: 'consultant/grants', types: ['consultant'], h: async ({ req, base, body }) => { const b = parse(grantInput, body); return idempotent(req, base, 'consultant/grants', body, (c, k) => hires.grantCredits(c, { ...b, idempotencyKey: k }).then((t) => ({ id: t.id }))); } },
   { method: 'POST', path: 'consultant/reversals', types: ['consultant'], h: async ({ req, base, body }) => { const b = parse(reversalInput, body); return idempotent(req, base, 'consultant/reversals', body, (c, k) => hires.reverseTransaction(c, { ...b, idempotencyKey: k }).then((t) => ({ id: t.id }))); } },
   { method: 'POST', path: 'consultant/evidence/anonymity-review', types: ['consultant'], h: ({ base, body }) => { const b = parse(z.object({ evidenceId: z.string().uuid(), decision: z.enum(['approved', 'rejected']), safeClaim: z.string().max(400).optional() }), body); return T(base, (c) => cands.anonymityReview(c, b.evidenceId, b.decision, b.safeClaim)); } },

@@ -10,6 +10,7 @@ export default async function ConsultantLayout({ children }: { children: React.R
     { href: '/consultant/clients', label: 'Clients', icon: 'clients' },
     { href: '/consultant/candidates', label: 'Candidates', icon: 'candidates' },
     { href: '/consultant/hires/outside', label: 'Outside hires', icon: 'hires' },
+    { href: '/consultant/quality', label: 'Interview quality', icon: 'checklist' },
     { href: '/consultant/operations', label: 'Operations', icon: 'ops' },
     { href: '/consultant/demo', label: 'Demo controls', icon: 'demo' },
   ];

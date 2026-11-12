@@ -1,6 +1,7 @@
-import { and, eq, inArray, lte } from 'drizzle-orm';
+import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
+import { enqueue } from './jobs';
 import { jobs, files, checkInQuestions, checkInAnswers, conversations, candidates, evidenceItems, introductions, contracts, roles } from '../db/schema';
 import { runAi, AiFailure } from '../ai';
 import { validateExtraction } from '../ai/validate';
@@ -147,6 +148,15 @@ export async function runJob(base: BaseCtx, job: JobRow) {
     case 'generate_feedback': return handleFeedback(base, job);
     case 'send_email': return handleSendEmail(base, job.subject_id!);
     case 'simulate_interviews': return handleSimulateJob(base, job.subject_id!);
+    case 'quality_check': {
+      // One chunk at a time; queue the next so real interviews can run in between.
+      const { runQualityChunk } = await import('../eval/quality');
+      const { qualityRuns } = await import('../db/schema');
+      if (await runQualityChunk(job.subject_id!)) return;
+      const [run] = await db().select({ n: sql<number>`jsonb_array_length(${qualityRuns.results})` }).from(qualityRuns).where(eq(qualityRuns.id, job.subject_id!));
+      await enqueue({ tx: db(), datasetId: base.datasetId }, 'quality_check', job.subject_id!, `quality:${job.subject_id}:${run?.n ?? 0}`);
+      return;
+    }
     case 'reconcile_wallet': return withTx(base, (ctx) => reconcileWallet(ctx, job.subject_id!).then(() => undefined));
     default: return;
   }
