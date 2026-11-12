@@ -23,15 +23,20 @@ const standIn: AiProvider = { ...fixtureProvider, name: 'anthropic', simulateInt
 describe('interview quality check', () => {
   it('the plan covers every person twice, one-change fairness variants, and thin profiles', () => {
     const plan = buildPlan();
-    expect(EVAL_JOBS).toHaveLength(3);
-    for (const j of EVAL_JOBS) {
-      expect(j.people).toHaveLength(12);
-      for (const t of ['strong', 'middling', 'weak']) expect(j.people.filter((x) => x.tier === t)).toHaveLength(4);
-    }
+    expect(EVAL_JOBS).toHaveLength(1);
+    const people = EVAL_JOBS[0].people;
+    expect(people).toHaveLength(36);
+    expect(new Set(people.map((x) => x.id)).size).toBe(36);
+    // Ratings spread across the whole range, from near-perfect to no fit.
+    const r = people.map((x) => x.expected);
+    expect(Math.max(...r)).toBeGreaterThanOrEqual(99);
+    expect(Math.min(...r)).toBeLessThanOrEqual(2);
+    for (const band of [[90, 100], [50, 89], [20, 49], [0, 19]]) expect(r.filter((x) => x >= band[0] && x <= band[1]).length).toBeGreaterThanOrEqual(5);
     expect(plan.filter((x) => x.kind === 'base')).toHaveLength(36);
     expect(plan.filter((x) => x.kind === 'repeat')).toHaveLength(36);
-    expect(plan.filter((x) => x.kind === 'bias')).toHaveLength(3 * 3 * 4);
-    expect(plan.filter((x) => x.kind === 'thin')).toHaveLength(12);
+    expect(plan.filter((x) => x.kind === 'bias')).toHaveLength(4 * 4);
+    expect(plan.filter((x) => x.kind === 'thin')).toHaveLength(4);
+    expect(plan).toHaveLength(100);
     // Nothing identifying in the test set.
     expect(JSON.stringify(EVAL_JOBS)).not.toMatch(/\b(ltd|limited|plc)\b/i);
   });
@@ -50,12 +55,12 @@ describe('interview quality check', () => {
     const report = done.report as ReturnType<typeof qualityReport>;
     expect(report.allAi).toBe(true);
     expect(report.errors).toBe(0);
-    expect(report.jobs.map((j) => j.id)).toEqual(['acct', 'ops', 'sales']);
+    expect(report.jobs.map((j) => j.id)).toEqual(['acct']);
     // The stand-in is deterministic and ignores irrelevant facts, so it is perfectly consistent and fair.
     for (const j of report.jobs) {
       expect(j.checks.consistent.value).toBe(1);
       expect(j.checks.fair.pass).toBe(true);
-      expect(j.people).toHaveLength(12);
+      expect(j.people).toHaveLength(36);
     }
   });
 

@@ -26,19 +26,20 @@ export function QualityView({ report }: { report: Report }) {
       </section>
 
       <section className="rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:p-6">
-        <div role="tablist" className="flex flex-wrap gap-2">
+        {report.jobs.length === 1 ? <h2 className="text-[22px]">{job.title}</h2> : <div role="tablist" className="flex flex-wrap gap-2">
           {report.jobs.map((x, n) => <button key={x.id} role="tab" aria-selected={n === j} type="button" onClick={() => setJ(n)} className={cx('rounded-full px-4 py-2 text-[15px] font-semibold', n === j ? 'bg-ink text-white' : 'bg-page text-ink')}>{Object.values(x.checks).every((c) => c.pass) ? '✓' : '✗'} {x.title}</button>)}
-        </div>
+        </div>}
         <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted">
           <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-2 border-ink" /> Our rating</span>
           <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full bg-primary" /> AI’s rating</span>
           <span>On average {job.avgGap} points apart</span>
         </p>
-        <ul className="mt-3 space-y-2">
+        <div className="mt-4 hidden grid-cols-[220px_minmax(0,1fr)_110px] gap-x-3 border-b border-line pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted sm:grid"><span>Person</span><span>0 ··· 100</span><span className="text-right">Ours → AI</span></div>
+        <ul className="mt-2 space-y-2">
           {job.people.map((p) => (
-            <li key={p.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[220px_minmax(0,1fr)_88px]">
+            <li key={p.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:grid-cols-[220px_minmax(0,1fr)_110px]">
               <span className="truncate text-[14px]" title={p.note}>{p.note}</span>
-              <span className="tnum text-right text-[14px] sm:order-last"><span className="text-muted">{p.expected}</span> → <span className={cx('font-semibold', far(p) ? 'text-warning' : 'text-primary')}>{p.score}</span></span>
+              <span className="tnum text-right text-[14px] sm:order-last"><span className="text-muted">{p.expected}</span> → <span className={cx('font-semibold', far(p) ? 'text-warning' : 'text-primary')}>{p.score}</span> <span className={cx('text-[12px]', far(p) ? 'text-warning' : 'text-muted')}>({p.gap > 0 ? '+' : ''}{p.gap})</span></span>
               <span className="relative col-span-2 h-6 rounded-full bg-page sm:col-span-1" aria-label={`Our rating ${p.expected}, AI ${p.score}`}>
                 <span className={cx('absolute top-1/2 h-1 -translate-y-1/2 rounded-full', far(p) ? 'bg-warning/50' : 'bg-primary/30')} style={{ left: `${Math.min(p.expected, p.score)}%`, width: `${Math.abs(p.gap)}%` }} />
                 <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-surface" style={{ left: `${Math.max(2, Math.min(98, p.expected))}%` }} />

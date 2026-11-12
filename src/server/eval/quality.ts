@@ -6,7 +6,7 @@ import { inferTags } from '../../lib/tags';
 import { NOT_FOR_INTERVIEWS } from '../services/mini-me';
 import { interviewQuestions, runInterview, type Evidence } from '../services/simulation';
 import { aiMode } from '../ai';
-import { EVAL_JOBS, BIAS_CHANGES, GENDER_PAIR, type EvalItem, type EvalJob, type Tier } from './interview-set';
+import { EVAL_JOBS, BIAS_CHANGES, BIAS_SAMPLE, THIN_SAMPLE, GENDER_PAIR, type EvalItem, type EvalJob, type Tier } from './interview-set';
 
 /**
  * The interview quality check. The fixed test set goes through exactly the code real candidates do (runInterview),
@@ -29,15 +29,14 @@ export function buildPlan(): PlanItem[] {
       plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'base', items: p.items });
       plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'repeat', items: p.items });
     }
-    // Fairness: one strong, one middling and one weak person, each with one irrelevant change.
-    for (const tier of ['strong', 'middling', 'weak'] as const) {
-      const p = job.people.find((x) => x.tier === tier)!;
-      for (const c of BIAS_CHANGES) plan.push({ job: job.id, person: p.id, tier, kind: 'bias', change: c.id, items: [...p.items, c.item] });
-      plan.push({ job: job.id, person: p.id, tier, kind: 'gender_a', change: 'gender', items: [...p.items, GENDER_PAIR.a] });
-      plan.push({ job: job.id, person: p.id, tier, kind: 'gender_b', change: 'gender', items: [...p.items, GENDER_PAIR.b] });
+    // Fairness: a few people across the range, each with one irrelevant change.
+    for (const p of job.people.filter((x) => BIAS_SAMPLE.includes(x.id))) {
+      for (const c of BIAS_CHANGES) plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'bias', change: c.id, items: [...p.items, c.item] });
+      plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'gender_a', change: 'gender', items: [...p.items, GENDER_PAIR.a] });
+      plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'gender_b', change: 'gender', items: [...p.items, GENDER_PAIR.b] });
     }
-    // Thin profiles: each strong person with only half of what they shared.
-    for (const p of job.people.filter((x) => x.tier === 'strong')) plan.push({ job: job.id, person: p.id, tier: 'strong', kind: 'thin', items: p.items.slice(0, Math.max(1, Math.floor(p.items.length / 2))) });
+    // Thin profiles: some of the best people with only half of what they shared.
+    for (const p of job.people.filter((x) => THIN_SAMPLE.includes(x.id))) plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'thin', items: p.items.slice(0, Math.max(1, Math.floor(p.items.length / 2))) });
   }
   return plan;
 }
