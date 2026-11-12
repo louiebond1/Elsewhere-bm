@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { load } from './helpers';
 import { db } from '../../src/server/db/client';
 import * as S from '../../src/server/db/schema';
@@ -41,7 +41,8 @@ describe('simulated interviews and your best 10', () => {
     const w = await load();
     await w.T(w.client('A'), (c) => requestSimulations(c, w.ids.roles.R1));
     await drainJobs();
-    const rows = await db().select().from(S.simulatedInterviews).where(eq(S.simulatedInterviews.candidateId, w.ids.candidates.C05));
+    // Hidden from Alder's job; other clients' jobs still interview them.
+    const rows = await db().select().from(S.simulatedInterviews).where(and(eq(S.simulatedInterviews.candidateId, w.ids.candidates.C05), eq(S.simulatedInterviews.roleId, w.ids.roles.R1)));
     expect(rows).toHaveLength(0);
   });
 
@@ -50,9 +51,9 @@ describe('simulated interviews and your best 10', () => {
     const [ident] = await db().select().from(S.candidateIdentity).where(eq(S.candidateIdentity.candidateId, w.ids.candidates.C01));
     const standIn: AiProvider = { ...fixtureProvider, name: 'anthropic', simulateInterview: async (i) => ({ provider: 'anthropic', usage, output: {
       answers: [
-        { questionIndex: 0, answer: i.examples[0] ? `I did this. ${i.examples[0].text}` : 'x', evidenceIds: i.examples[0] ? [i.examples[0].id] : [] },
-        { questionIndex: 1, answer: 'Invented answer', evidenceIds: ['00000000-0000-0000-0000-000000000000'] },
-        { questionIndex: 2, answer: `My name is ${ident.fullName}.`, evidenceIds: i.examples[0] ? [i.examples[0].id] : [] },
+        { questionIndex: 0, answer: i.examples[0] ? `I did this. ${i.examples[0].text}` : 'x', evidenceIds: i.examples[0] ? [i.examples[0].id] : [], score: 14, reason: 'Clear example.' },
+        { questionIndex: 1, answer: 'Invented answer', evidenceIds: ['00000000-0000-0000-0000-000000000000'], score: 9, reason: 'Made up.' },
+        { questionIndex: 2, answer: `My name is ${ident.fullName}.`, evidenceIds: i.examples[0] ? [i.examples[0].id] : [], score: 8, reason: `${ident.fullName} did well.` },
       ],
       fitScore: 100, summary: 'Strong match.', concerns: [],
     } }) };
@@ -67,6 +68,12 @@ describe('simulated interviews and your best 10', () => {
       expect(a[1]).toMatchObject({ answer: NOT_SHARED, grounded: false });
       expect(a[2]).toMatchObject({ answer: NOT_SHARED, grounded: false });
       expect(JSON.stringify(a)).not.toContain(ident.fullName);
+      // Scores are clamped to 0-10; a reason naming them is dropped; replaced answers score 0.
+      const sc = r.answers as { grounded: boolean; score: number | null; reason: string; kind: string }[];
+      if (sc[0].grounded) expect(sc[0]).toMatchObject({ score: 10, reason: 'Clear example.' });
+      expect(sc[1]).toMatchObject({ score: 0, reason: 'Nothing in their mini-me covers this yet.' });
+      for (const x of sc) if (x.kind === 'screening') expect(x.score).toBeNull();
+      expect(r.scoreCard).toMatchObject({ factors: expect.any(Object), gaps: expect.any(Object) });
     }
   });
 

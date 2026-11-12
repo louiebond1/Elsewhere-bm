@@ -173,7 +173,7 @@ export function DeleteForm() {
   );
 }
 
-export function PreferencesForm({ initial }: { initial: { region: string; workModes: string[]; roleFamilies: string[]; minSalaryPounds: number | null; noticeWeeks: number | null; workAuthorisation: string; experienceBand: string } }) {
+export function PreferencesForm({ initial }: { initial: { region: string; workModes: string[]; roleFamilies: string[]; minSalaryPounds: number | null; noticeWeeks: number | null; workAuthorisation: string; experienceBand: string; over18: boolean | null; roleFamilyNonNegotiable: boolean } }) {
   const { run, busy, error } = useCommand();
   const [f, setF] = useState(initial);
   const [saved, setSaved] = useState(false);
@@ -189,6 +189,8 @@ export function PreferencesForm({ initial }: { initial: { region: string; workMo
       </div>
       <fieldset><legend className="text-[14px] font-medium">Work modes</legend><div className="mt-1 flex flex-wrap gap-4">{['onsite', 'hybrid', 'remote'].map((m) => <label key={m} className="flex items-center gap-2 text-[15px]"><input type="checkbox" checked={f.workModes.includes(m)} onChange={() => toggle('workModes', m)} />{m}</label>)}</div></fieldset>
       <fieldset><legend className="text-[14px] font-medium">Role families</legend><div className="mt-1 flex flex-wrap gap-4">{['finance', 'operations', 'commercial'].map((m) => <label key={m} className="flex items-center gap-2 text-[15px]"><input type="checkbox" checked={f.roleFamilies.includes(m)} onChange={() => toggle('roleFamilies', m)} />{m}</label>)}</div></fieldset>
+      <label className="flex items-center gap-2 text-[15px]"><input type="checkbox" checked={f.roleFamilyNonNegotiable} onChange={(e) => setF({ ...f, roleFamilyNonNegotiable: e.target.checked })} /> Only these types of job: it’s a must for me</label>
+      <Field label="Are you 18 or over?" hint="Private. Only used for jobs that must have someone 18 or over; employers never see it."><select className={inputClass} value={f.over18 == null ? '' : f.over18 ? 'yes' : 'no'} onChange={(e) => setF({ ...f, over18: e.target.value === '' ? null : e.target.value === 'yes' })}><option value="">Prefer not to say yet</option><option value="yes">Yes</option><option value="no">No</option></select></Field>
       <ErrorText error={error} />
       {saved && <p role="status" className="text-[14px] text-success">Preferences saved. Matches refreshed.</p>}
       <button className={buttonClass('primary')} disabled={busy}>Save preferences</button>

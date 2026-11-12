@@ -80,7 +80,7 @@ export const prototype = Object.freeze({
   maxRoleTextChars: 8000,
   /** PROVISIONAL technical limits. */
   aiConcurrency: 2,
-  aiDailyTokenLimit: 200000,
+  aiDailyTokenLimit: 2000000,
   /** Hard monthly AI spend cap for the whole app (web and worker), in US dollars. Owner limit is £5/month; $5 is below that. Can be lowered by AI_MONTHLY_BUDGET_USD, never raised. */
   aiMonthlyBudgetUsd: 5,
   /** Published Anthropic prices, USD per million tokens (input, output). A model not listed here is refused in live mode. */

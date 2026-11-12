@@ -62,7 +62,7 @@ export const anthropicProvider: AiProvider = {
   feedback: (i) => call('feedback', FEEDBACK_SYSTEM, wrap('approved_evidence', i.evidence), feedbackOutput),
   assessCriteria: (i, o) => call('assess', MATCHING_SYSTEM, `${wrap('role_criteria', i.criteria)}\n${wrap('approved_evidence', i.evidence)}`, assessmentOutput, o?.review ? reviewModel() : cheapModel()),
   structureRole: (i) => call('role', ROLE_SYSTEM, wrap('employer_brief', { title: i.title, brief: i.brief }), roleStructureOutput),
-  simulateInterview: (i) => call('simulate', SIMULATION_SYSTEM, `${wrap('role', i.role)}\n${wrap('interview_questions', i.questions.map((q, n) => ({ index: n, question: q })))}\n${wrap('approved_examples', i.examples)}`, simulationOutput),
+  simulateInterview: (i) => call('simulate', SIMULATION_SYSTEM, `${wrap('role', i.role)}\n${wrap('interview_questions', i.questions.map((q, n) => ({ index: n, ...q })))}\n${wrap('approved_examples', i.examples)}`, simulationOutput),
   miniMeChat: (i) => call('minime', MINIME_SYSTEM, `job_preferences: ${i.preferencesSet ? 'set' : 'NOT SET'}\n${wrap('cv', i.cv ?? 'none uploaded')}\n${wrap('already_known', i.known)}\n${wrap('missing_topics', i.missing)}\n${wrap('all_topics', i.allTopics)}\n${wrap('conversation', i.messages.slice(-14))}`, miniMeChatOutput),
   hiringTurn: (i) => call('hiring', HIRING_SYSTEM, `Missing, in order: ${i.missing.join(', ') || 'nothing'}\n${wrap('what_you_remember_about_this_manager', i.memory)}\n${wrap('current_understanding', i.understanding)}\n${wrap('conversation', i.messages.slice(-16))}`, hiringTurnOutput),
 };

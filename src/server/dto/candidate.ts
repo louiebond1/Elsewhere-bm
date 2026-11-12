@@ -65,7 +65,7 @@ export async function anonymousDTO(ctx: Ctx, args: { roleId: string; candidateId
     unknowns: args.match?.missingEvidence ?? [],
     confidence: args.match?.confidence ?? null,
     eligibility: args.match?.eligibility ?? null,
-    needsClarification: args.match?.eligibility === 'needs_clarification' ? (args.match.incompatibilityReason === 'preferences_not_set' ? 'Hasn’t set job preferences yet' : 'Right to work to be discussed') : null,
+    needsClarification: args.match?.eligibility === 'needs_clarification' ? (args.match.incompatibilityReason === 'preferences_not_set' ? 'Hasn’t set job preferences yet' : args.match.incompatibilityReason === 'age_to_confirm' ? 'Age requirement to confirm' : 'Right to work to be discussed') : null,
     screeningStatus: scr?.status ?? null,
     screeningSummary: scr?.status === 'completed' ? scr.summarySafe : null,
     introState: intro?.state ?? null,

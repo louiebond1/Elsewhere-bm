@@ -8,7 +8,7 @@ import { activeContractForClient } from '../server/services/contracts';
 import { PageHeader, Tabs, Badge, Card, Empty, Notice, LinkButton, cx } from './ui';
 import { SimplePrice, CompactPrice, PersonRow, PersonCover } from './role';
 import { FindingBest } from './finding-best';
-import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, AutoPicks, StageMenu, RecordHire, CancelIntro } from './role-actions';
+import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, AutoPicks, StageMenu, RecordHire, CancelIntro, AddMustHave } from './role-actions';
 import { gbp, label, date, relative, creditsLabel } from '../lib/format';
 import { prototype } from '../config/prototype';
 
@@ -32,6 +32,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
         {isDraft && <LinkButton href={`${base}/roles/${roleId}/edit`} variant="secondary">Edit draft</LinkButton>}
         {!isDraft && role.status === 'open' && <LinkButton href={`${base}/roles/${roleId}/edit`} variant="secondary">Edit role</LinkButton>}
         {ch && role.status === 'open' && role.defaultServiceMode === 'standard' && !role.isReplacementRole && <UpgradeRole roleId={roleId} ch={ch} />}
+        {role.status === 'open' && !role.requires18 && <AddMustHave roleId={roleId} />}
         {role.status === 'open' && <CloseRole roleId={roleId} />}
         {role.status === 'closed' && <ReopenRole roleId={roleId} />}
       </>} />
@@ -100,7 +101,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
           <section aria-labelledby="ranked" className="mt-10">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 id="ranked">All {best.length}, ranked</h3>
-              <p className="text-[15px] text-muted">Ranked by a quick simulated interview.</p>
+              <p className="text-[15px] text-muted">Ranked by each person’s interview for this job.</p>
             </div>
             <ul className="-mx-3 mt-3">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} index={i} /></li>)}</ul>
           </section>

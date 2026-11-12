@@ -6,7 +6,19 @@ const cand = { preferredRoleFamilies: ['finance'], minSalaryPence: 4000000n, reg
 
 describe('eligibility', () => {
   it('eligible baseline', () => expect(eligibilityFor(role, cand).eligibility).toBe('eligible'));
-  it('salary preference above role is incompatible', () => expect(eligibilityFor(role, { ...cand, minSalaryPence: 5500000n }).eligibility).toBe('incompatible'));
+  it('salary never rules anyone out, however far apart', () => expect(eligibilityFor(role, { ...cand, minSalaryPence: 50000000n }).eligibility).toBe('eligible'));
+  it('a different type of job rules them out only if they marked it non-negotiable', () => {
+    const other = { ...role, roleFamily: 'operations' };
+    expect(eligibilityFor(other, { ...cand, preferredRoleFamilies: ['finance'] }).eligibility).toBe('eligible');
+    expect(eligibilityFor(other, { ...cand, preferredRoleFamilies: ['finance'], roleFamilyNonNegotiable: true })).toEqual({ eligibility: 'incompatible', reason: 'role_family_non_negotiable' });
+  });
+  it('a job that must have someone 18 or over: under 18 rules out, not told us yet is interviewed and flagged', () => {
+    const adult = { ...role, requires18: true };
+    expect(eligibilityFor(adult, { ...cand, over18: false })).toEqual({ eligibility: 'incompatible', reason: 'under_18' });
+    expect(eligibilityFor(adult, { ...cand, over18: null })).toEqual({ eligibility: 'needs_clarification', reason: 'age_to_confirm' });
+    expect(eligibilityFor(adult, { ...cand, over18: true }).eligibility).toBe('eligible');
+    expect(eligibilityFor(role, { ...cand, over18: false }).eligibility).toBe('eligible');
+  });
   it('unknown work authorisation needs clarification, not rejection', () => expect(eligibilityFor(role, { ...cand, workAuthorisation: 'unknown' }).eligibility).toBe('needs_clarification'));
   it('location helper', () => {
     expect(locationCompatible({ locationRegion: 'london', workMode: 'hybrid' }, { region: 'hertfordshire', workModes: ['hybrid'] })).toBe(true);

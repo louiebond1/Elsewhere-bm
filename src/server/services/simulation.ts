@@ -1,4 +1,5 @@
-import { miniMeEvidence, miniMeUpdatedAt } from './mini-me';
+import { miniMeEvidence, miniMeRows, NOT_FOR_INTERVIEWS } from './mini-me';
+import { inferTags } from '../../lib/tags';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 import { roles, matches, candidates, candidateIdentity, organisations, simulatedInterviews, jobs } from '../db/schema';
 import { compareMatches } from '../lib/matching-rules';
@@ -25,7 +26,28 @@ type Crit = Awaited<ReturnType<typeof criteriaFor>>[number];
 type Evidence = { id: string; safeClaim: string; tags: string[]; strength: string; key?: string | null; topic?: string | null; practical?: boolean };
 /** A company name the dataset doesn't know about usually ends like this; such answers aren't shown. */
 const COMPANY = /\b(ltd|limited|plc|inc|llp|gmbh)\b\.?/i;
-export type SimAnswer = { question: string; answer: string; evidenceIds: string[]; grounded: boolean; key?: string | null; kind?: 'interview' | 'screening' };
+export type SimAnswer = { question: string; answer: string; evidenceIds: string[]; grounded: boolean; key?: string | null; kind?: 'interview' | 'screening'; score?: number | null; reason?: string };
+
+/**
+ * What decided an interview, kept with it: the checklist keys, skill tags and mini-me items its answers drew on
+ * (factors) and what it had nothing for (gaps). A later mini-me change re-runs the interview only if it touches these.
+ */
+export type ScoreCard = { factors: { keys: string[]; tags: string[]; itemIds: string[] }; gaps: { keys: string[]; tags: string[]; anyExample: boolean } };
+
+export function scoreCardFor(questions: ReturnType<typeof interviewQuestions>, answers: SimAnswer[]): ScoreCard {
+  const f = { keys: new Set<string>(), tags: new Set<string>(), itemIds: new Set<string>() };
+  const g = { keys: new Set<string>(), tags: new Set<string>(), anyExample: false };
+  questions.forEach((q, i) => {
+    const a = answers[i];
+    const target = a?.grounded ? f : g;
+    if (q.key) target.keys.add(q.key);
+    for (const t of q.crit?.evidenceTags ?? []) target.tags.add(t);
+    if (a?.grounded) for (const id of a.evidenceIds) f.itemIds.add(id);
+    // A general question with no answer yet can be filled by any new example.
+    else if (q.kind === 'interview' && !q.crit) g.anyExample = true;
+  });
+  return { factors: { keys: [...f.keys], tags: [...f.tags], itemIds: [...f.itemIds] }, gaps: { keys: [...g.keys], tags: [...g.tags], anyExample: g.anyExample } };
+}
 
 /** Standard behavioural questions, answered from the matching part of their mini-me. */
 const GENERAL: { key: string; text: string }[] = [
@@ -78,13 +100,16 @@ export function demoSimulation(questions: ReturnType<typeof interviewQuestions>,
   const built: SimAnswer[] = questions.map((q) => {
     const meta = { key: q.key, kind: q.kind };
     const d = direct(q, evidence);
-    if (d) { used.add(d.id); return { question: q.text, answer: d.safeClaim, evidenceIds: [d.id], grounded: true, ...meta }; }
-    if (q.kind === 'screening' || q.key) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false, ...meta };
+    const screening = q.kind === 'screening';
+    const scoreOf = (e: Evidence) => (screening ? null : Math.round((STRENGTH[e.strength] ?? 0.3) * 10));
+    const none = { score: screening ? null : 0, reason: screening ? 'They haven’t told us yet.' : 'Nothing in their mini-me covers this yet.' };
+    if (d) { used.add(d.id); return { question: q.text, answer: d.safeClaim, evidenceIds: [d.id], grounded: true, ...meta, score: scoreOf(d), reason: screening ? 'From their own answer.' : 'Answered in their own words from their mini-me.' }; }
+    if (screening || q.key) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false, ...meta, ...none };
     const fits = rank(pool.filter((e) => !q.crit || e.tags.some((t) => q.crit!.evidenceTags.includes(t))));
     const e = fits.find((x) => !used.has(x.id)) ?? (q.crit ? fits[0] : undefined);
-    if (!e) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false, ...meta };
+    if (!e) return { question: q.text, answer: NOT_SHARED, evidenceIds: [], grounded: false, ...meta, ...none };
     used.add(e.id);
-    return { question: q.text, answer: e.safeClaim, evidenceIds: [e.id], grounded: true, ...meta };
+    return { question: q.text, answer: e.safeClaim, evidenceIds: [e.id], grounded: true, ...meta, score: scoreOf(e), reason: q.crit ? `Their closest example for ${q.crit.label.toLowerCase()}.` : 'Their closest example.' };
   });
   const scored = questions.filter((q) => q.crit);
   const total = scored.reduce((a, q) => a + q.crit!.weight, 0) || 1;
@@ -96,6 +121,30 @@ export function demoSimulation(questions: ReturnType<typeof interviewQuestions>,
 }
 
 /** The best-matched candidates this client may see, still needing a simulation for the current versions. */
+/**
+ * Did their mini-me change in a way that matters to this interview? Yes if, since it ran, an item changed that it
+ * drew on, that answers one of its questions (or the same checklist key), shares a skill with a job criterion,
+ * fills a gap it had, or an item it used was removed. Anything else (a new hobby, a typo elsewhere) doesn't re-run it.
+ */
+export function interviewTouched(sim: { updatedAt: Date; scoreCard: unknown; answers: unknown }, items: { key: string; topic: string | null; answer: string; updatedAt: Date }[]) {
+  const changed = items.filter((r) => r.updatedAt > sim.updatedAt);
+  const card = sim.scoreCard as ScoreCard | null;
+  // Interviews from before score cards: any change counts, as before.
+  if (!card) return changed.length > 0;
+  const present = new Set(items.map((r) => `mm:${r.key}`));
+  if (card.factors.itemIds.some((id) => id.startsWith('mm:') && !present.has(id))) return true;
+  const keys = new Set([...card.factors.keys, ...card.gaps.keys]);
+  const tags = new Set([...card.factors.tags, ...card.gaps.tags]);
+  const questions = new Set(((sim.answers as { question: string }[]) ?? []).map((a) => a.question.trim().toLowerCase()));
+  return changed.some((r) => {
+    if (card.factors.itemIds.includes(`mm:${r.key}`) || keys.has(r.key)) return true;
+    if (r.topic && questions.has(r.topic.trim().toLowerCase())) return true;
+    if (NOT_FOR_INTERVIEWS.has(r.key)) return false;
+    if (card.gaps.anyExample) return true;
+    return inferTags(`${r.topic ?? ''} ${r.answer}`).some((t) => tags.has(t));
+  });
+}
+
 export async function simulationTargets(ctx: Ctx, roleId: string) {
   const [role] = await ctx.tx.select().from(roles).where(eq(roles.id, roleId));
   if (!role || role.status !== 'open') return { role: role ?? null, targets: [] as { candidateId: string }[] };
@@ -104,12 +153,12 @@ export async function simulationTargets(ctx: Ctx, roleId: string) {
   const info = new Map(refs.map((r) => [r.id, r]));
   const ranked = ms.map((m) => ({ m, publicRef: info.get(m.candidateId)?.ref ?? '', eligibility: m.eligibility, score: m.score, coverageBps: m.coverageBps })).sort(compareMatches);
   const existing = await ctx.tx.select().from(simulatedInterviews).where(eq(simulatedInterviews.roleId, roleId));
-  // An interview is redone when the job, their profile, or their mini-me has changed since.
-  const mini = await miniMeUpdatedAt(ctx, existing.map((s) => s.candidateId));
+  // An interview is redone when the job or their profile changed, or when a mini-me change touches what decided it.
   // Mini-me changes only count during the 24 hours after they were first interviewed; then that interview is final.
+  const mini = await miniMeRows(ctx, existing.map((s) => s.candidateId));
   const now = Date.now();
   const fresh = new Set(existing.filter((s) => s.roleVersion === role.roleVersion && s.profileVersionId === info.get(s.candidateId)?.pv
-    && !(mini.get(s.candidateId) && mini.get(s.candidateId)! > s.updatedAt && now < s.createdAt.getTime() + EDIT_WINDOW_MS)).map((s) => s.candidateId));
+    && !(now < s.createdAt.getTime() + EDIT_WINDOW_MS && interviewTouched(s, mini.get(s.candidateId) ?? []))).map((s) => s.candidateId));
   const targets: { candidateId: string }[] = [];
   let considered = 0;
   for (const r of ranked) {
@@ -137,7 +186,7 @@ export async function simulationPending(ctx: Ctx, roleId: string) {
 }
 
 /** Validates and stores one simulation. Rejects foreign evidence ids and anything identifying; stale results are discarded. */
-export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId: string; roleVersion: number; profileVersionId: string; answers: SimAnswer[]; fitScore: number; summary: string; concerns: string[]; provider: 'fixture' | 'anthropic'; evidenceIds: string[] }) {
+export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId: string; roleVersion: number; profileVersionId: string; answers: SimAnswer[]; fitScore: number; summary: string; concerns: string[]; provider: 'fixture' | 'anthropic'; evidenceIds: string[]; questions?: ReturnType<typeof interviewQuestions> }) {
   const [role] = await ctx.tx.select().from(roles).where(eq(roles.id, a.roleId)).for('update');
   const [cand] = await ctx.tx.select().from(candidates).where(eq(candidates.id, a.candidateId));
   if (!role || !cand || cand.status === 'deleting' || cand.status === 'deleted') return { stored: false, reason: 'unavailable' };
@@ -148,12 +197,16 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
   const people = await ctx.tx.select({ n: candidateIdentity.fullName }).from(candidateIdentity).innerJoin(candidates, eq(candidates.id, candidateIdentity.candidateId)).where(eq(candidates.datasetId, ctx.datasetId));
   const forbidden = [...(idn ? [idn.n, ...idn.n.split(/\s+/).filter((x) => x.length >= 3)] : []), ...(idn?.e ? [idn.e] : []), ...orgNames, ...people.map((p) => p.n).filter(Boolean)];
   const allowed = new Set(a.evidenceIds);
-  const answers = a.answers.map((x) => {
+  const clean = (t: string) => (safeClaimProblems(t, forbidden).length || COMPANY.test(t) ? '' : t.trim());
+  const answers: SimAnswer[] = a.answers.map((x) => {
     const ids = x.evidenceIds.filter((i) => allowed.has(i));
     const ok = ids.length > 0 && x.answer.trim() && !safeClaimProblems(x.answer, forbidden).length && !COMPANY.test(x.answer);
-    return ok ? { ...x, evidenceIds: ids, grounded: true } : { question: x.question, answer: NOT_SHARED, evidenceIds: [], grounded: false, key: x.key ?? null, kind: x.kind ?? 'interview' };
+    const screening = (x.kind ?? 'interview') === 'screening';
+    const score = screening || x.score == null ? null : Math.max(0, Math.min(10, Math.round(x.score)));
+    return ok
+      ? { ...x, evidenceIds: ids, grounded: true, score, reason: clean(x.reason ?? '') }
+      : { question: x.question, answer: NOT_SHARED, evidenceIds: [], grounded: false, key: x.key ?? null, kind: x.kind ?? 'interview', score: screening ? null : 0, reason: screening ? 'They haven’t told us yet.' : 'Nothing in their mini-me covers this yet.' };
   });
-  const clean = (t: string) => (safeClaimProblems(t, forbidden).length || COMPANY.test(t) ? '' : t.trim());
   const summary = clean(a.summary) || (answers.some((x) => x.grounded) ? 'Has relevant examples for this job.' : 'Not much to go on yet.');
   const concerns = a.concerns.map(clean).filter(Boolean).slice(0, 3);
   const fitScore = Math.max(0, Math.min(100, Math.round(a.fitScore)));
@@ -163,7 +216,8 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
     const { notify } = await import('./audit');
     await notify(ctx, [cand.userId], { type: 'system', subjectRefType: 'interview', subjectRefId: a.roleId, safeTitle: `Your mini-me was interviewed for ${role.title}` });
   }
-  const row = { datasetId: ctx.datasetId, roleId: a.roleId, candidateId: a.candidateId, roleVersion: a.roleVersion, profileVersionId: a.profileVersionId, answers, fitScore, summarySafe: summary, concernsSafe: concerns, provider: a.provider };
+  const scoreCard = a.questions ? scoreCardFor(a.questions, answers) : null;
+  const row = { datasetId: ctx.datasetId, roleId: a.roleId, candidateId: a.candidateId, roleVersion: a.roleVersion, profileVersionId: a.profileVersionId, answers, fitScore, summarySafe: summary, concernsSafe: concerns, provider: a.provider, scoreCard };
   await ctx.tx.insert(simulatedInterviews).values(row).onConflictDoUpdate({ target: [simulatedInterviews.roleId, simulatedInterviews.candidateId], set: { ...row, updatedAt: new Date() } });
   return { stored: true };
 }
@@ -184,11 +238,18 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
     let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
     if (live && evidence.length) {
       try {
-        const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q) => q.text), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
+        const fixed = (q: (typeof questions)[number]) => !!(q.key || q.kind === 'screening' || direct(q, evidence));
+        const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
         const res = await runAi({ task: 'simulate', datasetId: base.datasetId, roleId, candidateId: t.candidateId, input }, (p) => p.simulateInterview(input));
         const out = res.output;
         result = {
-          answers: questions.map((q, i) => { const d = demo.built[i]; if (q.key || q.kind === 'screening' || direct(q, evidence)) return d; const a = out.answers.find((x) => x.questionIndex === i); return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length, key: q.key, kind: q.kind }; }),
+          answers: questions.map((q, i) => {
+            const a = out.answers.find((x) => x.questionIndex === i);
+            const scored = a ? { score: q.kind === 'screening' ? null : a.score, reason: a.reason } : {};
+            // Fixed answers stay exactly as they wrote them; the AI only scores them.
+            if (fixed(q)) return { ...demo.built[i], ...scored };
+            return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length, key: q.key, kind: q.kind, ...(a ? scored : { score: 0, reason: 'Nothing in their mini-me covers this yet.' }) };
+          }),
           fitScore: out.fitScore, summary: out.summary, concerns: out.concerns, provider: res.provider,
         };
       } catch (e) {
@@ -196,7 +257,7 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
         if (e.code === 'monthly_budget' || e.code === 'daily_budget') live = false; // stop paid calls for the rest of this job
       }
     }
-    await withTx(base, (ctx) => storeSimulation(ctx, { roleId, candidateId: t.candidateId, roleVersion: prep.roleVersion, profileVersionId: prep.profileVersionId!, ...result, evidenceIds: evidence.map((e) => e.id) }));
+    await withTx(base, (ctx) => storeSimulation(ctx, { roleId, candidateId: t.candidateId, roleVersion: prep.roleVersion, profileVersionId: prep.profileVersionId!, ...result, evidenceIds: evidence.map((e) => e.id), questions }));
   }
 }
 

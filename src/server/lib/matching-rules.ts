@@ -4,8 +4,8 @@ import { prototype } from '../../config/prototype';
 export type Level = 'specific' | 'partial' | 'unknown' | 'contradictory';
 export const LEVEL_VALUE: Record<Level, number> = { specific: 100, partial: 60, unknown: 30, contradictory: 0 };
 
-export type RoleShape = { roleFamily: string; salaryPence: bigint | number | string; locationRegion: string; workMode: string; workAuthorisationRequired: boolean };
-export type CandidateShape = { preferredRoleFamilies: string[]; minSalaryPence: bigint | number | string | null; region: string; workModes: string[]; workAuthorisation: string };
+export type RoleShape = { roleFamily: string; salaryPence: bigint | number | string; locationRegion: string; workMode: string; workAuthorisationRequired: boolean; requires18?: boolean };
+export type CandidateShape = { preferredRoleFamilies: string[]; minSalaryPence: bigint | number | string | null; region: string; workModes: string[]; workAuthorisation: string; over18?: boolean | null; roleFamilyNonNegotiable?: boolean };
 
 /**
  * Location rule (prototype):
@@ -25,10 +25,16 @@ export function locationCompatible(role: Pick<RoleShape, 'locationRegion' | 'wor
   return false;
 }
 
+/**
+ * Who gets a full interview. Only true non-negotiables rule someone out: where they can work, a job that needs
+ * someone 18 or over (when they've told us they aren't), and the type of job only if they marked it non-negotiable.
+ * Salary never rules anyone out: the interview decides. Unknowns are interviewed and flagged to discuss.
+ */
 export function eligibilityFor(role: RoleShape, cand: CandidateShape): { eligibility: 'eligible' | 'needs_clarification' | 'incompatible'; reason: string | null } {
-  if (cand.preferredRoleFamilies.length && !cand.preferredRoleFamilies.includes(role.roleFamily)) return { eligibility: 'incompatible', reason: 'role_family_preference' };
-  if (cand.minSalaryPence != null && BigInt(cand.minSalaryPence) > BigInt(role.salaryPence)) return { eligibility: 'incompatible', reason: 'salary_preference' };
   if (!locationCompatible(role, cand)) return { eligibility: 'incompatible', reason: 'location_or_work_mode' };
+  if (role.requires18 && cand.over18 === false) return { eligibility: 'incompatible', reason: 'under_18' };
+  if (cand.roleFamilyNonNegotiable && cand.preferredRoleFamilies.length && !cand.preferredRoleFamilies.includes(role.roleFamily)) return { eligibility: 'incompatible', reason: 'role_family_non_negotiable' };
+  if (role.requires18 && cand.over18 == null) return { eligibility: 'needs_clarification', reason: 'age_to_confirm' };
   if (role.workAuthorisationRequired && cand.workAuthorisation !== 'confirmed') return { eligibility: 'needs_clarification', reason: 'work_authorisation_to_discuss' };
   return { eligibility: 'eligible', reason: null };
 }

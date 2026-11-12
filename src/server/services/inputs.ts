@@ -28,6 +28,7 @@ export const roleDraftInput = z.object({
   locationRegion: z.enum(['london', 'hertfordshire', 'manchester', 'remote_uk']),
   workMode: z.enum(['onsite', 'hybrid', 'remote']),
   workAuthorisationRequired: z.boolean().default(true),
+  requires18: z.boolean().default(false),
   outcomes: z.array(text(300).min(1)).max(6).default([]),
   teachableSkills: z.array(text(120).min(1)).max(8).default([]),
   briefText: text(prototype.maxRoleTextChars).default(''),
@@ -108,6 +109,10 @@ export const preferencesInput = z.object({
   noticeWeeks: z.number().int().min(0).max(52).nullable(),
   workAuthorisation: z.enum(['confirmed', 'needs_discussion', 'unknown']),
   experienceBand: z.enum(['early_career', 'established', 'leadership', 'unknown']),
+  /** Private: only used for jobs that must have someone 18 or over. Left out = keep what we have. */
+  over18: z.boolean().nullable().optional(),
+  /** The type of job they chose is a must for them: other types won't interview them. */
+  roleFamilyNonNegotiable: z.boolean().optional(),
 });
 
 export const employerInput = z.union([

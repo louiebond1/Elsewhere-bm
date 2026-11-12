@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
+import { prototype } from '../../src/config/prototype';
 import { eq, and, sql } from 'drizzle-orm';
 import { load } from './helpers';
 import { db } from '../../src/server/db/client';
@@ -109,7 +110,7 @@ describe('AI admission controls', () => {
     await load();
     setProviderForTests(standIn({}));
     const today = new Date().toISOString().slice(0, 10);
-    await db().insert(S.aiBudgetReservations).values({ requestKey: crypto.randomUUID(), utcDate: today, reservedTokens: 200000, actualTokens: 200000, state: 'reconciled', expiresAt: new Date(Date.now() + 3600000) });
+    await db().insert(S.aiBudgetReservations).values({ requestKey: crypto.randomUUID(), utcDate: today, reservedTokens: prototype.aiDailyTokenLimit, actualTokens: prototype.aiDailyTokenLimit, state: 'reconciled', expiresAt: new Date(Date.now() + 3600000) });
     await resetDemo();
     await expect(runAi({ task: 'question', input: 'x' }, (p) => p.nextQuestion({ topic: 'experience', recentMessages: [], evidenceSummary: [] }))).rejects.toBeInstanceOf(AiFailure);
     await db().delete(S.aiBudgetReservations).where(eq(S.aiBudgetReservations.utcDate, today));

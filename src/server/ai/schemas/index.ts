@@ -62,7 +62,7 @@ export type HiringTurnOutput = z.infer<typeof hiringTurnOutput>;
 
 /** One simulated interview: answers drawn only from the candidate's own approved examples. */
 export const simulationOutput = z.object({
-  answers: z.array(z.object({ questionIndex: z.number().int().min(0).max(19), answer: z.string().max(600), evidenceIds: z.array(z.string()).max(4) })).max(20),
+  answers: z.array(z.object({ questionIndex: z.number().int().min(0).max(19), answer: z.string().max(600), evidenceIds: z.array(z.string()).max(4), score: z.number().int().min(0).max(10).nullable(), reason: z.string().max(240) })).max(20),
   fitScore: z.number().int().min(0).max(100),
   summary: z.string().max(400),
   concerns: z.array(z.string().max(200)).max(3),

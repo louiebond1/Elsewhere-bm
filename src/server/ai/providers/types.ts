@@ -8,7 +8,7 @@ export type ExtractionInput = { sources: { id: string; kind: 'cv' | 'answer'; te
 export type FeedbackInput = { evidence: { id: string; safeClaim: string; tags: string[]; strength: string }[] };
 export type AssessInput = { criteria: { criterionId: string; label: string; description: string; evidenceTags: string[] }[]; evidence: { id: string; safeClaim: string; tags: string[]; strength: string; uncertainty: string | null }[] };
 export type RoleInput = { brief: string; title: string };
-export type SimulationInput = { role: { title: string; outcomes: string[] }; questions: string[]; examples: { id: string; text: string; tags: string[] }[] };
+export type SimulationInput = { role: { title: string; outcomes: string[] }; questions: { question: string; screening: boolean; fixed_answer?: string; fixed_ids?: string[] }[]; examples: { id: string; text: string; tags: string[] }[] };
 export type MiniMeChatInput = { cv: string | null; preferencesSet: boolean; known: { topic: string; answer: string }[]; missing: { key: string; topic: string }[]; allTopics: { key: string; topic: string }[]; messages: { role: 'assistant' | 'user'; text: string }[] };
 export type HiringTurnInput = { messages: { role: 'assistant' | 'user'; text: string }[]; understanding: unknown; memory: string[]; missing: string[] };
 

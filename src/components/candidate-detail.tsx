@@ -47,12 +47,13 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
           {section === 'interview' && sim && (
             <Card title="Their simulated interview" action={<Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge>}>
               <p className="text-[15px]">{sim.summary}</p>
-              <p className="mt-2 text-[13px] text-muted">A prediction built only from their real examples, to help you decide who to meet. It isn’t something they said.</p>
+              <p className="mt-2 text-[13px] text-muted">{sim.provider === 'anthropic' ? 'An AI interview built only from their real examples, scored against what you asked for. It isn’t something they said.' : 'Basic interview: each answer is the closest example from their profile, without AI. Their full AI interview replaces it when it’s ready.'}</p>
               <ol className="mt-3 space-y-3">
                 {sim.answers.map((a, i) => (
                   <li key={i} className="text-[15px]">
-                    <p className="font-medium">{a.question}</p>
+                    <p className="flex items-start justify-between gap-3 font-medium"><span>{a.question}</span>{a.kind === 'screening' ? <span className="shrink-0 rounded-full bg-page px-2.5 py-0.5 text-[13px] font-semibold text-muted">Screening</span> : a.score != null && <span className="tnum shrink-0 rounded-full bg-success-tint px-2.5 py-0.5 text-[13px] font-semibold text-primary" aria-label={`Scored ${a.score} out of 10`}>{a.score}/10</span>}</p>
                     <p className={a.grounded ? 'mt-1' : 'mt-1 text-muted'}>{a.grounded ? `“${a.answer}”` : a.answer}</p>
+                    {a.reason && <p className="mt-1 text-[13px] text-muted">{a.reason}</p>}
                   </li>
                 ))}
               </ol>

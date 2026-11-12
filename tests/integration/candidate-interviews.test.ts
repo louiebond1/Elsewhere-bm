@@ -18,7 +18,8 @@ describe('candidates see their mini-me interviews', () => {
     expect(sim).toBeTruthy();
     const code = Object.entries(w.ids.candidates).find(([, id]) => id === sim.candidateId)![0];
     const [cand] = await db().select().from(S.candidates).where(eq(S.candidates.id, sim.candidateId));
-    const notes = await db().select().from(S.notifications).where(and(eq(S.notifications.recipientUserId, cand.userId!), eq(S.notifications.subjectRefType, 'interview')));
+    const notes = await db().select().from(S.notifications).where(and(eq(S.notifications.recipientUserId, cand.userId!), eq(S.notifications.subjectRefType, 'interview'), eq(S.notifications.subjectRefId, R1)));
+    // One per job they're interviewed for (every live job they're eligible for is interviewed now).
     expect(notes).toHaveLength(1);
     expect(notes[0].safeTitle).toMatch(/^Your mini-me was interviewed for /);
 
@@ -39,7 +40,7 @@ describe('candidates see their mini-me interviews', () => {
     await db().update(S.simulatedInterviews).set({ updatedAt: new Date('2000-01-01') }).where(eq(S.simulatedInterviews.id, sim.id));
     await w.T(w.client('A'), (c) => requestSimulations(c, R1));
     await drainJobs();
-    const after = await db().select().from(S.notifications).where(and(eq(S.notifications.recipientUserId, cand.userId!), eq(S.notifications.subjectRefType, 'interview')));
+    const after = await db().select().from(S.notifications).where(and(eq(S.notifications.recipientUserId, cand.userId!), eq(S.notifications.subjectRefType, 'interview'), eq(S.notifications.subjectRefId, R1)));
     expect(after).toHaveLength(1);
   });
 });

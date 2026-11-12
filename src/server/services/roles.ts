@@ -84,6 +84,7 @@ export async function createDraftRole(ctx: Ctx, raw: unknown) {
     workMode: input.workMode,
     salaryPence,
     workAuthorisationRequired: input.workAuthorisationRequired,
+    requires18: input.requires18,
     briefText: input.briefText,
     outcomes: input.outcomes,
     teachableSkills: input.teachableSkills,
@@ -129,6 +130,21 @@ export async function updateRoleBrief(ctx: Ctx, roleId: string, raw: unknown) {
     await recomputeRole(ctx, role.id);
   }
   await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: 'role.brief_updated', clientId: role.clientId, metadata: { roleVersion: updated.roleVersion } });
+  return updated;
+}
+
+/**
+ * The only change allowed on a live job: adding a must-have. It rules people in or out (no one is
+ * re-interviewed, the job version stays the same); anyone ruled out leaves the ranking straight away.
+ */
+export async function addMustHave(ctx: Ctx, roleId: string, mustHave: 'requires18') {
+  const role = await roleForActor(ctx, roleId);
+  if (role.status === 'closed') throw invalid('This job is closed.');
+  if (role[mustHave]) return role;
+  const [updated] = await ctx.tx.update(roles).set({ [mustHave]: true, updatedAt: new Date() }).where(eq(roles.id, role.id)).returning();
+  const { recomputeRole } = await import('./matching');
+  await recomputeRole(ctx, role.id);
+  await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: 'role.must_have_added', clientId: role.clientId, metadata: { mustHave } });
   return updated;
 }
 

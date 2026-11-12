@@ -28,6 +28,8 @@ export async function matchEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: string, p
 /** Until they've told us their job preferences, nothing rules a job out: it's flagged to discuss instead. */
 function eligibilityOf(role: typeof roles.$inferSelect, cand: typeof candidates.$inferSelect) {
   if (cand.preferencesConfirmed) return eligibilityFor(role, cand);
+  // Age is asked on its own, so it still applies before their job preferences are set.
+  if (role.requires18 && cand.over18 === false) return { eligibility: 'incompatible' as const, reason: 'under_18' };
   return { eligibility: 'needs_clarification' as const, reason: 'preferences_not_set' };
 }
 
@@ -92,6 +94,8 @@ export async function recomputeRole(ctx: Ctx, roleId: string) {
     await ctx.tx.insert(matches).values(row).onConflictDoUpdate({ target: [matches.roleId, matches.candidateId], set: { ...row, updatedAt: new Date() } });
   }
   if (rows.some((r) => r.awaitingAi)) await queueAssessment(ctx, roleId);
+  // Everyone eligible for a live job is interviewed in the background, without anyone opening the job page.
+  if (role.status === 'open') { const { requestSimulations } = await import('./simulation'); await requestSimulations(ctx, roleId); }
 }
 
 /** One deduplicated live-assessment job per role and minute. Only stale pairs are sent to the model. */
@@ -114,6 +118,8 @@ export async function recomputeCandidate(ctx: Ctx, candidateId: string) {
     const { row, awaitingAi } = await computePair(ctx, role, await criteriaFor(ctx, role.id), cand);
     await ctx.tx.insert(matches).values(row).onConflictDoUpdate({ target: [matches.roleId, matches.candidateId], set: { ...row, updatedAt: new Date() } });
     if (awaitingAi) await queueAssessment(ctx, role.id);
+    // Newly eligible (e.g. they just signed up): interview them for this live job.
+    if (role.status === 'open' && row.eligibility !== 'incompatible') { const { requestSimulations } = await import('./simulation'); await requestSimulations(ctx, role.id); }
   }
 }
 

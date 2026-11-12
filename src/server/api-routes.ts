@@ -157,6 +157,7 @@ export const ROUTES: R[] = [
     const res = await runAi({ task: 'role', datasetId: base.datasetId, roleId: p.id, input: brief }, (pr) => pr.structureRole(brief));
     return { draft: res.output, provider: res.provider };
   } },
+  { method: 'POST', path: 'roles/:id/must-have', types: ['client', 'consultant'], h: ({ base, p, body }) => T(base, (c) => roles.addMustHave(c, p.id, parse(z.object({ mustHave: z.literal('requires18') }), body).mustHave).then((r) => ({ id: r.id, requires18: r.requires18 }))) },
   { method: 'POST', path: 'roles/:id/simulate', types: ['client', 'consultant'], h: async ({ base, p }) => { await roles.roleForActor(readCtx(base), p.id); return T(base, (c) => simulation.requestSimulations(c, p.id)); } },
   { method: 'GET', path: 'roles/:id/simulate-status', types: ['client', 'consultant'], h: async ({ base, p }) => { const c = readCtx(base); await roles.roleForActor(c, p.id); return { pending: await simulation.simulationPending(c, p.id), ready: (await simulation.simulationsForRole(c, p.id)).size }; } },
   { method: 'POST', path: 'roles/:id/activate', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/activate`, body, (c, k) => roles.activateRole(c, p.id, { ...parse(activateInput, body), idempotencyKey: k })) },

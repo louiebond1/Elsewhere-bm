@@ -47,7 +47,7 @@ export async function updatePreferences(ctx: Ctx, raw: unknown) {
   const id = candidateIdOf(ctx);
   const input = preferencesInput.parse(raw);
   await lockCandidates(ctx.tx, [id]);
-  await ctx.tx.update(candidates).set({ region: input.region, workModes: input.workModes, preferredRoleFamilies: input.roleFamilies, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: input.workAuthorisation, experienceBand: input.experienceBand, preferencesConfirmed: true, updatedAt: new Date() }).where(eq(candidates.id, id));
+  await ctx.tx.update(candidates).set({ region: input.region, workModes: input.workModes, preferredRoleFamilies: input.roleFamilies, minSalaryPence: input.minSalaryPounds ? BigInt(input.minSalaryPounds) * 100n : null, noticeWeeks: input.noticeWeeks, workAuthorisation: input.workAuthorisation, experienceBand: input.experienceBand, ...(input.over18 !== undefined ? { over18: input.over18 } : {}), ...(input.roleFamilyNonNegotiable !== undefined ? { roleFamilyNonNegotiable: input.roleFamilyNonNegotiable } : {}), preferencesConfirmed: true, updatedAt: new Date() }).where(eq(candidates.id, id));
   const { refreshInterviews } = await import('./mini-me');
   await refreshInterviews(ctx, id);
   await logActivity(ctx, { subjectType: 'candidate', subjectId: id, action: 'candidate.preferences_updated' });
@@ -342,7 +342,7 @@ export async function resetMyProfile(ctx: Ctx, confirm: string) {
   await ctx.tx.delete(miniMeChat).where(eq(miniMeChat.candidateId, id));
   await ctx.tx.delete(evidenceItems).where(eq(evidenceItems.candidateId, id));
   await ctx.tx.delete(conversations).where(eq(conversations.candidateId, id));
-  await ctx.tx.update(candidates).set({ preferencesConfirmed: false, preferredRoleFamilies: [], workModes: ['hybrid'], minSalaryPence: null, noticeWeeks: null, workAuthorisation: 'unknown', updatedAt: new Date() }).where(eq(candidates.id, id));
+  await ctx.tx.update(candidates).set({ preferencesConfirmed: false, preferredRoleFamilies: [], workModes: ['hybrid'], minSalaryPence: null, noticeWeeks: null, workAuthorisation: 'unknown', over18: null, roleFamilyNonNegotiable: false, updatedAt: new Date() }).where(eq(candidates.id, id));
   await logActivity(ctx, { subjectType: 'candidate', subjectId: id, action: 'candidate.profile_reset' });
   // Still visible: an empty profile, and matching starts again from what they add next.
   await rebuildProfile(ctx, id);

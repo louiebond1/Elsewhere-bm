@@ -31,6 +31,14 @@ export function CloseRole({ roleId }: { roleId: string }) {
   );
 }
 
+/** The only change a live job allows: add a must-have. It rules people in or out; nobody is re-interviewed. */
+export function AddMustHave({ roleId }: { roleId: string }) {
+  return (
+    <ActionButton path={`roles/${roleId}/must-have`} body={{ mustHave: 'requires18' }} label="Add must-have: 18+" variant="secondary"
+      confirm={{ title: 'Add a must-have', confirmLabel: 'Add it', body: <p>Only people who’ve told us they’re 18 or over stay in. Anyone who hasn’t said yet stays in, marked “Age requirement to confirm”. Nobody is re-interviewed. A must-have can’t be removed later.</p> }} />
+  );
+}
+
 export function ReopenRole({ roleId }: { roleId: string }) {
   const csrf = useCsrf();
   const router = useRouter();

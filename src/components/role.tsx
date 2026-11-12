@@ -128,7 +128,7 @@ export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href:
 
 export { credits };
 
-export type SimCardView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean }[]; provider: string };
+export type SimCardView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean; score?: number | null; reason?: string | null }[]; provider: string };
 
 export const fitLabel = (s: number) => (s >= 75 ? { text: 'Great fit', tone: 'success' as const } : s >= 50 ? { text: 'Good fit', tone: 'success' as const } : { text: 'Possible fit', tone: 'neutral' as const });
 
@@ -147,6 +147,7 @@ export function PersonRow({ rank, m, sim, href, index = 0 }: { rank?: number; m:
         <span className="block truncate font-display text-[19px] font-semibold tracking-[-0.02em] text-ink">{personName(m)}</span>
         <span className="block truncate text-[15px] text-muted">{status ?? m.safeHeadline}</span>
       </span>
+      {sim && sim.provider !== 'anthropic' && <span className="hidden whitespace-nowrap rounded-full bg-page px-2.5 py-0.5 text-[13px] text-muted sm:inline" title="Answers are the closest examples from their profile, without AI. Their AI interview replaces it when ready.">Basic interview</span>}
       {fit && <span className={cx('hidden whitespace-nowrap text-[14px] font-semibold sm:inline', fit.tone === 'success' ? 'text-primary' : 'text-muted')}>{fit.text}</span>}
       <ChevronRight aria-hidden className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
     </Link>

@@ -155,25 +155,30 @@ export async function awaitingAction(ctx: Ctx, clientId: string) {
 
 export { criteriaFor, isNull };
 
-export type SimView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean }[]; provider: string };
+export type SimView = { fitScore: number; summary: string; concerns: string[]; answers: { question: string; answer: string; grounded: boolean; kind: 'interview' | 'screening'; score: number | null; reason: string | null }[]; provider: string };
 
-/** "Your best 10": candidates ranked by their simulated interview, then everyone else in match order. */
+type StoredSim = { fitScore: number; summarySafe: string; concernsSafe: string[]; answers: unknown; provider: string };
+/** What a client sees of an interview: every question, the answer, and its score and reason (screening questions aren't scored). */
+function simView(s: StoredSim): SimView {
+  const answers = (s.answers as { question: string; answer: string; grounded: boolean; kind?: 'interview' | 'screening'; score?: number | null; reason?: string }[]).map((a) => ({ question: a.question, answer: a.answer, grounded: a.grounded, kind: a.kind ?? 'interview', score: a.score ?? null, reason: a.reason || null }));
+  return { fitScore: s.fitScore, summary: s.summarySafe, concerns: s.concernsSafe, answers, provider: s.provider };
+}
+
+/** Everyone ranked by their interview (best first); anyone not interviewed yet comes after, in match order. The top `limit` are "your best". */
 export async function bestPeople(ctx: Ctx, roleId: string, limit = 10) {
   const { all } = await roleMatches(ctx, roleId);
   const { simulationsForRole } = await import('../services/simulation');
   const sims = await simulationsForRole(ctx, roleId);
-  const view = (id: string): SimView | null => {
-    const s = sims.get(id);
-    return s ? { fitScore: s.fitScore, summary: s.summarySafe, concerns: s.concernsSafe, answers: (s.answers as { question: string; answer: string; grounded: boolean }[]).map((a) => ({ question: a.question, answer: a.answer, grounded: a.grounded })), provider: s.provider } : null;
-  };
+  const view = (id: string): SimView | null => { const x = sims.get(id); return x ? simView(x) : null; };
   const withSim = all.map((x, order) => ({ ...x, order, sim: view(x.candidateId) }));
-  const best = withSim.filter((x) => x.sim).sort((a, b) => b.sim!.fitScore - a.sim!.fitScore || a.order - b.order).slice(0, limit);
+  const ranked = [...withSim].sort((a, b) => (a.sim ? 0 : 1) - (b.sim ? 0 : 1) || (b.sim?.fitScore ?? 0) - (a.sim?.fitScore ?? 0) || a.order - b.order);
+  const best = ranked.filter((x) => x.sim).slice(0, limit);
   const bestIds = new Set(best.map((b) => b.candidateId));
-  return { best: best.map((b) => ({ dto: b.dto, sim: b.sim! })), rest: withSim.filter((x) => !bestIds.has(x.candidateId)).map((x) => x.dto), total: all.length };
+  return { best: best.map((b) => ({ dto: b.dto, sim: b.sim! })), rest: ranked.filter((x) => !bestIds.has(x.candidateId)).map((x) => x.dto), total: all.length };
 }
 
 export async function simulationForCandidate(ctx: Ctx, roleId: string, candidateId: string): Promise<SimView | null> {
   const { simulationsForRole } = await import('../services/simulation');
   const s = (await simulationsForRole(ctx, roleId)).get(candidateId);
-  return s ? { fitScore: s.fitScore, summary: s.summarySafe, concerns: s.concernsSafe, answers: (s.answers as { question: string; answer: string; grounded: boolean }[]).map((a) => ({ question: a.question, answer: a.answer, grounded: a.grounded })), provider: s.provider } : null;
+  return s ? simView(s) : null;
 }

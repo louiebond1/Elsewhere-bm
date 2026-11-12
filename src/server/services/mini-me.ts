@@ -8,7 +8,7 @@ import { inferTags } from '../../lib/tags';
 import { ONBOARDING_QUESTIONS } from '../../config/onboarding';
 
 /** Practical details are for matching filters, not for interview answers. */
-const NOT_FOR_INTERVIEWS = new Set(['why_move', 'salary', 'notice', 'location', 'work_mode', 'hours', 'right_to_work', 'gaps', 'not_interested', 'deal_breakers', 'questions_for_employers', 'employment_status']);
+export const NOT_FOR_INTERVIEWS = new Set(['why_move', 'salary', 'notice', 'location', 'work_mode', 'hours', 'right_to_work', 'gaps', 'not_interested', 'deal_breakers', 'questions_for_employers', 'employment_status']);
 const QUESTION = new Map(ONBOARDING_QUESTIONS.map((q) => [q.key, q.text]));
 
 /**
@@ -23,6 +23,15 @@ export async function miniMeEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: string) 
     // Practical details (salary, notice...) only ever answer screening questions.
     return { id: `mm:${r.questionKey}`, safeClaim: r.answer.slice(0, 900), tags: inferTags(`${about} ${r.answer}`), strength: 'partial', key: r.questionKey.startsWith('extra:') ? null : r.questionKey, topic: r.questionText, practical: NOT_FOR_INTERVIEWS.has(r.questionKey) };
   });
+}
+
+/** Every mini-me item for these candidates, with when it last changed: what a re-interview check needs. */
+export async function miniMeRows(ctx: Pick<Ctx, 'tx'>, candidateIds: string[]) {
+  if (!candidateIds.length) return new Map<string, { key: string; topic: string | null; answer: string; updatedAt: Date }[]>();
+  const rows = await ctx.tx.select({ c: onboardingAnswers.candidateId, key: onboardingAnswers.questionKey, topic: onboardingAnswers.questionText, answer: onboardingAnswers.answer, updatedAt: onboardingAnswers.updatedAt }).from(onboardingAnswers).where(and(inArray(onboardingAnswers.candidateId, candidateIds), eq(onboardingAnswers.status, 'approved')));
+  const out = new Map<string, { key: string; topic: string | null; answer: string; updatedAt: Date }[]>();
+  for (const r of rows) out.set(r.c, [...(out.get(r.c) ?? []), { key: r.key, topic: r.topic ?? QUESTION.get(r.key) ?? null, answer: r.answer, updatedAt: r.updatedAt }]);
+  return out;
 }
 
 /** When each candidate last approved something in their mini-me, so their interviews can be redone. */

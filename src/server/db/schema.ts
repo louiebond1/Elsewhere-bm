@@ -191,6 +191,10 @@ export const candidates = pgTable('candidates', {
   status: candidateStatus('status').notNull().default('onboarding'),
   /** False until they (or their AI, on their word) actually tell us where, how and what they want. */
   preferencesConfirmed: boolean('preferences_confirmed').notNull().default(true),
+  /** Private: whether they are 18 or over (null = not asked yet). Never shown to employers. */
+  over18: boolean('over_18'),
+  /** True when the type of job they asked for is non-negotiable for them; otherwise other types still interview them. */
+  roleFamilyNonNegotiable: boolean('role_family_non_negotiable').notNull().default(false),
   discoveryEnabled: boolean('discovery_enabled').notNull().default(false),
   employerResolutionStatus: employerResolution('employer_resolution_status').notNull().default('not_supplied'),
   currentOrganisationId: uuid('current_organisation_id').references(() => organisations.id),
@@ -388,6 +392,8 @@ export const roles = pgTable('roles', {
   workMode: workMode('work_mode').notNull(),
   salaryPence: units('salary_pence').notNull(),
   workAuthorisationRequired: boolean('work_authorisation_required').notNull().default(true),
+  /** Must-have: the person must be 18 or over. Clients may add this to a live job; it never re-interviews anyone. */
+  requires18: boolean('requires_18').notNull().default(false),
   briefText: text('brief_text').notNull().default(''),
   outcomes: text('outcomes').array().notNull().default(sql`'{}'::text[]`),
   teachableSkills: text('teachable_skills').array().notNull().default(sql`'{}'::text[]`),
@@ -529,6 +535,8 @@ export const simulatedInterviews = pgTable('simulated_interviews', {
   summarySafe: text('summary_safe').notNull(),
   concernsSafe: text('concerns_safe').array().notNull().default(sql`'{}'::text[]`),
   provider: aiProvider('provider').notNull().default('fixture'),
+  /** What decided the score: the job criteria and question keys it drew on (factors) and what was missing (gaps). A mini-me change re-runs the interview only if it touches one of these. */
+  scoreCard: jsonb('score_card'),
 }, (t) => [uniqueIndex('sim_interview_uq').on(t.roleId, t.candidateId), index('sim_interview_rank_idx').on(t.roleId, t.fitScore)]);
 
 export const rankingAdjustments = pgTable('ranking_adjustments', {
