@@ -175,7 +175,7 @@ npm run worker                      # background jobs (second terminal)
   - **Same twice:** each person is interviewed twice, and 90% get scores within 10 points.
   - **Fair:** one irrelevant change (age 58, a caring break, moved from Nigeria, dyslexia, or husband vs wife) moves no score by more than 10.
 - **A run** is 100 interviews, in chunks of 10, using the live AI and its budget. Start it with **"Run quality check"**. The page refreshes itself.
-- **Status at writing:** the first real run of the 36-person test was in progress. Check the page for the result. The **basic** version is far off (on average 26 points). That's expected, because it's keyword matching.
+- **Status at writing:** the first run of the 36-person test (12 Nov) came out all basic interviews because the AI key is rejected (see section 7, item 0). It doesn't count. Rerun it once the AI works. The **basic** version is far off (on average 26 points). That's expected, because it's keyword matching.
 
 ### 5.7 Credits and clients
 - **Credits are simulated** (no real payments). A new blank client gets 10 credits.
@@ -206,6 +206,15 @@ npm run worker                      # background jobs (second terminal)
 ---
 
 ## 7. Open issues and next steps (most important first)
+
+0. **The real AI has never worked on the live site. Fix this first.**
+   - **Evidence:** BondMoran → Operations shows every AI call failing with error code **"auth"** (the AI provider rejected the credentials) and "Last successful AI call: never". On 12 Nov all 238 calls failed with 0 tokens used.
+   - **Consequence:** every interview, mini-me chat reply and AI feature has silently used the basic or fixture fallback. The 36-person quality run on 12 Nov was all basic interviews, so it doesn't count.
+   - **Fix (owner only):**
+     1. In Railway, check `ANTHROPIC_API_KEY` on **both** the web and worker services. It must be a valid, active Anthropic API key.
+     2. In the Anthropic console, check the key is active, the account has credit, and it can use the configured model (`claude-haiku-5-5`, set in `src/config/prototype.ts`, overridable with `AI_CHEAP_MODEL`).
+     3. "auth" covers both a rejected key (401) and a permission refusal (403); the logs don't say which.
+     4. Then redeploy, check Operations shows successful calls, and press **Run quality check** again.
 
 1. **Read the 36-person AI quality run** on BondMoran → Interview quality. If it's "Not good enough yet", look at which people are far off and why. Likely levers:
    - the scoring prompt (`SIMULATION_SYSTEM` in `src/server/ai/prompts/index.ts`);
