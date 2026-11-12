@@ -4,14 +4,19 @@ import { cx } from './ui';
 
 type Person = { id: string; note: string; expected: number; score: number; gap: number; runs: number[] };
 type Check = { value: number; pass: boolean };
-type Job = { id: string; title: string; people: Person[]; avgGap: number; checks: Record<'close' | 'consistent' | 'fair', Check>; bias: { person: string; change: string; drift: number | null }[] };
-type Report = { pass: boolean; allAi: boolean; errors: number; overall: Record<'close' | 'consistent' | 'fair', boolean>; jobs: Job[]; thresholds: { closeWithin: number; maxDrift: number } };
+type Ranked = Person & { ourRank: number; aiRank: number };
+type Job = { id: string; title: string; people: Person[]; byAi: Ranked[]; order: number; topTen: number; avgGap: number; checks: Record<'order' | 'close' | 'consistent' | 'fair', Check>; bias: { person: string; change: string; drift: number | null }[] };
+type Report = { pass: boolean; allAi: boolean; errors: number; overall: Record<'order' | 'close' | 'consistent' | 'fair', boolean>; jobs: Job[]; thresholds: { closeWithin: number; maxDrift: number } };
 
-const LABEL: Record<string, string> = { close: 'Close to our rating', consistent: 'Same rating twice', fair: 'Treats people fairly' };
+const LABEL: Record<string, string> = { order: 'Same order as ours', close: 'Close to our rating', consistent: 'Same rating twice', fair: 'Treats people fairly' };
 
 /** Our rating for each test person next to the AI's, out of 100. Close is good. */
 export function QualityView({ report }: { report: Report }) {
   const [j, setJ] = useState(0);
+  const [view, setView] = useState<'order' | 'ratings'>('order');
+  // Places as people say them: 1 + how many scored higher; '=' when tied.
+  const place = (v: number, all: number[]) => `#${1 + all.filter((x) => x > v).length}${all.filter((x) => x === v).length > 1 ? '=' : ''}`;
+  const aiScores = job.people.map((x) => x.score), ourScores = job.people.map((x) => x.expected);
   const job = report.jobs[j];
   const failed = Object.entries(report.overall).filter(([, ok]) => !ok).map(([k]) => LABEL[k].toLowerCase());
   const unfair = job.bias.filter((b) => b.drift == null || Math.abs(b.drift) > report.thresholds.maxDrift);
@@ -29,6 +34,29 @@ export function QualityView({ report }: { report: Report }) {
         {report.jobs.length === 1 ? <h2 className="text-[22px]">{job.title}</h2> : <div role="tablist" className="flex flex-wrap gap-2">
           {report.jobs.map((x, n) => <button key={x.id} role="tab" aria-selected={n === j} type="button" onClick={() => setJ(n)} className={cx('rounded-full px-4 py-2 text-[15px] font-semibold', n === j ? 'bg-ink text-white' : 'bg-page text-ink')}>{Object.values(x.checks).every((c) => c.pass) ? '✓' : '✗'} {x.title}</button>)}
         </div>}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {(['order', 'ratings'] as const).map((v) => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)} className={cx('rounded-full px-4 py-1.5 text-[14px] font-semibold', view === v ? 'bg-primary text-white' : 'bg-page text-ink')}>{v === 'order' ? 'Order: AI vs ours' : 'Ratings out of 100'}</button>)}
+        </div>
+        {view === 'order' ? (<>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-page p-4"><p className="font-display text-[28px] font-semibold">{job.topTen} of 10</p><p className="text-[14px] text-muted">of our top 10 are in the AI’s top 10</p></div>
+            <div className="rounded-2xl bg-page p-4"><p className="font-display text-[28px] font-semibold">{job.order}<span className="text-[16px] text-muted"> / 100</span></p><p className="text-[14px] text-muted">how alike the two orders are (100 = identical)</p></div>
+          </div>
+          <div className="mt-4 hidden grid-cols-[56px_minmax(0,1fr)_96px_80px] gap-x-3 border-b border-line pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted sm:grid"><span>AI</span><span>Person</span><span className="text-right">Our place</span><span className="text-right">Apart</span></div>
+          <ol className="mt-2 space-y-1">
+            {job.byAi.map((p) => {
+              const apart = Math.round(Math.abs(p.ourRank - p.aiRank));
+              return (
+                <li key={p.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-x-3 text-[14px] sm:grid-cols-[56px_minmax(0,1fr)_96px_80px]">
+                  <span className="tnum font-semibold">{place(p.score, aiScores)}</span>
+                  <span className="truncate" title={p.note}>{p.note}</span>
+                  <span className="tnum text-right text-muted">ours {place(p.expected, ourScores)}</span>
+                  <span className={cx('tnum hidden text-right font-semibold sm:block', apart <= 2 ? 'text-primary' : apart <= 5 ? 'text-ink' : 'text-warning')}>{apart === 0 ? 'same' : `${apart} place${apart === 1 ? '' : 's'}`}</span>
+                </li>
+              );
+            })}
+          </ol>
+        </>) : (<>
         <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted">
           <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full border-2 border-ink" /> Our rating</span>
           <span className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-full bg-primary" /> AI’s rating</span>
@@ -48,6 +76,7 @@ export function QualityView({ report }: { report: Report }) {
             </li>
           ))}
         </ul>
+        </>)}
         <ul className="mt-5 space-y-1.5 border-t border-line pt-4 text-[15px]">
           <li>{job.checks.consistent.pass ? '✓' : '✗'} {unsteady.length ? `Rating changed on a second try for ${unsteady.length} of ${job.people.length}` : `Same rating twice for all ${job.people.length}`}</li>
           <li>{job.checks.fair.pass ? '✓' : '✗'} {unfair.length ? `Unfair: ${unfair.slice(0, 2).map((b) => `${b.change} changed a rating by ${b.drift}`).join('; ')}` : 'Age, a caring break, where they’re from, dyslexia or a partner’s gender changed no rating'}</li>

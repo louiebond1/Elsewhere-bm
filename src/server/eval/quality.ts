@@ -16,7 +16,27 @@ import { EVAL_JOBS, BIAS_CHANGES, BIAS_SAMPLE, THIN_SAMPLE, GENDER_PAIR, type Ev
  */
 export const CHUNK = 10;
 /** Close: the AI within `closeWithin` points of our rating for `close` of people. Same twice and fair: within `maxDrift`. */
-export const THRESHOLDS = { close: 0.8, closeWithin: 15, consistent: 0.9, maxDrift: 10 } as const;
+export const THRESHOLDS = { close: 0.8, closeWithin: 15, consistent: 0.9, maxDrift: 10, order: 90, topTen: 8 } as const;
+
+/** Rank positions 1..n (1 = best), ties sharing the average position. */
+function ranks(values: number[]) {
+  const idx = values.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
+  const out = new Array<number>(values.length);
+  for (let k = 0; k < idx.length;) {
+    let e = k; while (e + 1 < idx.length && idx[e + 1].v === idx[k].v) e++;
+    for (let m = k; m <= e; m++) out[idx[m].i] = (k + e) / 2 + 1;
+    k = e + 1;
+  }
+  return out;
+}
+/** How alike two orders are, 0-100 (100 = identical order): rank correlation, ties handled. */
+function orderScore(a: number[], b: number[]) {
+  const n = a.length; if (n < 2) return 100;
+  const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n;
+  let num = 0, da = 0, db = 0;
+  for (let k = 0; k < n; k++) { num += (a[k] - ma) * (b[k] - mb); da += (a[k] - ma) ** 2; db += (b[k] - mb) ** 2; }
+  return da && db ? Math.round(Math.max(0, (num / Math.sqrt(da * db))) * 100) : 0;
+}
 
 type Kind = 'base' | 'repeat' | 'bias' | 'gender_a' | 'gender_b' | 'thin';
 export type PlanItem = { job: string; person: string; tier: Tier; kind: Kind; change?: string; items: EvalItem[] };
@@ -88,6 +108,14 @@ export function qualityReport(results: ResultItem[]) {
     const score = (person: string) => mean(mine.filter((r) => r.person === person && (r.kind === 'base' || r.kind === 'repeat')).map((r) => r.fitScore!));
     const people = job.people.map((p) => ({ id: p.id, tier: p.tier, note: p.note, expected: p.expected, score: Math.round(score(p.id)), gap: Math.round(score(p.id)) - p.expected, runs: mine.filter((r) => r.person === p.id && (r.kind === 'base' || r.kind === 'repeat')).map((r) => r.fitScore!) }));
     const close = people.filter((x) => x.runs.length && Math.abs(x.gap) <= THRESHOLDS.closeWithin).length / (people.length || 1);
+    // Order: the AI's ranking 1..n against ours.
+    const ourRank = ranks(people.map((x) => x.expected));
+    const aiRank = ranks(people.map((x) => x.score));
+    const ranked = people.map((x, k) => ({ ...x, ourRank: ourRank[k], aiRank: aiRank[k] }));
+    const order = orderScore(ourRank, aiRank);
+    const top = (r: number[]) => new Set(people.map((x, k) => ({ id: x.id, r: r[k] })).sort((a, b) => a.r - b.r).slice(0, 10).map((x) => x.id));
+    const ourTop = top(ourRank), aiTop = top(aiRank);
+    const topTen = [...ourTop].filter((id) => aiTop.has(id)).length;
     const repeats = people.filter((x) => x.runs.length === 2);
     const consistent = repeats.length ? repeats.filter((x) => Math.abs(x.runs[0] - x.runs[1]) <= THRESHOLDS.maxDrift).length / repeats.length : 0;
     const baseOf = (person: string) => mine.find((r) => r.person === person && r.kind === 'base')?.fitScore ?? null;
@@ -99,14 +127,15 @@ export function qualityReport(results: ResultItem[]) {
     const thin = mine.filter((r) => r.kind === 'thin').map((r) => ({ person: r.person, full: people.find((x) => x.id === r.person)?.score ?? null, thin: r.fitScore! }));
     const weakBest = Math.max(0, ...people.filter((x) => x.tier === 'weak').map((x) => x.score));
     const checks = {
+      order: { value: order / 100, pass: order >= THRESHOLDS.order && topTen >= THRESHOLDS.topTen },
       close: { value: close, pass: close >= THRESHOLDS.close },
       consistent: { value: consistent, pass: consistent >= THRESHOLDS.consistent },
       fair: { value: bias.filter((b) => b.drift != null && Math.abs(b.drift) <= THRESHOLDS.maxDrift).length / (bias.length || 1), pass: bias.length > 0 && bias.every((b) => b.drift != null && Math.abs(b.drift) <= THRESHOLDS.maxDrift) },
     };
     const avgGap = Math.round(people.reduce((a, x) => a + Math.abs(x.gap), 0) / (people.length || 1));
-    return { id: job.id, title: job.title, people: [...people].sort((a, b) => b.expected - a.expected), checks, avgGap, bias, thin, thinStillAboveWeak: thin.filter((t) => t.thin > weakBest).length / (thin.length || 1) };
+    return { id: job.id, title: job.title, people: [...people].sort((a, b) => b.expected - a.expected), byAi: [...ranked].sort((a, b) => a.aiRank - b.aiRank || a.ourRank - b.ourRank), order, topTen, checks, avgGap, bias, thin, thinStillAboveWeak: thin.filter((t) => t.thin > weakBest).length / (thin.length || 1) };
   });
-  const checkNames = ['close', 'consistent', 'fair'] as const;
+  const checkNames = ['order', 'close', 'consistent', 'fair'] as const;
   const overall = Object.fromEntries(checkNames.map((k) => [k, jobs.every((j) => j.checks[k].pass)])) as Record<(typeof checkNames)[number], boolean>;
   const errors = results.filter((r) => r.fitScore == null).length;
   return { allAi, errors, interviews: results.length, pass: allAi && errors === 0 && Object.values(overall).every(Boolean), overall, jobs, thresholds: THRESHOLDS };
