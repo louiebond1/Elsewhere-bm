@@ -23,7 +23,6 @@ export const SIM_LIMIT = 500;
 export const NOT_SHARED = 'They haven’t shared an example of this yet.';
 
 type Crit = Awaited<ReturnType<typeof criteriaFor>>[number];
-type Evidence = { id: string; safeClaim: string; tags: string[]; strength: string; key?: string | null; topic?: string | null; practical?: boolean };
 /** A company name the dataset doesn't know about usually ends like this; such answers aren't shown. */
 const COMPANY = /\b(ltd|limited|plc|inc|llp|gmbh)\b\.?/i;
 export type SimAnswer = { question: string; answer: string; evidenceIds: string[]; grounded: boolean; key?: string | null; kind?: 'interview' | 'screening'; score?: number | null; reason?: string };
@@ -222,6 +221,41 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
   return { stored: true };
 }
 
+export type Evidence = { id: string; safeClaim: string; tags: string[]; strength: string; key?: string | null; topic?: string | null; practical?: boolean };
+
+/**
+ * One interview: the same code for real candidates and for the quality check. Answers come only from their
+ * evidence; with live AI on, Claude answers and scores every question (fixed answers are scored, not rewritten);
+ * otherwise, or if the AI is refused, the basic version is used.
+ */
+export async function runInterview(role: { title: string; outcomes: string[] }, questions: ReturnType<typeof interviewQuestions>, evidence: Evidence[], o: { live: boolean; datasetId: string | null; roleId?: string | null; candidateId?: string | null }) {
+  const demo = demoSimulation(questions, evidence);
+  let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
+  let budgetOut = false;
+  if (o.live && evidence.length) {
+    try {
+      const fixed = (q: (typeof questions)[number]) => !!(q.key || q.kind === 'screening' || direct(q, evidence));
+      const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
+      const res = await runAi({ task: 'simulate', datasetId: o.datasetId, roleId: o.roleId ?? null, candidateId: o.candidateId ?? null, input }, (p) => p.simulateInterview(input));
+      const out = res.output;
+      result = {
+        answers: questions.map((q, i) => {
+          const a = out.answers.find((x) => x.questionIndex === i);
+          const scored = a ? { score: q.kind === 'screening' ? null : a.score, reason: a.reason } : {};
+          // Fixed answers stay exactly as they wrote them; the AI only scores them.
+          if (fixed(q)) return { ...demo.built[i], ...scored };
+          return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length, key: q.key, kind: q.kind, ...(a ? scored : { score: 0, reason: 'Nothing in their mini-me covers this yet.' }) };
+        }),
+        fitScore: out.fitScore, summary: out.summary, concerns: out.concerns, provider: res.provider,
+      };
+    } catch (e) {
+      if (!(e instanceof AiFailure)) throw e;
+      if (e.code === 'monthly_budget' || e.code === 'daily_budget') budgetOut = true;
+    }
+  }
+  return { result, budgetOut };
+}
+
 /** Worker job: simulate each target. Live calls go through the budgeted runAi; if refused, demo simulation is used instead. */
 export async function handleSimulateJob(base: BaseCtx, roleId: string) {
   const { role, targets } = await simulationTargets(readCtx(base), roleId);
@@ -234,29 +268,9 @@ export async function handleSimulateJob(base: BaseCtx, roleId: string) {
     if (!prep || !prep.profileVersionId) continue;
     // Their approved examples plus their approved mini-me answers.
     const evidence: Evidence[] = [...prep.input.evidence.filter((e) => !e.id.startsWith('mm:')), ...(await miniMeEvidence(readCtx(base), t.candidateId))];
-    const demo = demoSimulation(questions, evidence);
-    let result = { answers: demo.built, fitScore: demo.fitScore, summary: demo.summary, concerns: demo.concerns, provider: 'fixture' as 'fixture' | 'anthropic' };
-    if (live && evidence.length) {
-      try {
-        const fixed = (q: (typeof questions)[number]) => !!(q.key || q.kind === 'screening' || direct(q, evidence));
-        const input = { role: { title: role.title, outcomes: role.outcomes }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
-        const res = await runAi({ task: 'simulate', datasetId: base.datasetId, roleId, candidateId: t.candidateId, input }, (p) => p.simulateInterview(input));
-        const out = res.output;
-        result = {
-          answers: questions.map((q, i) => {
-            const a = out.answers.find((x) => x.questionIndex === i);
-            const scored = a ? { score: q.kind === 'screening' ? null : a.score, reason: a.reason } : {};
-            // Fixed answers stay exactly as they wrote them; the AI only scores them.
-            if (fixed(q)) return { ...demo.built[i], ...scored };
-            return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length, key: q.key, kind: q.kind, ...(a ? scored : { score: 0, reason: 'Nothing in their mini-me covers this yet.' }) };
-          }),
-          fitScore: out.fitScore, summary: out.summary, concerns: out.concerns, provider: res.provider,
-        };
-      } catch (e) {
-        if (!(e instanceof AiFailure)) throw e;
-        if (e.code === 'monthly_budget' || e.code === 'daily_budget') live = false; // stop paid calls for the rest of this job
-      }
-    }
+    const r = await runInterview({ title: role.title, outcomes: role.outcomes }, questions, evidence, { live, datasetId: base.datasetId, roleId, candidateId: t.candidateId });
+    if (r.budgetOut) live = false; // stop paid calls for the rest of this job
+    const result = r.result;
     await withTx(base, (ctx) => storeSimulation(ctx, { roleId, candidateId: t.candidateId, roleVersion: prep.roleVersion, profileVersionId: prep.profileVersionId!, ...result, evidenceIds: evidence.map((e) => e.id), questions }));
   }
 }
