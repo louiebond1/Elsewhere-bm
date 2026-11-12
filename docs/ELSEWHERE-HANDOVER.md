@@ -175,7 +175,13 @@ npm run worker                      # background jobs (second terminal)
   - **Same twice:** each person is interviewed twice, and 90% get scores within 10 points.
   - **Fair:** one irrelevant change (age 58, a caring break, moved from Nigeria, dyslexia, or husband vs wife) moves no score by more than 10.
 - **A run** is 100 interviews, in chunks of 10, using the live AI and its budget. Start it with **"Run quality check"**. The page refreshes itself.
-- **Status at writing:** the first run of the 36-person test (12 Nov) came out all basic interviews because the AI key is rejected (see section 7, item 0). It doesn't count. Rerun it once the AI works. The **basic** version is far off (on average 26 points). That's expected, because it's keyword matching.
+- **First real result (12 Nov, 23:30 UTC, live AI):**
+  - **Same order as ours: pass.** 10 of our top 10 are in the AI's top 10, and the two orders are 97/100 alike. Most people are within 1–2 places.
+  - **Same rating twice: pass** (1 of 36 moved).
+  - **Fair: pass** (no irrelevant change moved a rating).
+  - **Close to our rating: fail.** The AI uses roughly 5–80 where we used 2–99: the same order, a stricter scale.
+  - **Oddity to fix:** "Nothing shared" got 13 (9 places too high).
+  - **Before then:** the AI had never worked live. First the key was rejected; then replies were cut off at 1,200 tokens (fixed: cap raised to 4,000, and fixed answers aren't repeated).
 
 ### 5.7 Credits and clients
 - **Credits are simulated** (no real payments). A new blank client gets 10 credits.
@@ -207,7 +213,7 @@ npm run worker                      # background jobs (second terminal)
 
 ## 7. Open issues and next steps (most important first)
 
-0. **The real AI has never worked on the live site. Fix this first.**
+0. **(Fixed 12 Nov.)** The real AI had never worked on the live site.
    - **Evidence:** BondMoran → Operations shows every AI call failing with error code **"auth"** (the AI provider rejected the credentials) and "Last successful AI call: never". On 12 Nov all 238 calls failed with 0 tokens used.
    - **Consequence:** every interview, mini-me chat reply and AI feature has silently used the basic or fixture fallback. The 36-person quality run on 12 Nov was all basic interviews, so it doesn't count.
    - **Fix (owner only):**
