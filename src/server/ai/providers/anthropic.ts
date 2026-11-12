@@ -50,7 +50,11 @@ async function call<S extends z.ZodType>(task: keyof typeof MAX_TOKENS, system: 
     if (e instanceof Anthropic.RateLimitError) throw new AiFailure('rate_limited', 'The AI provider is rate limiting requests.', true);
     if (e instanceof Anthropic.APIConnectionTimeoutError) throw new AiFailure('timeout', 'The AI provider timed out.', true);
     if (e instanceof Anthropic.APIConnectionError) throw new AiFailure('network', 'Could not reach the AI provider.', true);
+    if (e instanceof Anthropic.APIError) console.error(`[ai] provider error in ${task}: ${e.status ?? ''} ${String(e.message).slice(0, 400)}`);
     if (e instanceof Anthropic.APIError) throw new AiFailure('provider_error', 'The AI provider returned an error.', (e.status ?? 0) >= 500);
+    // Log what actually went wrong (type and message only; never the request or any key) so it can be fixed.
+    const err = e as { constructor?: { name?: string }; message?: unknown };
+    console.error(`[ai] unexpected failure in ${task}: ${err?.constructor?.name ?? 'Error'}: ${String(err?.message ?? e).slice(0, 400)}`);
     throw new AiFailure('unknown', 'Unexpected AI failure.');
   }
 }
