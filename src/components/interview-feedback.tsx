@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Clock, Lock } from 'lucide-react';
 import { useCommand, ErrorText, textareaClass } from './client';
 import { buttonClass, cx } from './ui';
+import { ClampText } from './clamp-text';
 
 type QA = { question: string; answer: string | null; key: string | null; kind: 'interview' | 'screening' };
 
@@ -78,7 +79,7 @@ export function InterviewDeck({ answers, open }: { answers: QA[]; open: boolean 
         <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">{a.kind === 'screening' ? 'Screening' : 'Interview'} · question {i + 1} of {answers.length}</p>
         <p className="mt-1 font-display text-[21px] font-semibold leading-snug">{a.question}</p>
         {a.answer
-          ? <p className="mt-4 rounded-2xl bg-page p-4 text-[17px] leading-relaxed"><span className="mb-1 block text-[13px] font-semibold text-primary">Your mini-me said</span>“{a.answer}”</p>
+          ? <div className="mt-4 rounded-2xl bg-page p-4"><span className="mb-1 block text-[13px] font-semibold text-primary">Your mini-me said</span><ClampText text={`“${a.answer}”`} className="text-[17px] leading-relaxed" /></div>
           : <p className="mt-4 rounded-2xl bg-warning-tint p-4 text-[16px] text-warning">Your mini-me didn’t know this one yet.</p>}
         <EditAnswer key={`e-${i}-${a.answer ?? ''}`} qa={a} open={open} />
         <div className="mt-6 flex items-center justify-between border-t border-line pt-4">

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { buttonClass, cx } from './ui';
+import { ClampText } from './clamp-text';
 
 type A = { question: string; answer: string; grounded: boolean; kind: 'interview' | 'screening'; score: number | null; reason: string | null };
 
@@ -47,7 +48,7 @@ export function ClientInterview({ answers, summary, concerns, basic, fit }: { an
 
       <div key={i} className="rise-in mt-4 rounded-2xl bg-page p-5">
         <p className="font-display text-[19px] font-semibold leading-snug">{a.question}</p>
-        <p className={cx('mt-3 text-[16px] leading-relaxed', !a.grounded && 'text-muted')}>{a.grounded ? `“${a.answer}”` : 'No answer yet'}</p>
+        <div className="mt-3">{a.grounded ? <ClampText text={`“${a.answer}”`} className="text-[16px] leading-relaxed" /> : <p className="text-[16px] text-muted">No answer yet</p>}</div>
         {a.kind === 'interview' && a.score != null && a.grounded && (
           <div className="mt-4 flex items-center gap-3">
             <span aria-hidden className="flex gap-1">{Array.from({ length: 10 }, (_, k) => <span key={k} className={cx('h-2 w-4 rounded-full', k < a.score! ? (a.score! >= 7 ? 'bg-primary' : a.score! >= 4 ? 'bg-[#B6BF81]' : 'bg-warning') : 'bg-line')} />)}</span>
