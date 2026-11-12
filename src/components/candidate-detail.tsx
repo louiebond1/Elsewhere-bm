@@ -7,6 +7,7 @@ import { LevelBadge, fitLabel, personName } from './role';
 import { FoldArt } from './fold-art';
 import { paletteFor, variantFor } from '../lib/codename';
 import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
+import { ClientInterview } from './client-interview';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
 export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }: { ctx: Ctx; roleId: string; candidateRef: string; base: string; view?: string }) {
@@ -45,20 +46,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
             </Card>
           )}
           {section === 'interview' && sim && (
-            <Card title="Their simulated interview" action={<Badge tone={fitLabel(sim.fitScore).tone}>{fitLabel(sim.fitScore).text}</Badge>}>
-              <p className="text-[15px]">{sim.summary}</p>
-              <p className="mt-2 text-[13px] text-muted">{sim.provider === 'anthropic' ? 'An AI interview built only from their real examples, scored against what you asked for. It isn’t something they said.' : 'Basic interview: each answer is the closest example from their profile, without AI. Their full AI interview replaces it when it’s ready.'}</p>
-              <ol className="mt-3 space-y-3">
-                {sim.answers.map((a, i) => (
-                  <li key={i} className="text-[15px]">
-                    <p className="flex items-start justify-between gap-3 font-medium"><span>{a.question}</span>{a.kind === 'screening' ? <span className="shrink-0 rounded-full bg-page px-2.5 py-0.5 text-[13px] font-semibold text-muted">Screening</span> : a.score != null && <span className="tnum shrink-0 rounded-full bg-success-tint px-2.5 py-0.5 text-[13px] font-semibold text-primary" aria-label={`Scored ${a.score} out of 10`}>{a.score}/10</span>}</p>
-                    <p className={a.grounded ? 'mt-1' : 'mt-1 text-muted'}>{a.grounded ? `“${a.answer}”` : a.answer}</p>
-                    {a.reason && <p className="mt-1 text-[13px] text-muted">{a.reason}</p>}
-                  </li>
-                ))}
-              </ol>
-              {sim.concerns.length > 0 && <p className="mt-3 text-[14px]"><span className="font-medium">Worth asking about:</span> {sim.concerns.join('; ').toLowerCase()}</p>}
-            </Card>
+            <ClientInterview answers={sim.answers} summary={sim.summary} concerns={sim.concerns} basic={sim.provider !== 'anthropic'} fit={fitLabel(sim.fitScore)} />
           )}
           {section === 'evidence' && (
           <Card title="How they fit this role">

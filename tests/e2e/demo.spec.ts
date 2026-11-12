@@ -266,7 +266,12 @@ test('Hiring assistant: a client describes the role in conversation, taps quick 
   await expect(page.getByLabel('Number 1', { exact: true })).toBeVisible({ timeout: 45_000 });
   await page.getByRole('link', { name: /^Number 1 / }).click();
   await page.getByRole('link', { name: 'Interview', exact: true }).click();
-  await expect(page.getByText('Their simulated interview')).toBeVisible();
+  // One question at a time: pick a question from the row of numbers, step through with Next.
+  const deck = page.getByRole('region', { name: 'Their interview' });
+  await expect(deck).toBeVisible();
+  await expect(deck.getByText(/^1 of \d+$/)).toBeVisible();
+  await deck.getByRole('button', { name: 'Next' }).click();
+  await expect(deck.getByText(/^2 of \d+$/)).toBeVisible();
   await page.goto('/client/home');
   await expect(page.getByRole('link', { name: /^Finance Assistant/ })).toBeVisible();
   await page.goto('/client/roles/new');
