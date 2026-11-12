@@ -1,3 +1,5 @@
+> **Out of date.** This is the early Stage 2 handover. The current, complete handover is [`docs/ELSEWHERE-HANDOVER.md`](ELSEWHERE-HANDOVER.md).
+
 # Handover: BondMoran prototype
 
 Built overnight from the build specification (Version 1, 6 November 2026). This is a functioning **fictional-data prototype**. It is not production ready.
