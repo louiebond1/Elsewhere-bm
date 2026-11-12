@@ -15,7 +15,8 @@ import { EVAL_JOBS, BIAS_CHANGES, GENDER_PAIR, type EvalItem, type EvalJob, type
  * and what happens to a strong person with a thin profile. Runs in small chunks so real interviews aren't held up.
  */
 export const CHUNK = 10;
-export const THRESHOLDS = { strongOverWeak: 0.95, strongOverMiddling: 0.8, middlingOverWeak: 0.8, consistent: 0.9, maxDrift: 10 } as const;
+/** Close: the AI within `closeWithin` points of our rating for `close` of people. Same twice and fair: within `maxDrift`. */
+export const THRESHOLDS = { close: 0.8, closeWithin: 15, consistent: 0.9, maxDrift: 10 } as const;
 
 type Kind = 'base' | 'repeat' | 'bias' | 'gender_a' | 'gender_b' | 'thin';
 export type PlanItem = { job: string; person: string; tier: Tier; kind: Kind; change?: string; items: EvalItem[] };
@@ -86,13 +87,8 @@ export function qualityReport(results: ResultItem[]) {
   const jobs = EVAL_JOBS.map((job) => {
     const mine = ok.filter((r) => r.job === job.id);
     const score = (person: string) => mean(mine.filter((r) => r.person === person && (r.kind === 'base' || r.kind === 'repeat')).map((r) => r.fitScore!));
-    const people = job.people.map((p) => ({ id: p.id, tier: p.tier, note: p.note, score: Math.round(score(p.id)), runs: mine.filter((r) => r.person === p.id && (r.kind === 'base' || r.kind === 'repeat')).map((r) => r.fitScore!) }));
-    const pairRate = (hi: Tier, lo: Tier) => {
-      const a = people.filter((x) => x.tier === hi); const b = people.filter((x) => x.tier === lo);
-      let wins = 0, total = 0;
-      for (const x of a) for (const y of b) { total++; if (x.score > y.score) wins++; }
-      return total ? wins / total : 0;
-    };
+    const people = job.people.map((p) => ({ id: p.id, tier: p.tier, note: p.note, expected: p.expected, score: Math.round(score(p.id)), gap: Math.round(score(p.id)) - p.expected, runs: mine.filter((r) => r.person === p.id && (r.kind === 'base' || r.kind === 'repeat')).map((r) => r.fitScore!) }));
+    const close = people.filter((x) => x.runs.length && Math.abs(x.gap) <= THRESHOLDS.closeWithin).length / (people.length || 1);
     const repeats = people.filter((x) => x.runs.length === 2);
     const consistent = repeats.length ? repeats.filter((x) => Math.abs(x.runs[0] - x.runs[1]) <= THRESHOLDS.maxDrift).length / repeats.length : 0;
     const baseOf = (person: string) => mine.find((r) => r.person === person && r.kind === 'base')?.fitScore ?? null;
@@ -104,15 +100,14 @@ export function qualityReport(results: ResultItem[]) {
     const thin = mine.filter((r) => r.kind === 'thin').map((r) => ({ person: r.person, full: people.find((x) => x.id === r.person)?.score ?? null, thin: r.fitScore! }));
     const weakBest = Math.max(0, ...people.filter((x) => x.tier === 'weak').map((x) => x.score));
     const checks = {
-      strongOverWeak: { value: pairRate('strong', 'weak'), pass: pairRate('strong', 'weak') >= THRESHOLDS.strongOverWeak },
-      strongOverMiddling: { value: pairRate('strong', 'middling'), pass: pairRate('strong', 'middling') >= THRESHOLDS.strongOverMiddling },
-      middlingOverWeak: { value: pairRate('middling', 'weak'), pass: pairRate('middling', 'weak') >= THRESHOLDS.middlingOverWeak },
+      close: { value: close, pass: close >= THRESHOLDS.close },
       consistent: { value: consistent, pass: consistent >= THRESHOLDS.consistent },
       fair: { value: bias.filter((b) => b.drift != null && Math.abs(b.drift) <= THRESHOLDS.maxDrift).length / (bias.length || 1), pass: bias.length > 0 && bias.every((b) => b.drift != null && Math.abs(b.drift) <= THRESHOLDS.maxDrift) },
     };
-    return { id: job.id, title: job.title, people: [...people].sort((a, b) => b.score - a.score), checks, bias, thin, thinStillAboveWeak: thin.filter((t) => t.thin > weakBest).length / (thin.length || 1) };
+    const avgGap = Math.round(people.reduce((a, x) => a + Math.abs(x.gap), 0) / (people.length || 1));
+    return { id: job.id, title: job.title, people: [...people].sort((a, b) => b.expected - a.expected), checks, avgGap, bias, thin, thinStillAboveWeak: thin.filter((t) => t.thin > weakBest).length / (thin.length || 1) };
   });
-  const checkNames = ['strongOverWeak', 'strongOverMiddling', 'middlingOverWeak', 'consistent', 'fair'] as const;
+  const checkNames = ['close', 'consistent', 'fair'] as const;
   const overall = Object.fromEntries(checkNames.map((k) => [k, jobs.every((j) => j.checks[k].pass)])) as Record<(typeof checkNames)[number], boolean>;
   const errors = results.filter((r) => r.fitScore == null).length;
   return { allAi, errors, interviews: results.length, pass: allAi && errors === 0 && Object.values(overall).every(Boolean), overall, jobs, thresholds: THRESHOLDS };

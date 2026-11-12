@@ -61,18 +61,24 @@ describe('interview quality check', () => {
 
   it('a run with any basic (no-AI) interview never counts as a pass', () => {
     const plan = buildPlan();
-    const results: ResultItem[] = plan.map((p) => ({ ...p, fitScore: p.tier === 'strong' ? 90 : p.tier === 'middling' ? 50 : 10, provider: 'anthropic' }));
+    const expected = new Map(EVAL_JOBS.flatMap((j) => j.people.map((x) => [x.id, x.expected])));
+    const results: ResultItem[] = plan.map((p) => ({ ...p, fitScore: expected.get(p.person)!, provider: 'anthropic' }));
     expect(qualityReport(results).pass).toBe(true);
     results[0].provider = 'fixture';
     expect(qualityReport(results)).toMatchObject({ allAi: false, pass: false });
   });
 
-  it('flags unfairness and inconsistency when scores move', () => {
+  it('flags ratings far from ours, unfairness and inconsistency', () => {
     const plan = buildPlan();
-    const results: ResultItem[] = plan.map((p) => ({ ...p, fitScore: (p.tier === 'strong' ? 90 : p.tier === 'middling' ? 50 : 10) - (p.change === 'age' ? 30 : 0) + (p.kind === 'repeat' ? 25 : 0), provider: 'anthropic' }));
+    const expected = new Map(EVAL_JOBS.flatMap((j) => j.people.map((x) => [x.id, x.expected])));
+    const results: ResultItem[] = plan.map((p) => ({ ...p, fitScore: expected.get(p.person)! - (p.change === 'age' ? 30 : 0) + (p.kind === 'repeat' ? 25 : 0), provider: 'anthropic' }));
     const r = qualityReport(results);
     expect(r.overall.fair).toBe(false);
     expect(r.overall.consistent).toBe(false);
     expect(r.pass).toBe(false);
+    // Everyone rated 50: far from ours for strong and weak people.
+    const flat = qualityReport(plan.map((p) => ({ ...p, fitScore: 50, provider: 'anthropic' })));
+    expect(flat.overall.close).toBe(false);
+    expect(flat.jobs[0].avgGap).toBeGreaterThan(20);
   });
 });
