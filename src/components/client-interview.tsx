@@ -16,7 +16,7 @@ function Dispute({ roleId, candidateRef, index, current }: { roleId: string; can
   const [score, setScore] = useState<number | null>(null);
   const [why, setWhy] = useState('');
   const [done, setDone] = useState(false);
-  if (done) return <p role="status" className="mt-3 text-[14px] font-semibold text-primary">✓ Saved. Everyone for this job will be re-scored with your correction.</p>;
+  if (done) return <p role="status" className="mt-3 text-[14px] font-semibold text-primary">✓ Saved for this answer. This does not change the job checklist or ranking.</p>;
   if (!open) return <button type="button" className="mt-3 text-[14px] font-semibold text-primary underline underline-offset-2" onClick={() => setOpen(true)}>Disagree with this score?</button>;
   return (
     <div className="mt-3 rounded-2xl bg-surface p-4">

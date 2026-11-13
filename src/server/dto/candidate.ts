@@ -22,8 +22,10 @@ export type AnonymousMatchDTO = {
   experienceBand: string;
   workModes: string[];
   safeEvidence: { id: string; claim: string; strength: string; uncertainty: string | null; criterionKeys: string[] }[];
-  criteria: { key: string; label: string; level: string; humanLevel: string | null; evidenceIds: string[]; reasonSafe: string }[];
+  criteria: { key: string; label: string; level: string; humanLevel: string | null; evidenceIds: string[]; reasonSafe: string; followUp?: string | null; quote?: string; essential?: boolean }[];
   unknowns: string[];
+  evidenceScore?: number | null;
+  profileCoverage?: number | null;
   confidence: string | null;
   eligibility: string | null;
   needsClarification: string | null;
@@ -42,7 +44,7 @@ export async function anonymousDTO(ctx: Ctx, args: { roleId: string; candidateId
   const [pv] = cand?.latestProfileVersionId ? await ctx.tx.select({ headlineSafe: profileVersions.headlineSafe, summarySafe: profileVersions.summarySafe }).from(profileVersions).where(eq(profileVersions.id, cand.latestProfileVersionId)) : [];
   const evidence = cand ? await matchEvidence(ctx, cand.id, cand.latestProfileVersionId) : [];
   const crit = await criteriaFor(ctx, args.roleId);
-  const results = ((args.match?.criterionResults as { criterionId: string; aiLevel: string; humanLevel: string | null; evidenceIds: string[]; reasonSafe: string }[]) ?? []);
+  const results = ((args.match?.criterionResults as { criterionId: string; aiLevel: string; humanLevel: string | null; evidenceIds: string[]; reasonSafe: string; quote?: string; followUp?: string | null }[]) ?? []);
   const validIds = new Set(evidence.map((e) => e.id));
   const evRef = (id: string) => roleScopedEvidenceRef(args.roleId, id);
   const [scr] = await ctx.tx.select({ status: screenings.status, summarySafe: screenings.summarySafe }).from(screenings).where(and(eq(screenings.roleId, args.roleId), eq(screenings.candidateId, args.candidateId)));
@@ -60,7 +62,7 @@ export async function anonymousDTO(ctx: Ctx, args: { roleId: string; candidateId
       const ids = (r?.evidenceIds ?? []).filter((id) => validIds.has(id));
       // If evidence was withdrawn since computation, never show the old level as supported.
       const level = r && (r.aiLevel === 'unknown' || r.aiLevel === 'contradictory' || ids.length) ? r.aiLevel : 'unknown';
-      return { key: c.criterionKey, label: c.label, level, humanLevel: r?.humanLevel ?? null, evidenceIds: ids.map(evRef), reasonSafe: r && level === r.aiLevel ? r.reasonSafe : `We haven’t seen evidence of ${c.label.toLowerCase()} yet.` };
+      return { key: c.criterionKey, label: c.label, quote: r?.quote, followUp: r?.followUp, essential: c.importance === 'essential', level, humanLevel: r?.humanLevel ?? null, evidenceIds: ids.map(evRef), reasonSafe: r && level === r.aiLevel ? r.reasonSafe : `We haven’t seen evidence of ${c.label.toLowerCase()} yet.` };
     }),
     unknowns: args.match?.missingEvidence ?? [],
     confidence: args.match?.confidence ?? null,

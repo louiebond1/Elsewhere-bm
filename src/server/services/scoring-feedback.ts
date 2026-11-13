@@ -9,18 +9,9 @@ import { logActivity } from './audit';
 import { NOT_SHARED } from './simulation';
 
 type StoredAnswer = { question: string; answer: string; grounded: boolean; kind?: string; score?: number | null };
-const cut = (t: string, n = 220) => (t.length > n ? `${t.slice(0, n)}…` : t);
 
 export const correctionInput = z.object({ roleId: z.string().uuid(), candidateRef: z.string().min(8).max(80), questionIndex: z.number().int().min(0).max(19), humanScore: z.number().int().min(0).max(10), reason: z.string().trim().min(3, 'Say briefly why').max(400) });
 export const preferenceInput = z.object({ roleId: z.string().uuid(), questionIndex: z.number().int().min(0).max(19), preferredId: z.string().uuid(), otherId: z.string().uuid(), reason: z.string().trim().max(400).default('') });
-
-/** Every interview for these jobs is re-scored with the new guidance (the next sweep or now). */
-async function bumpGuidance(ctx: Ctx, roleIds: string[]) {
-  if (!roleIds.length) return;
-  await ctx.tx.update(roles).set({ guidanceVersion: sql`${roles.guidanceVersion} + 1`, updatedAt: new Date() }).where(inArray(roles.id, roleIds));
-  const { requestSimulations } = await import('./simulation');
-  for (const id of roleIds) await requestSimulations(ctx, id);
-}
 
 /**
  * "This shouldn't be a 10": a hiring manager or BondMoran corrects one question's score and says why. It is shown
@@ -39,7 +30,7 @@ export async function correctScore(ctx: Ctx, raw: unknown) {
   if (a.kind === 'screening') throw invalid('Screening questions aren’t scored.');
   await ctx.tx.insert(scoringFeedback).values({ datasetId: ctx.datasetId, clientId: role.clientId, roleId: role.id, candidateId, kind: 'correction', question: a.question, answer: a.grounded ? a.answer : NOT_SHARED, aiScore: a.score ?? null, humanScore: input.humanScore, reason: input.reason, createdByUserId: actor.userId });
   await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: 'interview.score_corrected', clientId: role.clientId, metadata: { from: a.score ?? null, to: input.humanScore } });
-  await bumpGuidance(ctx, [role.id]);
+
   return { saved: true };
 }
 
@@ -86,19 +77,15 @@ export async function choosePreference(ctx: Ctx, raw: unknown) {
   if (!p || !o || !p.grounded || !o.grounded || p.question !== o.question) throw notFound();
   await ctx.tx.insert(scoringFeedback).values({ datasetId: ctx.datasetId, clientId: role.clientId, roleId: role.id, kind: 'preference', question: p.question, answer: p.answer, otherAnswer: o.answer, reason: input.reason, createdByUserId: actor.userId });
   await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: 'interview.preference_taught', clientId: role.clientId });
-  const live = await ctx.tx.select({ id: roles.id }).from(roles).where(and(eq(roles.clientId, role.clientId), eq(roles.status, 'open')));
-  await bumpGuidance(ctx, live.map((r) => r.id));
+
   return { saved: true };
 }
 
 /** What the AI must follow when scoring this job: its corrections, then the client's preferences (newest first). */
 export async function guidanceFor(ctx: Pick<Ctx, 'tx'>, role: { id: string; clientId: string }) {
-  const corrections = await ctx.tx.select().from(scoringFeedback).where(and(eq(scoringFeedback.roleId, role.id), eq(scoringFeedback.kind, 'correction'))).orderBy(desc(scoringFeedback.createdAt)).limit(15);
-  const prefs = await ctx.tx.select().from(scoringFeedback).where(and(eq(scoringFeedback.clientId, role.clientId), eq(scoringFeedback.kind, 'preference'))).orderBy(desc(scoringFeedback.createdAt)).limit(15);
-  return [
-    ...corrections.map((c) => `Correction for "${c.question}": an answer like "${cut(c.answer)}" deserves ${c.humanScore}/10${c.aiScore != null ? `, not ${c.aiScore}/10` : ''}. Reason: ${cut(c.reason, 300)}`),
-    ...prefs.map((p) => `Preference for "${p.question}": the hiring manager prefers an answer like "${cut(p.answer)}" over one like "${cut(p.otherAnswer ?? '')}"${p.reason ? `. Why: ${cut(p.reason, 300)}` : ''}`),
-  ];
+  // Unapproved preferences and individual corrections never become global scoring instructions.
+  void ctx; void role;
+  return [] as string[];
 }
 
 export async function feedbackCount(ctx: Pick<Ctx, 'tx'>, clientId: string) {

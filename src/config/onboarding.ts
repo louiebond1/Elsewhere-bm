@@ -69,6 +69,20 @@ export const ONBOARDING: OnboardingSection[] = [
     { key: 'hours', text: 'Full-time or part-time? Any hours you need?' },
     { key: 'right_to_work', text: 'Do you have the right to work in the UK?', hint: 'Just yes or no; you don’t need to explain your status here.' },
   ] },
+  { key: 'context', title: 'The work behind the job title', questions: [
+    { key: 'operating_context', text: 'Describe the environment you actually worked in: resources, support, pace and how decisions were made. What did you personally handle?' },
+    { key: 'resource_constraints', text: 'Tell me about delivering something when resources or information were limited. What choices did you make and what happened?' },
+    { key: 'decision_authority', text: 'Describe a decision you made yourself and one you escalated. Why did you draw the line there?' },
+    { key: 'operational_scale', text: 'What complexity did you personally manage: volume, sites, teams or systems? Give an example rather than just the company size.' },
+    { key: 'governance', text: 'Tell me about a time checks, audit requirements or approvals mattered. What was your responsibility?' },
+    { key: 'stakeholder_tradeoffs', text: 'Tell me about people wanting conflicting things from your work. What did you do?' },
+    { key: 'difficult_conditions', text: 'If relevant, describe challenging working conditions you directly experienced. What was within your control and how did you respond?', hint: 'Optional. No personal or sensitive details are required.' },
+    { key: 'ethical_judgement', text: 'Tell me about a work decision where doing the right thing was difficult. What action did you personally take?' },
+    { key: 'team_entry', text: 'What was it like joining your team? Give an example of building trust or adapting how you communicated.' },
+    { key: 'change_ambiguity', text: 'Tell me about a time priorities or procedures changed unexpectedly. How did you decide what to do?' },
+    { key: 'support_preference', text: 'What level of guidance and support would you want in your next role? What have you handled before?' },
+    { key: 'environment_preference', text: 'Which working conditions would you choose next, and which would you avoid, even if you could handle them?' },
+  ] },
   { key: 'more', title: 'Anything else', questions: [
     { key: 'gaps', text: 'Any gaps in your work history you’d like to explain in your own words?', hint: 'Optional. You don’t have to give a reason.' },
     { key: 'extra', text: 'Is there anything else an employer should know about what you can do?' },
@@ -82,3 +96,6 @@ export const TOPIC_LABELS: Record<string, string> = {"current_role": "Current jo
 export const ONBOARDING_QUESTIONS = ONBOARDING.flatMap((s) => s.questions.map((q) => ({ ...q, section: s.key, sectionTitle: s.title })));
 export const ONBOARDING_KEYS = new Set(ONBOARDING_QUESTIONS.map((q) => q.key));
 export const MAX_ONBOARDING_ANSWER = 1500;
+
+/** Work evidence that can change a role interview; preferences remain separate. */
+export const CONTEXT_EVIDENCE_KEYS = new Set(ONBOARDING.find(s => s.key === 'context')!.questions.map(q => q.key).filter(k => !['support_preference','environment_preference'].includes(k)));

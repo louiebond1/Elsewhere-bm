@@ -63,7 +63,7 @@ export const fixtureProvider: AiProvider = {
       const level = spec.length ? 'specific' : rel.length ? 'partial' : 'unknown';
       const ids = (spec.length ? spec : rel).map((e) => e.id);
       const reasonSafe = level === 'specific' ? `Gave a real example of ${c.label.toLowerCase()}, with the result.` : level === 'partial' ? 'Gave a related example, but not much detail on the result.' : `We haven’t seen evidence of ${c.label.toLowerCase()} yet.`;
-      return { criterionId: c.criterionId, level: level as 'specific' | 'partial' | 'unknown', evidenceIds: ids, reasonSafe };
+      return { criterionId: c.criterionId, level: (level === 'specific' ? 'clear' : level) as 'clear' | 'partial' | 'unknown', evidenceIds: ids, quote: (spec[0] ?? rel[0])?.safeClaim ?? '', reasonSafe };
     });
     return { provider: 'fixture', usage, output: { criteria } };
   },

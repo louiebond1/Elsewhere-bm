@@ -73,7 +73,7 @@ export function RoleForm({ clientId, ratePence, base, initial, roleId, rowVersio
         <Field label="Outcomes" hint="One per line. At least one is needed to activate."><textarea className={textareaClass} rows={3} {...register('outcomes')} /></Field>
         <Field label="Teachable skills" hint="One per line. Things you will teach, so they are not requirements."><textarea className={textareaClass} rows={2} {...register('teachableSkills')} /></Field>
         <fieldset>
-          <legend className="text-[14px] font-medium">What matters (3 to 6 things, job-related only)</legend>
+          <legend className="text-[14px] font-medium">What matters (3 to 12 things, job-related only)</legend>
           <p className="text-[13px] text-muted">No protected traits, school prestige or years-of-experience requirements that the role does not need.</p>
           <div className="mt-2 space-y-3">
             {fields.map((f, i) => (
@@ -95,12 +95,12 @@ export function RoleForm({ clientId, ratePence, base, initial, roleId, rowVersio
                   </div>
                 </fieldset>
                 <input type="hidden" {...register(`criteria.${i}.key`)} />
-                <input type="hidden" {...register(`criteria.${i}.description`)} />
+                <Field label="What good evidence looks like" hint="Describe what this job needs. A numerical result is optional."><textarea className={textareaClass} rows={2} {...register(`criteria.${i}.description`)} /></Field>
                 {fields.length > 3 && <button type="button" className="mt-2 text-[14px] text-danger" onClick={() => remove(i)}>Remove</button>}
               </div>
             ))}
           </div>
-          {fields.length < 6 && <button type="button" className={cx(buttonClass('ghost'), 'mt-2')} onClick={() => append({ key: `criterion_${fields.length + 1}`, label: '', description: '', importance: 'desirable', weight: 2, evidenceTags: [] })}>Add another</button>}
+          {fields.length < 12 && <button type="button" className={cx(buttonClass('ghost'), 'mt-2')} onClick={() => append({ key: `criterion_${fields.length + 1}`, label: '', description: '', importance: 'desirable', weight: 2, evidenceTags: [] })}>Add another</button>}
         </fieldset>
         <ErrorText error={error} />
         {error?.fieldErrors && <ul className="text-[14px] text-danger">{Object.entries(error.fieldErrors).map(([k, v]) => <li key={k}>{k}: {v}</li>)}</ul>}

@@ -83,19 +83,13 @@ describe('everyone eligible is interviewed for every live job, re-interviewed on
     expect(again.fitScore).toBeGreaterThan(first.fitScore);
   });
 
-  it('clients see everyone ranked by interview, with a score and reason per question; screening is not scored', async () => {
+  it('basic interviews remain readable but never determine ranking', async () => {
     const w = await load();
     await newCandidate(w, 'ada@ranked.test');
     await drainJobs();
     const { best, rest } = await bestPeople(readCtx(w.client('A')), w.ids.roles.R1, 50);
-    expect(best.length).toBeGreaterThan(1);
-    for (let i = 1; i < best.length; i++) expect(best[i - 1].sim.fitScore).toBeGreaterThanOrEqual(best[i].sim.fitScore);
-    expect(rest).toHaveLength(0); // everyone eligible has been interviewed
-    const one = best[0].sim;
-    for (const a of one.answers) {
-      if (a.kind === 'screening') expect(a.score).toBeNull();
-      else { expect(a.score).toEqual(expect.any(Number)); expect(a.reason).toBeTruthy(); }
-    }
+    expect(best).toHaveLength(0); // Basic interviews never become current evidence rankings.
+    expect(rest.length).toBeGreaterThan(1);
     const cid = (await db().select().from(S.simulatedInterviews).where(eq(S.simulatedInterviews.roleId, w.ids.roles.R1)))[0].candidateId;
     expect((await simulationForCandidate(readCtx(w.client('A')), w.ids.roles.R1, cid))?.answers[0]).toHaveProperty('score');
   });

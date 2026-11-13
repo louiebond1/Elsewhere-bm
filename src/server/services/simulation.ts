@@ -1,3 +1,4 @@
+import { CONTEXT_EVIDENCE_KEYS } from '../../config/onboarding';
 import { miniMeEvidence, miniMeRows, NOT_FOR_INTERVIEWS } from './mini-me';
 import { inferTags } from '../../lib/tags';
 import { and, eq, inArray, ne } from 'drizzle-orm';
@@ -19,7 +20,7 @@ import { clientMaySeeCandidateOnRole } from '../policies/privacy';
  */
 /** Enough to fill the largest list (20) with a little spare. */
 /** Everyone who fits gets interviewed. This is only a safety ceiling per job run. */
-export const SIM_LIMIT = 500;
+export const SIM_LIMIT = 10000;
 export const NOT_SHARED = 'They haven’t shared an example of this yet.';
 
 type Crit = Awaited<ReturnType<typeof criteriaFor>>[number];
@@ -70,11 +71,11 @@ export const MIN_INTERVIEW_QUESTIONS = 7;
 export const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * The interview: up to five questions from what matters most for the job, one about its main goal,
+ * The interview: up to twelve questions from what matters most for the job, one about its main goal,
  * standard behavioural questions to make at least seven, then four screening questions. Never fewer than 11.
  */
 export function interviewQuestions(role: { title: string; outcomes: string[] }, crit: Crit[]) {
-  const top = [...crit].sort((a, b) => b.weight - a.weight || a.ordinal - b.ordinal).slice(0, 5);
+  const top = [...crit].sort((a, b) => b.weight - a.weight || a.ordinal - b.ordinal).slice(0, 12);
   const qs: { text: string; crit: Crit | null; key: string | null; kind: 'interview' | 'screening' }[] = top.map((c) => ({ text: `Tell me about a time you worked on ${c.label.toLowerCase()}. What did you do, and what happened?`, crit: c as Crit | null, key: null, kind: 'interview' }));
   if (role.outcomes[0]) qs.push({ text: `In this job you would need to: ${role.outcomes[0].replace(/[.!]$/, '')}. How would you approach that?`, crit: null, key: null, kind: 'interview' });
   for (const g of GENERAL) { if (qs.length >= MIN_INTERVIEW_QUESTIONS) break; qs.push({ text: g.text, crit: null, key: g.key, kind: 'interview' }); }
@@ -90,7 +91,7 @@ function direct(q: { text: string; key: string | null }, evidence: Evidence[]) {
 const STRENGTH: Record<string, number> = { specific: 1, partial: 0.6, assertion: 0.3 };
 
 /** Demo mode: answers are the candidate's own approved examples, matched to each question by skill. */
-export function demoSimulation(questions: ReturnType<typeof interviewQuestions>, evidence: Evidence[]): SimulationOutput & { built: SimAnswer[] } {
+export function demoSimulation(questions: ReturnType<typeof interviewQuestions>, evidence: Evidence[]): SimulationOutput & { fitScore: number; built: SimAnswer[] } {
   const rank = (list: Evidence[]) => [...list].sort((a, b) => (STRENGTH[b.strength] ?? 0) - (STRENGTH[a.strength] ?? 0));
   const pool = evidence.filter((e) => !e.practical);
   const best = (tags: string[] | null) => rank(pool.filter((e) => !tags || e.tags.some((t) => tags.includes(t))))[0];
@@ -139,6 +140,7 @@ export function interviewTouched(sim: { updatedAt: Date; scoreCard: unknown; ans
     if (card.factors.itemIds.includes(`mm:${r.key}`) || keys.has(r.key)) return true;
     if (r.topic && questions.has(r.topic.trim().toLowerCase())) return true;
     if (NOT_FOR_INTERVIEWS.has(r.key)) return false;
+    if (CONTEXT_EVIDENCE_KEYS.has(r.key) || (r.key.startsWith('extra:') && r.topic?.trim().endsWith('?'))) return true;
     if (card.gaps.anyExample) return true;
     return inferTags(`${r.topic ?? ''} ${r.answer}`).some((t) => tags.has(t));
   });
@@ -247,7 +249,7 @@ export async function runInterview(role: { title: string; outcomes: string[] }, 
           if (fixed(q)) return { ...demo.built[i], ...scored };
           return { question: q.text, answer: a?.answer ?? NOT_SHARED, evidenceIds: a?.evidenceIds ?? [], grounded: !!a?.evidenceIds.length, key: q.key, kind: q.kind, ...(a ? scored : { score: 0, reason: 'Nothing in their mini-me covers this yet.' }) };
         }),
-        fitScore: out.fitScore, summary: out.summary, concerns: out.concerns, provider: res.provider,
+        fitScore: 0, summary: out.summary, concerns: out.concerns, provider: res.provider,
       };
     } catch (e) {
       if (!(e instanceof AiFailure)) throw e;

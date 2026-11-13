@@ -8,7 +8,7 @@ import { fixtureProvider } from '../../src/server/ai/providers/fixture';
 import type { AiProvider } from '../../src/server/ai/providers/types';
 import { readCtx, type BaseCtx } from '../../src/server/services/context';
 import * as hiring from '../../src/server/services/hiring-assistant';
-import { activateRole, criteriaFor } from '../../src/server/services/roles';
+import { activateRole, approveRubric, criteriaFor } from '../../src/server/services/roles';
 
 afterEach(() => setProviderForTests(null));
 
@@ -44,6 +44,7 @@ describe('hiring assistant', () => {
     const crit = await criteriaFor(readCtx(w.client('A')), role.id);
     expect(crit.map((c) => [c.label, c.importance])).toEqual([['Payroll', 'essential'], ['Reconciliations', 'essential'], ['Reporting', 'essential'], ['Excel', 'desirable']]);
     // Alder already has its included open roles, so this goes live as an extra role after confirmation.
+    await w.T(w.client('A'), (c) => approveRubric(c, role.id, role.rowVersion));
     const live = await w.T(w.client('A'), (c) => activateRole(c, role.id, { confirmExtraDeposit: true, idempotencyKey: w.key() }));
     expect(live.status).toBe('open');
     await expect(w.T(w.client('A'), (c) => hiring.saveAsDraft(c, id))).rejects.toMatchObject({ code: 'CONVERSATION_CLOSED' });

@@ -8,12 +8,12 @@
  * Demo mode (no live AI) uses simple keyword matching on what the client typed. It is labelled as such and
  * does not pretend to understand more than the keywords it recognises.
  */
-import { TAXONOMY, type Tag } from '../server/services/inputs';
+import { type Tag } from '../server/services/inputs';
 
 export type Family = 'finance' | 'operations' | 'commercial';
 export type Region = 'london' | 'hertfordshire' | 'manchester' | 'remote_uk';
 export type Mode = 'onsite' | 'hybrid' | 'remote';
-export type Item = { label: string; tags: Tag[] };
+export type Item = { label: string; tags: Tag[]; description?: string };
 
 export type Understanding = {
   title: string | null;
@@ -33,7 +33,7 @@ export type Understanding = {
 
 export const EMPTY: Understanding = { title: null, roleFamily: null, salaryPounds: null, locationRegion: null, workMode: null, outcomes: [], mustHaves: [], niceToHaves: [], teachable: [], assumed: [], askedTeachable: false };
 
-export const MAX_ITEMS = 6;
+export const MAX_ITEMS = 12;
 export const MIN_ITEMS = 3;
 
 export const TAG_LABEL: Record<Tag, string> = {
@@ -203,11 +203,12 @@ export function readMessage(prev: Understanding, text: string, lastAsked: Slot |
 
 /** Clamps a model-proposed understanding to allowed values. Unknown tags and non-job-related items are dropped. */
 export function sanitise(u: Partial<Understanding> & Record<string, unknown>, prev: Understanding): Understanding {
-  const tagOk = (t: unknown): t is Tag => typeof t === 'string' && (TAXONOMY as readonly string[]).includes(t);
+  const tagOk = (t: unknown): t is Tag => typeof t === 'string' && /^[a-z][a-z0-9_]{0,59}$/.test(t);
   const items = (v: unknown): Item[] => (Array.isArray(v) ? v : []).flatMap((i) => {
     const label = typeof i?.label === 'string' ? tidy(i.label, 80) : '';
     const tags = (Array.isArray(i?.tags) ? i.tags : []).filter(tagOk).slice(0, 8);
-    return label.length >= 2 && tags.length && !notJobRelated(label) ? [{ label, tags }] : [];
+    const description = typeof i?.description === 'string' ? tidy(i.description, 1000) : '';
+    return label.length >= 2 && tags.length && !notJobRelated(label) && !notJobRelated(description) ? [{ label, tags, ...(description ? {description} : {}) }] : [];
   });
   const strs = (v: unknown, n: number, max: number) => (Array.isArray(v) ? v : []).filter((s): s is string => typeof s === 'string' && !!s.trim() && !notJobRelated(s)).map((s) => tidy(s, n)).slice(0, max);
   const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T | null) => (typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T) : fallback);
@@ -242,8 +243,8 @@ export function toCriteria(u: Understanding) {
     used.add(k);
     return k;
   };
-  const must = u.mustHaves.slice(0, MAX_ITEMS).map((i, idx) => ({ key: key(i.label), label: i.label, description: i.label, importance: 'essential' as const, weight: idx === 0 ? 5 : idx < 3 ? 4 : 3, evidenceTags: i.tags }));
-  const nice = u.niceToHaves.slice(0, MAX_ITEMS - must.length).map((i) => ({ key: key(i.label), label: i.label, description: i.label, importance: 'desirable' as const, weight: 2, evidenceTags: i.tags }));
+  const must = u.mustHaves.slice(0, MAX_ITEMS).map((i, idx) => ({ key: key(i.label), label: i.label, description: i.description || i.label, importance: 'essential' as const, weight: idx === 0 ? 5 : idx < 3 ? 4 : 3, evidenceTags: i.tags }));
+  const nice = u.niceToHaves.slice(0, MAX_ITEMS - must.length).map((i) => ({ key: key(i.label), label: i.label, description: i.description || i.label, importance: 'desirable' as const, weight: 2, evidenceTags: i.tags }));
   return [...must, ...nice];
 }
 

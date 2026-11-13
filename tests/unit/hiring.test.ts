@@ -81,6 +81,11 @@ describe('hiring assistant demo reader', () => {
     const prev = structuredClone(EMPTY);
     const s = sanitise({ title: 'Ops Lead', salaryPounds: 5, locationRegion: 'paris', workMode: 'hybrid', roleFamily: 'operations', outcomes: ['Fix handoffs'], mustHaves: [{ label: 'Process design', tags: ['process_design', 'made_up'] }, { label: 'Young and energetic', tags: ['learning'] }, { label: 'No tags', tags: [] }], niceToHaves: [], teachable: [] } as never, prev);
     expect(s).toMatchObject({ title: 'Ops Lead', salaryPounds: null, locationRegion: null, workMode: 'hybrid', roleFamily: 'operations' });
-    expect(s.mustHaves).toEqual([{ label: 'Process design', tags: ['process_design'] }]);
+    expect(s.mustHaves).toEqual([{ label: 'Process design', tags: ['process_design', 'made_up'] }]);
   });
+});
+
+it('preserves role-specific operating conditions in the approved evidence guide', () => {
+ const next = sanitise({ mustHaves: [{label:'Work with limited resources',tags:['resource_constraints'],description:'Personally maintain accurate finance records with two staff and manual tools; escalate gaps and leave a maintainable process.'}], niceToHaves:[] } as never, structuredClone(EMPTY));
+ expect(toCriteria(next)[0].description).toContain('two staff and manual tools');
 });

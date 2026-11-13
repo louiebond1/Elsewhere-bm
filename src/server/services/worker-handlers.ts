@@ -1,3 +1,5 @@
+import { assessWithEvidence } from '../ai/assess';
+import { PROMPT_VERSION } from '../ai/prompts';
 import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
@@ -104,20 +106,27 @@ async function handleAssessRole(base: BaseCtx, job: JobRow) {
   const roleId = job.subject_id!;
   const pending = await pairsAwaitingAssessment({ tx: db() }, roleId);
   let failures = 0;
-  for (const candidateId of pending.slice(0, 40)) {
+  let applied = 0;
+  let attempted = 0;
+  for (const candidateId of pending) {
     const prepared = await assessmentInput({ tx: db() }, roleId, candidateId);
     if (!prepared || !prepared.input.evidence.length) continue;
+    if (attempted >= 40) break;
+    attempted++;
     try {
-      const res = await runAi({ task: 'assess', datasetId: base.datasetId, roleId, candidateId, jobId: job.id, input: prepared.input }, (p) => p.assessCriteria(prepared.input));
-      const out = await withTx(base, (ctx) => applyAssessment(ctx, { roleId, candidateId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion, output: res.output }));
-      if (!out.applied && out.reason === 'stale_discarded') await db().insert(aiRuns).values({ datasetId: base.datasetId, jobId: job.id, roleId, candidateId, task: 'assess', provider: res.provider, modelId: res.usage.modelId, promptVersion: 'prompts-v1', outcome: 'stale_discarded' });
+      const res = await assessWithEvidence(prepared.input, { datasetId: base.datasetId, roleId, candidateId, jobId: job.id });
+      if (res.provider !== 'anthropic') continue;
+      const out = await withTx(base, (ctx) => applyAssessment(ctx, { roleId, candidateId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion, evidenceFingerprint: prepared.evidenceFingerprint, output: res.output }));
+      if (out.applied) applied++;
+      if (!out.applied && out.reason === 'stale_discarded') await db().insert(aiRuns).values({ datasetId: base.datasetId, jobId: job.id, roleId, candidateId, task: 'assess', provider: res.provider, modelId: res.usage.modelId, promptVersion: PROMPT_VERSION, outcome: 'stale_discarded' });
     } catch (e) {
       failures++;
       // Budget or authentication problems stop the job; the deterministic result stays in place.
-      if (e instanceof AiFailure && ['daily_budget', 'auth', 'model_unavailable'].includes(e.code)) throw e;
+      if (e instanceof AiFailure && ['monthly_budget', 'daily_budget', 'auth', 'model_unavailable'].includes(e.code)) throw e;
     }
   }
-  if (failures && failures === pending.length) throw new AiFailure('assessment_failed', 'No assessments could be completed.', true);
+  if (pending.length > 40 && applied > 0) await enqueue({ tx: db(), datasetId: base.datasetId }, 'assess_match', roleId, `assess-next:${job.id}`);
+  if (failures && failures === attempted) throw new AiFailure('assessment_failed', 'No assessments could be completed.', true);
 }
 
 /** Live developmental feedback, stored separately from the immutable approved profile content. */

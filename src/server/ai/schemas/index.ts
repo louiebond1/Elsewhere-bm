@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TAXONOMY } from '../../services/inputs';
+import { TAXONOMY, tagSchema } from '../../services/inputs';
 
 export const questionTopics = ['experience', 'ownership', 'outcome', 'collaboration', 'learning', 'constraints', 'clarification'] as const;
 
@@ -29,19 +29,19 @@ export const feedbackOutput = z.object({
 export type FeedbackOutput = z.infer<typeof feedbackOutput>;
 
 export const assessmentOutput = z.object({
-  criteria: z.array(z.object({ criterionId: z.string(), level: z.enum(['specific', 'partial', 'unknown', 'contradictory']), evidenceIds: z.array(z.string()), reasonSafe: z.string().max(240) })),
+  criteria: z.array(z.object({ criterionId: z.string(), level: z.enum(['related', 'partial', 'clear', 'strong', 'unknown', 'contradictory']), evidenceIds: z.array(z.string()), quote: z.string().max(600), reasonSafe: z.string().max(600), followUp: z.string().max(240).nullable().optional() })),
 });
 export type AssessmentOutput = z.infer<typeof assessmentOutput>;
 
 export const roleStructureOutput = z.object({
   outcomes: z.array(z.string().max(300)).max(6),
   teachableSkills: z.array(z.string().max(120)).max(8),
-  criteria: z.array(z.object({ key: z.string(), label: z.string().max(80), description: z.string().max(400), importance: z.enum(['essential', 'desirable']), weight: z.number().int().min(1).max(5), evidenceTags: z.array(z.enum(TAXONOMY)).min(1).max(8) })).max(6),
+  criteria: z.array(z.object({ key: z.string(), label: z.string().max(80), description: z.string().max(1000), importance: z.enum(['essential', 'desirable']), weight: z.number().int().min(1).max(5), evidenceTags: z.array(tagSchema).min(1).max(8) })).max(12),
   warnings: z.array(z.string().max(300)),
 });
 export type RoleStructureOutput = z.infer<typeof roleStructureOutput>;
 
-const hiringItem = z.object({ label: z.string().max(80), tags: z.array(z.enum(TAXONOMY)).min(1).max(8) });
+const hiringItem = z.object({ label: z.string().max(80), description: z.string().max(1000).optional(), tags: z.array(tagSchema).min(1).max(8) });
 /** One hiring-assistant turn: the updated understanding, the next reply, and anything learned about the hiring manager. */
 export const hiringTurnOutput = z.object({
   reply: z.string().max(1200),
@@ -52,8 +52,8 @@ export const hiringTurnOutput = z.object({
     locationRegion: z.enum(['london', 'hertfordshire', 'manchester', 'remote_uk']).nullable(),
     workMode: z.enum(['onsite', 'hybrid', 'remote']).nullable(),
     outcomes: z.array(z.string().max(300)).max(6),
-    mustHaves: z.array(hiringItem).max(6),
-    niceToHaves: z.array(hiringItem).max(6),
+    mustHaves: z.array(hiringItem).max(12),
+    niceToHaves: z.array(hiringItem).max(12),
     teachable: z.array(z.string().max(120)).max(8),
   }),
   learned: z.array(z.string().max(200)).max(3),
@@ -63,7 +63,6 @@ export type HiringTurnOutput = z.infer<typeof hiringTurnOutput>;
 /** One simulated interview: answers drawn only from the candidate's own approved examples. */
 export const simulationOutput = z.object({
   answers: z.array(z.object({ questionIndex: z.number().int().min(0).max(19), answer: z.string().max(600), evidenceIds: z.array(z.string()).max(4), score: z.number().int().min(0).max(10).nullable(), reason: z.string().max(240) })).max(20),
-  fitScore: z.number().int().min(0).max(100),
   summary: z.string().max(400),
   concerns: z.array(z.string().max(200)).max(3),
 });

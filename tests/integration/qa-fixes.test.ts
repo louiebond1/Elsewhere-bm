@@ -42,12 +42,10 @@ describe('B1/B1a: an already-recorded hire is recognised and never repeated', ()
 });
 
 describe('B3: only the reserved pick is labelled as the discovery slot', () => {
-  it('S19 preview has five picks and exactly one discovery slot', async () => {
+  it('S19 never automatically picks unassessed fixture scores', async () => {
     const w = await load('S19');
     const p = await previewAutoPicks(readCtx(w.client('A')), w.ids.roles.R1);
-    expect(p.picks).toHaveLength(5);
-    expect(p.picks.filter((x) => x.discoverySlot)).toHaveLength(1);
-    expect(p.picks.find((x) => x.discoverySlot)?.ref).toBe(w.ref('R1', 'C07'));
-    expect(p.picks.map((x) => x.ref)).toEqual(['C01', 'C09', 'C02', 'C04', 'C07'].map((c) => w.ref('R1', c)));
+    expect(p.picks).toHaveLength(0);
+    expect(p.shortfall).toBe(5);
   });
 });

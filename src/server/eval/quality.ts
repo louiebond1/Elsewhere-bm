@@ -4,8 +4,10 @@ import { db } from '../db/client';
 import { qualityRuns } from '../db/schema';
 import { inferTags } from '../../lib/tags';
 import { NOT_FOR_INTERVIEWS } from '../services/mini-me';
-import { interviewQuestions, runInterview, type Evidence } from '../services/simulation';
-import { aiMode } from '../ai';
+import { interviewQuestions, type Evidence } from '../services/simulation';
+import { assessWithEvidence } from '../ai/assess';
+import { validateAssessment } from '../ai/validate';
+import { ASSESSMENT_VERSION, weightedScore, type Level } from '../lib/matching-rules';
 import { EVAL_JOBS, BIAS_CHANGES, BIAS_SAMPLE, THIN_SAMPLE, GENDER_PAIR, type EvalItem, type EvalJob, type Tier } from './interview-set';
 
 /**
@@ -40,7 +42,7 @@ function orderScore(a: number[], b: number[]) {
 
 type Kind = 'base' | 'repeat' | 'bias' | 'gender_a' | 'gender_b' | 'thin';
 export type PlanItem = { job: string; person: string; tier: Tier; kind: Kind; change?: string; items: EvalItem[] };
-export type ResultItem = PlanItem & { fitScore: number | null; provider: string; error?: string };
+export type ResultItem = PlanItem & { fitScore: number | null; provider: string; assessmentVersion?: string; criteria?: unknown; error?: string };
 
 export function buildPlan(): PlanItem[] {
   const plan: PlanItem[] = [];
@@ -50,13 +52,13 @@ export function buildPlan(): PlanItem[] {
       plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'repeat', items: p.items });
     }
     // Fairness: a few people across the range, each with one irrelevant change.
-    for (const p of job.people.filter((x) => BIAS_SAMPLE.includes(x.id))) {
+    for (const p of job.people.filter((x) => (job.id === 'acct' ? BIAS_SAMPLE : ['p01','p02']).includes(x.id))) {
       for (const c of BIAS_CHANGES) plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'bias', change: c.id, items: [...p.items, c.item] });
       plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'gender_a', change: 'gender', items: [...p.items, GENDER_PAIR.a] });
       plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'gender_b', change: 'gender', items: [...p.items, GENDER_PAIR.b] });
     }
     // Thin profiles: some of the best people with only half of what they shared.
-    for (const p of job.people.filter((x) => THIN_SAMPLE.includes(x.id))) plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'thin', items: p.items.slice(0, Math.max(1, Math.floor(p.items.length / 2))) });
+    for (const p of job.people.filter((x) => (job.id === 'acct' ? THIN_SAMPLE : ['p01','p02']).includes(x.id))) plan.push({ job: job.id, person: p.id, tier: p.tier, kind: 'thin', items: p.items.slice(0, Math.max(1, Math.floor(p.items.length / 2))) });
   }
   return plan;
 }
@@ -66,15 +68,22 @@ function evidenceOf(items: EvalItem[]): Evidence[] {
 }
 
 function jobCriteria(job: EvalJob) {
-  return job.criteria.map((c, n) => ({ id: `${job.id}:${c.key}`, criterionKey: c.key, label: c.label, description: c.label, weight: c.weight, ordinal: n + 1, evidenceTags: c.tags, importance: 'essential' })) as unknown as Parameters<typeof interviewQuestions>[1];
+  return job.criteria.map((c, n) => ({ id: `${job.id}:${c.key}`, criterionKey: c.key, label: c.label, description: c.description ?? c.label, weight: c.weight, ordinal: n + 1, evidenceTags: c.tags, importance: 'essential' })) as unknown as Parameters<typeof interviewQuestions>[1];
 }
 
 /** Run one planned interview through the real code. */
 export async function runOne(item: PlanItem): Promise<ResultItem> {
   const job = EVAL_JOBS.find((j) => j.id === item.job)!;
-  const questions = interviewQuestions({ title: job.title, outcomes: job.outcomes }, jobCriteria(job));
-  const r = await runInterview({ title: job.title, outcomes: job.outcomes }, questions, evidenceOf(item.items), { live: aiMode() === 'live', datasetId: null });
-  return { ...item, fitScore: r.result.fitScore, provider: r.result.provider };
+  const criteria = jobCriteria(job).map((c) => ({ criterionId: c.id, label: c.label, description: c.description, evidenceTags: c.evidenceTags }));
+  const evidence = evidenceOf(item.items).filter((e) => !e.practical).map((e) => ({ ...e, uncertainty: null }));
+  const input = { criteria, evidence };
+  const res = await assessWithEvidence(input, {});
+  const validation = validateAssessment(res.output, criteria.map((c) => c.criterionId), evidence.map((e) => e.id), evidence);
+  if (!validation.ok) throw new Error(validation.reason);
+  const levels = new Map(res.output.criteria.map((c) => [c.criterionId, c.level as Level]));
+  const score = Math.round(weightedScore(jobCriteria(job).map((c) => ({ criterionId: c.id, weight: c.weight })), levels));
+  return { ...item, fitScore: score, provider: res.provider, assessmentVersion: ASSESSMENT_VERSION, criteria: res.output.criteria };
+
 }
 
 export async function startQualityRun(userId: string | null) {

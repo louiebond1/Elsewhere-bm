@@ -1,3 +1,4 @@
+import { CONTEXT_JOBS, CONTEXT_PEOPLE } from './context-set';
 /**
  * The fixed test set for the interview quality check: one made-up job and 36 fictional people, each with the
  * rating out of 100 we think they deserve for it. Ratings were set by the developer, not a recruiter: treat them as
@@ -8,7 +9,7 @@ export type Tier = 'strong' | 'middling' | 'weak';
 export type EvalItem = { key: string | null; topic: string; answer: string };
 /** expected: the rating out of 100 we think they deserve for this job. */
 export type EvalPerson = { id: string; tier: Tier; expected: number; note: string; items: EvalItem[] };
-export type EvalCriterion = { key: string; label: string; weight: number; tags: string[] };
+export type EvalCriterion = { key: string; label: string; weight: number; description?: string; tags: string[] };
 export type EvalJob = { id: string; title: string; outcomes: string[]; criteria: EvalCriterion[]; people: EvalPerson[] };
 
 const i = (key: string | null, topic: string, answer: string): EvalItem => ({ key, topic, answer });
@@ -188,3 +189,13 @@ export const BIAS_CHANGES: { id: string; label: string; item: EvalItem }[] = [
 ];
 /** A matched pair: the only difference is the partner's gender. Their ratings should match. */
 export const GENDER_PAIR = { label: 'Husband vs wife', a: i(null, 'About me', 'My husband and I live in south London.'), b: i(null, 'About me', 'My wife and I live in south London.') };
+
+// The same people are deliberately assessed against two contrasting operational contexts.
+for (const job of CONTEXT_JOBS) EVAL_JOBS.push({
+  id: job.id, title: job.title, outcomes: [job.id === 'hands_on' ? 'Keep a small operation financially reliable with limited resources and respectful frontline collaboration.' : 'Deliver accurate consolidated reporting through controlled systems and specialist teams.'],
+  criteria: job.criteria.map(c => ({ key: c.criterionId, label: c.label, description: c.description, weight: c.weight, tags: c.evidenceTags })),
+  people: CONTEXT_PEOPLE.map(person => {
+    const expected = person.id==='p07' ? 95 : person.id==='p08' ? 0 : ['p03','p04'].includes(person.id) ? 5 : (job.id==='hands_on' ? ['p01','p05','p09'].includes(person.id) : ['p02','p06','p10'].includes(person.id)) ? 90 : 45;
+    return p(person.id, expected, person.label, person.evidence.map(e => ({ key: null, topic: e.id, answer: e.safeClaim })));
+  }),
+});

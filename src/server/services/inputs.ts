@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { prototype } from '../../config/prototype';
 
 export const TAXONOMY = ['reconciliations', 'reporting', 'month_end', 'budgeting', 'forecasting', 'controls', 'audit', 'payroll', 'bookkeeping', 'credit_control', 'tax', 'analysis', 'excel', 'sql', 'automation', 'process_design', 'customer_work', 'sales', 'partnerships', 'project_delivery', 'coordination', 'leadership', 'learning'] as const;
-export type Tag = (typeof TAXONOMY)[number];
-export const tagSchema = z.enum(TAXONOMY);
+export type Tag = string;
+export const tagSchema = z.string().min(1).max(60).regex(/^[a-z][a-z0-9_]*$/);
 
 const text = (max: number) => z.string().trim().max(max);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date in the form YYYY-MM-DD');
@@ -11,7 +11,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date in the form 
 export const criterionInput = z.object({
   key: z.string().trim().regex(/^[a-z0-9_]{2,40}$/, 'Use lower-case letters, numbers and underscores'),
   label: text(80).min(2),
-  description: text(400).default(''),
+  description: text(1000).default(''),
   importance: z.enum(['essential', 'desirable']),
   weight: z.number().int().min(1).max(5),
   evidenceTags: z.array(tagSchema).min(1).max(8),
@@ -33,7 +33,7 @@ export const roleDraftInput = z.object({
   teachableSkills: z.array(text(120).min(1)).max(8).default([]),
   briefText: text(prototype.maxRoleTextChars).default(''),
   serviceMode: z.enum(['standard', 'full_search']).default('standard'),
-  criteria: z.array(criterionInput).max(6).default([]),
+  criteria: z.array(criterionInput).max(12).default([]),
 });
 export type RoleDraftInput = z.infer<typeof roleDraftInput>;
 
@@ -76,7 +76,7 @@ export const screeningCompleteInput = z.object({
   minutes: z.number().int().positive().max(600),
   notesPrivate: text(4000).default(''),
   summarySafe: text(800).min(10, 'Write a short client-safe summary'),
-  assessments: z.array(z.object({ criterionId: z.string().uuid(), level: z.enum(['specific', 'partial', 'unknown', 'contradictory']), evidenceIds: z.array(z.string().uuid()).default([]), observationPrivate: text(1000).default('') })),
+  assessments: z.array(z.object({ criterionId: z.string().uuid(), level: z.enum(['specific', 'strong', 'clear', 'related', 'partial', 'unknown', 'contradictory']), evidenceIds: z.array(z.string().uuid()).default([]), observationPrivate: text(1000).default('') })),
 });
 
 export const adjustmentInput = z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid(), adjustment: z.number().int().min(prototype.consultantAdjustmentMin).max(prototype.consultantAdjustmentMax), reason: text(500).min(5), evidenceIds: z.array(z.string().uuid()).min(1, 'Reference at least one evidence item') });

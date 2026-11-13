@@ -8,10 +8,13 @@ import { codename, paletteFor, variantFor } from '../lib/codename';
 import { credits, creditsLabel, gbp } from '../lib/format';
 
 const LEVEL: Record<string, { label: string; tone: 'success' | 'neutral' | 'warning' | 'danger' }> = {
+  related: { label: 'Related experience', tone: 'neutral' },
+  clear: { label: 'Clear evidence', tone: 'success' },
+  strong: { label: 'Strong evidence', tone: 'success' },
   specific: { label: 'Strong example', tone: 'success' },
   partial: { label: 'Some evidence', tone: 'neutral' },
   unknown: { label: 'Not known yet', tone: 'warning' },
-  contradictory: { label: 'Mixed signals', tone: 'danger' },
+  contradictory: { label: 'Requirement not met', tone: 'danger' },
 };
 
 export function LevelBadge({ level }: { level: string }) {
@@ -116,6 +119,8 @@ export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href:
             <li key={c.key} className="text-[14px]">
               <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Phone screening: {LEVEL[c.humanLevel]?.label ?? c.humanLevel}</Badge>}</div>
               <p className="text-muted">{c.reasonSafe}</p>
+              {c.quote && <p className="mt-1 text-[14px]">“{c.quote}”</p>}
+              {c.essential && c.level === 'contradictory' && <p className="text-warning">Essential requirement needs review.</p>}
             </li>
           ))}
         </ul>
@@ -137,7 +142,7 @@ export const personName = (m: AcceptedCandidateDTO) => (m.identity ? m.identity.
 
 /** One row: rank, artwork, name, one line of evidence, fit. Tap to open. */
 export function PersonRow({ rank, m, sim, href, index = 0 }: { rank?: number; m: AcceptedCandidateDTO; sim?: SimCardView | null; href: string; index?: number }) {
-  const fit = sim ? fitLabel(sim.fitScore) : null;
+  const fit = m.evidenceScore != null ? { text: `${m.evidenceScore}/100 evidenced · ${m.profileCoverage}% covered`, tone: 'neutral' as const } : { text: 'Assessment pending', tone: 'neutral' as const };
   const status = m.introState === 'accepted' ? 'Agreed to meet you' : m.introState === 'pending' ? 'Asked to meet' : null;
   return (
     <Link href={href} style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }} className="rise-in group flex min-h-[76px] items-center gap-4 rounded-3xl px-3 py-2.5 no-underline hover:bg-surface">
@@ -148,15 +153,15 @@ export function PersonRow({ rank, m, sim, href, index = 0 }: { rank?: number; m:
         <span className="block truncate text-[15px] text-muted">{status ?? m.safeHeadline}</span>
       </span>
       {sim && sim.provider !== 'anthropic' && <span className="hidden whitespace-nowrap rounded-full bg-page px-2.5 py-0.5 text-[13px] text-muted sm:inline" title="Answers are the closest examples from their profile, without AI. Their AI interview replaces it when ready.">Basic interview</span>}
-      {fit && <span className={cx('hidden whitespace-nowrap text-[14px] font-semibold sm:inline', fit.tone === 'success' ? 'text-primary' : 'text-muted')}>{fit.text}</span>}
+      {fit && <span className={cx('hidden whitespace-nowrap text-[14px] font-semibold sm:inline', 'text-muted')}>{fit.text}</span>}
       <ChevronRight aria-hidden className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
 }
 
 /** A big cover in the "Top picks" shelf: artwork edge to edge, name and line on a dark scrim. */
-export function PersonCover({ m, sim, href, index = 0 }: { m: AcceptedCandidateDTO; sim?: SimCardView | null; href: string; index?: number }) {
-  const fit = sim ? fitLabel(sim.fitScore) : null;
+export function PersonCover({ m, href, index = 0 }: { m: AcceptedCandidateDTO; sim?: SimCardView | null; href: string; index?: number }) {
+  const fit = m.evidenceScore != null ? { text: `${m.evidenceScore}/100 evidenced · ${m.profileCoverage}% covered`, tone: 'neutral' as const } : { text: 'Assessment pending', tone: 'neutral' as const };
   return (
     <Link href={href} style={{ animationDelay: `${Math.min(index, 3) * 30}ms` }} className="rise-in lift relative block h-[300px] w-[min(76vw,300px)] shrink-0 overflow-hidden rounded-3xl no-underline shadow-[0_8px_24px_rgb(18_37_29/0.08)] lg:h-[340px] lg:w-[320px]">
       <FoldArt id={`cover-${m.roleScopedReference}`} palette={paletteFor(m.roleScopedReference)} variant={variantFor(m.roleScopedReference)} className="absolute inset-0 h-full w-full" />

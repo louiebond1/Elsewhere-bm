@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { RubricReview } from './rubric-review';
 import { eq, and } from 'drizzle-orm';
 import type { Ctx } from '../server/services/context';
 import * as S from '../server/db/schema';
@@ -46,6 +47,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
     return (
       <>
         {header}
+        <RubricReview roleId={roleId} rowVersion={role.rowVersion} approved={role.rubricApprovedVersion === role.roleVersion} criteria={crit} />
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card title="Draft brief">
             <p className="text-[15px]">{role.briefText || 'No brief yet.'}</p>
@@ -82,6 +84,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
     const couponsLeft = ch ? Math.max(0, prototype.includedScreenings - ch.screeningsUsed) : 0;
     body = (
       <div>
+        {role.rubricApprovedVersion !== role.roleVersion && <RubricReview roleId={roleId} rowVersion={role.rowVersion} approved={false} criteria={crit} />}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-[34px] leading-[38px] lg:text-[44px] lg:leading-[48px]">Your best people.</h2>
           <nav aria-label="How many to show" className="flex rounded-2xl bg-surface p-1 shadow-[0_2px_8px_rgb(18_37_29/0.06)]">
@@ -101,7 +104,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
           <section aria-labelledby="ranked" className="mt-10">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 id="ranked">All {best.length}, ranked</h3>
-              <p className="text-[15px] text-muted">Ranked by each person’s interview for this job.</p>
+              <p className="text-[15px] text-muted">Ranked by evidence against your checklist. Fuller profiles can earn more points.</p>
             </div>
             <ul className="-mx-3 mt-3">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} index={i} /></li>)}</ul>
           </section>

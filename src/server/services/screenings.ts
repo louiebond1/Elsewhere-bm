@@ -2,7 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { screenings, matches, candidates, workLogs, files, consentEvents, evidenceItems, roles } from '../db/schema';
 import { conflict, invalid, notFound } from '../lib/errors';
 import { prototype } from '../../config/prototype';
-import { autoPicksDetailed } from '../lib/matching-rules';
+import { assessmentReady, autoPicksDetailed } from '../lib/matching-rules';
 import { lockCandidates, requireUser, type Ctx } from './context';
 import { roleForActor, roleCounters, criteriaFor } from './roles';
 import { resolveRoleRef } from './intros';
@@ -91,6 +91,7 @@ async function autoPickCandidates(ctx: Ctx, roleId: string) {
   const roleTags = new Set(crit.flatMap((c) => c.evidenceTags));
   const pool = [];
   for (const m of ms) {
+    if (!assessmentReady(m, role)) continue;
     if (m.eligibility === 'incompatible' || taken.has(m.candidateId)) continue;
     if (!(await discoveryState(ctx, m.candidateId)).discoverable || (await isBlockedForClient(ctx, m.candidateId, role.clientId))) continue;
     const [c] = await ctx.tx.select({ ref: candidates.publicRef, pv: candidates.latestProfileVersionId }).from(candidates).where(eq(candidates.id, m.candidateId));

@@ -25,24 +25,24 @@ export function FindingBest({ roleId, hasResults }: { roleId: string; hasResults
     (async () => {
       const q = await api<{ queued: boolean }>(`roles/${roleId}/simulate`, { body: {}, csrf });
       if (stop) return;
-      if (q.ok && q.data.queued) { setWorking(true); timer = setTimeout(poll, 1500); } else setWorking(false);
+      if (q.ok) { timer = setTimeout(poll, 1500); } else setWorking(false);
     })();
     return () => { stop = true; clearTimeout(timer); };
   }, [roleId, csrf, router]);
 
-  if (hasResults) return working ? <p role="status" className="text-[14px] text-muted">Interviewing a few more people… new results appear here automatically.</p> : null;
+  if (hasResults) return working ? <p role="status" className="text-[14px] text-muted">Assessing more profiles… new results appear here automatically.</p> : null;
   return (
     <div role="status" className="rounded-2xl border border-line bg-info-tint px-6 py-8 text-center">
       {working ? (
         <>
           <div aria-hidden className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <p className="text-[20px] font-semibold">Finding your best people…</p>
-          <p className="mt-2 text-[15px] text-muted">We’re running a short simulated interview with each of your top matches, using their real examples. This usually takes a minute.</p>
+          <p className="mt-2 text-[15px] text-muted">We’re checking the evidence against your approved job checklist. Results appear as they are ready.</p>
         </>
       ) : (
         <>
-          <p className="text-[20px] font-semibold">No one to show yet</p>
-          <p className="mt-2 text-[15px] text-muted">There aren’t any suitable people for this job right now. Your consultant can help you adjust it.</p>
+          <p className="text-[20px] font-semibold">Assessment pending</p>
+          <p className="mt-2 text-[15px] text-muted">No current assessments are ready. Check the job checklist or ask BondMoran to check assessment availability.</p>
         </>
       )}
     </div>

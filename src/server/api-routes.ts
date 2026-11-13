@@ -1,3 +1,4 @@
+import { assessWithEvidence } from './ai/assess';
 import 'server-only';
 /**
  * Command and query handlers. Every handler receives an authenticated viewer and
@@ -26,8 +27,8 @@ import { enqueue } from './services/jobs';
 import { roleScopedRef } from './dto/refs';
 import { notify, logActivity, clientUserIds } from './services/audit';
 import * as S from './db/schema';
-import { and, eq, desc, isNull } from 'drizzle-orm';
-import { activateInput, closeInput, reopenInput, introRequestInput, hireInput, outsideHireInput, departureInput, replacementRequestInput, contractInput, grantInput, reversalInput, checkoutInput, screeningRequestInput, screeningCompleteInput, adjustmentInput, workLogInput, answerInput, preferencesInput } from './services/inputs';
+import { inArray, and, eq, desc, isNull } from 'drizzle-orm';
+import { activateInput, closeInput, reopenInput, introRequestInput, hireInput, outsideHireInput, departureInput, replacementRequestInput, contractInput, grantInput, reversalInput, checkoutInput, screeningRequestInput, screeningCompleteInput, workLogInput, answerInput, preferencesInput } from './services/inputs';
 import { prepFor, savePrep } from './services/prep';
 import { runAi, aiMode, AiFailure } from './ai';
 import { questionOutput, assessmentOutput } from './ai/schemas';
@@ -35,7 +36,6 @@ import { validateAssessment } from './ai/validate';
 import { assessmentInput, applyAssessment } from './services/matching';
 import { TOPIC_BANK } from './ai/prompts';
 import { db } from './db/client';
-import { recomputeRole } from './services/matching';
 import { DEFAULT_OFFER } from './services/demo';
 
 type H = (a: { req: NextRequest; viewer: Viewer; base: BaseCtx; p: Record<string, string>; body: unknown }) => Promise<unknown>;
@@ -159,7 +159,15 @@ export const ROUTES: R[] = [
   } },
   { method: 'POST', path: 'roles/:id/must-have', types: ['client', 'consultant'], h: ({ base, p, body }) => T(base, (c) => roles.addMustHave(c, p.id, parse(z.object({ mustHave: z.literal('requires18') }), body).mustHave).then((r) => ({ id: r.id, requires18: r.requires18 }))) },
   { method: 'POST', path: 'roles/:id/simulate', types: ['client', 'consultant'], h: async ({ base, p }) => { await roles.roleForActor(readCtx(base), p.id); return T(base, (c) => simulation.requestSimulations(c, p.id)); } },
-  { method: 'GET', path: 'roles/:id/simulate-status', types: ['client', 'consultant'], h: async ({ base, p }) => { const c = readCtx(base); await roles.roleForActor(c, p.id); return { pending: await simulation.simulationPending(c, p.id), ready: (await simulation.simulationsForRole(c, p.id)).size }; } },
+  { method: 'GET', path: 'roles/:id/simulate-status', types: ['client', 'consultant'], h: async ({ base, p }) => {
+    const c = readCtx(base); const role = await roles.roleForActor(c, p.id);
+    const { assessmentReady } = await import('./lib/matching-rules');
+    const rows = await c.tx.select().from(S.matches).where(eq(S.matches.roleId, role.id));
+    const ready = rows.filter((m) => assessmentReady(m, role)).length;
+    const queued = await c.tx.select({ id: S.jobs.id }).from(S.jobs).where(and(eq(S.jobs.subjectId, role.id), eq(S.jobs.kind, 'assess_match'), inArray(S.jobs.status, ['queued', 'running'])));
+    return { ready, pending: queued.length > 0 };
+  } },
+  { method: 'POST', path: 'roles/:id/approve-rubric', types: ['client', 'consultant'], h: ({ base, body, p }) => withTx(base, (c) => roles.approveRubric(c, p.id, parse(z.object({ expectedRowVersion: z.number().int().positive() }), body).expectedRowVersion)) },
   { method: 'POST', path: 'roles/:id/activate', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/activate`, body, (c, k) => roles.activateRole(c, p.id, { ...parse(activateInput, body), idempotencyKey: k })) },
   { method: 'POST', path: 'roles/:id/close', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/close`, body, (c) => roles.closeRole(c, p.id, parse(closeInput, body).reason)) },
   { method: 'POST', path: 'roles/:id/reopen', types: ['client', 'consultant'], h: ({ req, base, body, p }) => idempotent(req, base, `roles/${p.id}/reopen`, body, (c, k) => roles.reopenRole(c, p.id, { ...parse(reopenInput, body), idempotencyKey: k })) },
@@ -259,30 +267,22 @@ export const ROUTES: R[] = [
   { method: 'POST', path: 'consultant/evidence/anonymity-review', types: ['consultant'], h: ({ base, body }) => { const b = parse(z.object({ evidenceId: z.string().uuid(), decision: z.enum(['approved', 'rejected']), safeClaim: z.string().max(400).optional() }), body); return T(base, (c) => cands.anonymityReview(c, b.evidenceId, b.decision, b.safeClaim)); } },
   { method: 'POST', path: 'consultant/resolve-employer', types: ['consultant'], h: ({ base, body }) => { const b = parse(z.object({ candidateId: z.string().uuid(), organisationId: z.string().uuid() }), body); return T(base, (c) => cands.resolveEmployer(c, b.candidateId, b.organisationId)); } },
   { method: 'POST', path: 'consultant/ranking-adjustment', types: ['consultant'], h: ({ base, body, viewer }) => {
-    const b = parse(adjustmentInput, body);
-    return T(base, async (c) => {
-      const own = await c.tx.select({ id: S.evidenceItems.id }).from(S.evidenceItems).where(eq(S.evidenceItems.candidateId, b.candidateId));
-      if (b.evidenceIds.some((e) => !own.some((o) => o.id === e))) throw new AppError('VALIDATION', 400, 'Evidence must belong to this candidate.');
-      await roles.roleForActor(c, b.roleId);
-      await c.tx.insert(S.rankingAdjustments).values({ datasetId: c.datasetId, roleId: b.roleId, candidateId: b.candidateId, consultantUserId: viewer.actor.userId, adjustment: b.adjustment, reasonPrivate: b.reason, evidenceIds: b.evidenceIds });
-      await recomputeRole(c, b.roleId);
-      await logActivity(c, { subjectType: 'role', subjectId: b.roleId, action: 'ranking.adjusted', metadata: { adjustment: b.adjustment } });
-      return {};
-    });
+    void base; void body; void viewer;
+    throw new AppError('VALIDATION', 400, 'Ranking bonuses have been retired. Record a screening assessment for each requirement instead.');
   } },
   { method: 'POST', path: 'consultant/matches/review', types: ['consultant'], h: async ({ base, body, viewer }) => {
     const b = parse(z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid() }), body);
     await roles.roleForActor(readCtx(base), b.roleId);
     const prepared = await assessmentInput(readCtx(base), b.roleId, b.candidateId);
     if (!prepared || !prepared.input.evidence.length) throw new AppError('NO_EVIDENCE', 409, 'This candidate has no approved evidence to review.');
-    const res = await runAi({ task: 'assess', model: 'review', datasetId: base.datasetId, userId: viewer.actor.userId, roleId: b.roleId, candidateId: b.candidateId, input: prepared.input }, (p) => p.assessCriteria(prepared.input, { review: true }));
+    const res = await assessWithEvidence(prepared.input, { model: 'review', datasetId: base.datasetId, userId: viewer.actor.userId, roleId: b.roleId, candidateId: b.candidateId });
     const v = validateAssessment(res.output, prepared.input.criteria.map((c) => c.criterionId), prepared.input.evidence.map((e) => e.id));
     if (!v.ok) throw new AppError('REVIEW_INVALID', 422, `The review did not pass validation (${v.reason.replace(/_/g, ' ')}). Nothing was changed.`);
-    return { proposal: res.output, provider: res.provider, model: res.usage.modelId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion };
+    return { proposal: res.output, provider: res.provider, model: res.usage.modelId, profileVersionId: prepared.profileVersionId, roleVersion: prepared.roleVersion, evidenceFingerprint: prepared.evidenceFingerprint };
   } },
   { method: 'POST', path: 'consultant/matches/apply-review', types: ['consultant'], h: async ({ base, body }) => {
-    const b = parse(z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid(), profileVersionId: z.string().uuid().nullable(), roleVersion: z.number().int(), proposal: assessmentOutput }), body);
-    const r = await T(base, async (c) => { await roles.roleForActor(c, b.roleId); const out = await applyAssessment(c, { roleId: b.roleId, candidateId: b.candidateId, profileVersionId: b.profileVersionId, roleVersion: b.roleVersion, output: b.proposal }); if (out.applied) await logActivity(c, { subjectType: 'role', subjectId: b.roleId, action: 'ranking.ai_review_applied' }); return out; });
+    const b = parse(z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid(), profileVersionId: z.string().uuid().nullable(), roleVersion: z.number().int(), evidenceFingerprint: z.string().min(64).max(64), proposal: assessmentOutput }), body);
+    const r = await T(base, async (c) => { await roles.roleForActor(c, b.roleId); const out = await applyAssessment(c, { roleId: b.roleId, candidateId: b.candidateId, profileVersionId: b.profileVersionId, roleVersion: b.roleVersion, evidenceFingerprint: b.evidenceFingerprint, output: b.proposal }); if (out.applied) await logActivity(c, { subjectType: 'role', subjectId: b.roleId, action: 'ranking.ai_review_applied' }); return out; });
     if (!r.applied) throw new AppError('REVIEW_NOT_APPLIED', 409, r.reason === 'stale_discarded' ? 'The profile or role changed since the review. Run it again.' : `Not applied: ${String(r.reason).replace(/_/g, ' ')}.`);
     return { applied: true };
   } },

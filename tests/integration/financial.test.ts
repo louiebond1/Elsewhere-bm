@@ -4,8 +4,9 @@ import { load } from './helpers';
 import { db } from '../../src/server/db/client';
 import * as S from '../../src/server/db/schema';
 import { requestIntroduction, acceptIntroduction, declineIntroduction, withdrawIntroduction } from '../../src/server/services/intros';
-import { activateRole, closeRole, reopenRole, upgradeSearch, roleCharges } from '../../src/server/services/roles';
+import { activateRole, approveRubric, closeRole, reopenRole, upgradeSearch, roleCharges } from '../../src/server/services/roles';
 import { recordHire, recordOutsideHire, recordDeparture, requestReplacement, approveReplacement, grantCredits, reverseTransaction } from '../../src/server/services/hires';
+import { ASSESSMENT_VERSION } from '../../src/server/lib/matching-rules';
 import { requestScreening, previewAutoPicks, confirmAutoPicks } from '../../src/server/services/screenings';
 
 const HIRE = { acceptedOfferDate: '2026-11-06', startDate: '2026-11-20', salaryPence: 4400000n };
@@ -217,6 +218,8 @@ describe('S16/S17 decline and withdraw', () => {
 describe('S19/S20 screenings', () => {
   it('auto picks five with a discovery slot and no charges', async () => {
     const w = await load('S19');
+    // Mark seeded scores as stand-in current assessments to test selection independently.
+    await db().update(S.matches).set({ provider: 'anthropic', assessmentVersion: `${ASSESSMENT_VERSION}:test` }).where(eq(S.matches.roleId, w.ids.roles.R1));
     const p = await w.T(w.client('A'), (c) => previewAutoPicks(c, w.ids.roles.R1));
     expect(p.picks).toHaveLength(5);
     expect(p.picks.some((x) => x.discoverySlot)).toBe(true);
@@ -281,6 +284,7 @@ describe('concurrency (real PostgreSQL connections)', () => {
     const mk = async (k: string) => (await w.T(w.client('A'), (c) => import('../../src/server/services/roles').then((m) => m.createDraftRole(c, { vacancyKey: k, title: `Analyst ${k}`, roleFamily: 'finance', salaryPounds: 44000, locationRegion: 'london', workMode: 'hybrid', outcomes: ['Do the work'], criteria: [ { key: 'a1', label: 'Reconciliations', importance: 'essential', weight: 3, evidenceTags: ['reconciliations'] }, { key: 'a2', label: 'Reporting', importance: 'essential', weight: 3, evidenceTags: ['reporting'] }, { key: 'a3', label: 'Learning', importance: 'desirable', weight: 2, evidenceTags: ['learning'] } ] })))).id;
     const a = await mk('NEW-1');
     const b = await mk('NEW-2');
+    for (const id of [a, b]) await w.T(w.client('A'), c => approveRubric(c, id, 1));
     const rs = await Promise.allSettled([a, b].map((id) => w.T(w.client('A'), (c) => activateRole(c, id, { confirmExtraDeposit: true, idempotencyKey: w.key() }))));
     expect(rs.every((r) => r.status === 'fulfilled')).toBe(true);
     const roles = await db().select().from(S.roles).where(and(eq(S.roles.clientId, w.ids.clients.A), eq(S.roles.status, 'open')));

@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { pageViewer } from '@/server/page-auth';
 import { PageHeader } from '@/components/ui';
 import { ActionButton } from '@/components/client';
 import { latestQualityRuns, qualityReport, type ResultItem } from '@/server/eval/quality';
+import { ASSESSMENT_VERSION } from '@/server/lib/matching-rules';
 import { EVAL_JOBS } from '@/server/eval/interview-set';
 import { date } from '@/lib/format';
 import { QualityView } from '@/components/quality-view';
@@ -18,11 +20,13 @@ export default async function Quality() {
   // Worked out from the stored results each time, so the page always uses the current ratings and rules.
   // Only runs of the current test set count (older runs used different test people).
   const known = new Set(EVAL_JOBS.flatMap((j) => j.people.map((x) => x.id)));
-  const doneRun = runs.find((r) => r.status === 'done' && (r.done as ResultItem[]).length > 0 && (r.done as ResultItem[]).every((x) => known.has(x.person)));
+  const doneRun = runs.find((r) => r.status === 'done' && (r.done as ResultItem[]).length > 0 && (r.done as ResultItem[]).every((x) => known.has(x.person) && x.assessmentVersion === ASSESSMENT_VERSION));
   const report = doneRun ? qualityReport(doneRun.done as ResultItem[]) : null;
   return (
     <div className="mx-auto max-w-[980px]">
       {running && <meta httpEquiv="refresh" content="20" />}
+      <p className="my-3 text-[14px] text-muted">New runs check criterion scoring. Reference ratings are provisional and need recruiter approval. Older interview-score results do not validate this ranking.</p>
+      <p className="my-3"><Link href="/consultant/quality/context">Read the factory-versus-group live-model test</Link></p>
       <PageHeader title="Interview quality" subtitle="One made-up job, 36 made-up people. Our rating out of 100 next to the AI’s. Our ratings were set by the developer." />
       <div className="flex flex-wrap items-center gap-3">
         {!running && <ActionButton path="consultant/quality-check" body={{}} label="Run quality check" successText="Started. This page updates by itself." />}

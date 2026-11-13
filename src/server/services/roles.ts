@@ -49,9 +49,13 @@ export async function criteriaFor(ctx: Ctx, roleId: string) {
 
 function validateCriteria(criteria: RoleDraftInput['criteria']) {
   const keys = new Set<string>();
+  const labels = new Set<string>();
   for (const c of criteria) {
     if (keys.has(c.key)) throw invalid('Each criterion needs a distinct key.', { criteria: 'Duplicate criterion key' });
     keys.add(c.key);
+    const label = c.label.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (labels.has(label)) throw invalid('Each requirement must assess a distinct skill.');
+    labels.add(label);
   }
 }
 
@@ -102,13 +106,13 @@ export async function updateRoleBrief(ctx: Ctx, roleId: string, raw: unknown) {
   const input = roleUpdateInput.parse(raw);
   const role = await roleForActor(ctx, roleId, { lock: true });
   if (role.rowVersion !== input.expectedRowVersion) throw conflict('STALE_VERSION', 'This changed in another session. Refresh to review the latest position.');
-  const patch: Partial<typeof roles.$inferInsert> = { updatedAt: new Date(), rowVersion: role.rowVersion + 1 };
+  const patch: Partial<typeof roles.$inferInsert> = { rubricApprovedVersion: 0, updatedAt: new Date(), rowVersion: role.rowVersion + 1 };
   if (role.status !== 'draft') {
     if (input.salaryPounds !== undefined && BigInt(input.salaryPounds) * 100n !== BigInt(role.salaryPence))
       throw policy('SALARY_LOCKED', 'The charge salary is locked once a role is active. Ask BondMoran to review the pricing.');
     if (input.serviceMode !== undefined && input.serviceMode !== role.defaultServiceMode) throw policy('USE_UPGRADE', 'Use Request full search to change the service.');
     if (input.vacancyKey !== undefined && input.vacancyKey !== role.vacancyKey) throw policy('VACANCY_LOCKED', 'The vacancy reference is locked once a role is active.');
-    if (input.criteria !== undefined && (input.criteria.length < 3 || input.criteria.length > 6)) throw invalid('An active role needs 3 to 6 criteria.', { criteria: 'Use 3 to 6 criteria' });
+    if (input.criteria !== undefined && (input.criteria.length < 3 || input.criteria.length > 12)) throw invalid('An active role needs 3 to 12 criteria.', { criteria: 'Use 3 to 12 criteria' });
     patch.roleVersion = role.roleVersion + 1;
   } else {
     if (input.salaryPounds !== undefined) patch.salaryPence = BigInt(input.salaryPounds) * 100n;
@@ -184,9 +188,10 @@ export async function activateRole(ctx: Ctx, roleId: string, opts: { confirmExtr
   const walletId = await lockWallet(ctx, pre.clientId);
   const role = await roleForActor(ctx, roleId, { lock: true });
   if (role.status !== 'draft') throw conflict('ROLE_NOT_DRAFT', 'This role is already active.');
+  if (role.rubricApprovedVersion !== role.roleVersion) throw invalid('Approve the job checklist before starting the search.');
   const crit = await criteriaFor(ctx, role.id);
   const fe: Record<string, string> = {};
-  if (crit.length < 3 || crit.length > 6) fe.criteria = 'Approve 3 to 6 criteria before activating';
+  if (crit.length < 3 || crit.length > 12) fe.criteria = 'Approve 3 to 12 criteria before activating';
   if (!role.outcomes.length) fe.outcomes = 'Add at least one outcome';
   if (!role.vacancyKey) fe.vacancyKey = 'Vacancy reference is required';
   if (Object.keys(fe).length) throw invalid('The role brief is not complete yet.', fe);
@@ -371,3 +376,15 @@ export async function roleCharges(ctx: Ctx, roleId: string) {
   };
 }
 export type RoleCharges = Awaited<ReturnType<typeof roleCharges>>;
+
+/** Approves the exact displayed rubric version, preserving its snapshot in the audit trail. */
+export async function approveRubric(ctx: Ctx, roleId: string, expectedRowVersion: number) {
+  const role = await roleForActor(ctx, roleId, { lock: true });
+  if (role.rowVersion !== expectedRowVersion) throw conflict('STALE_VERSION', 'The checklist changed. Refresh and review it again.');
+  const criteria = await criteriaFor(ctx, roleId);
+  if (criteria.length < 3 || criteria.length > 12) throw invalid('Review 3 to 12 requirements first.');
+  await ctx.tx.update(roles).set({ rubricApprovedVersion: role.roleVersion, updatedAt: new Date() }).where(eq(roles.id, roleId));
+  await logActivity(ctx, { subjectType: 'role', subjectId: roleId, action: 'rubric.approved', clientId: role.clientId, metadata: { roleVersion: role.roleVersion, criteria: JSON.stringify(criteria) } });
+  if (role.status === 'open') { const { recomputeRole } = await import('./matching'); await recomputeRole(ctx, roleId); }
+  return { approved: true };
+}

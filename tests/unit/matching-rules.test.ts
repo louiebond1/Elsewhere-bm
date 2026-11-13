@@ -35,17 +35,17 @@ describe('scoring', () => {
   const L = (o: Record<string, Level>) => new Map(Object.entries(o));
   it('AI only without screening', () => {
     const r = combinedScore({ criteria, ai: L({ a: 'specific', b: 'unknown', c: 'specific' }), human: null, adjustment: 0 });
-    expect(r.score).toBe(79);
+    expect(r.score).toBe(53);
     expect(r.coverage).toBeCloseTo(0.7);
   });
-  it('70/30 with screening and bounded adjustment', () => {
+  it('screening overrides only evidenced criteria and ignores bonuses', () => {
     const r = combinedScore({ criteria, ai: L({ a: 'specific', b: 'unknown', c: 'specific' }), human: L({ a: 'specific', b: 'specific', c: 'unknown' }), adjustment: 25 });
-    // ai 79, human (500+300+60)/10 = 86 -> 0.7*79 + 0.3*86 = 81.1, +10 clamp = 91.1 -> 91
-    expect(r.score).toBe(91);
+    // Screening fills b; its unknown c does not erase the candidate's existing evidence.
+    expect(r.score).toBe(75);
   });
   it('stable tie-break', () => {
     const xs = [{ eligibility: 'eligible', score: 50, coverageBps: 5000, publicRef: 'b' }, { eligibility: 'eligible', score: 50, coverageBps: 5000, publicRef: 'a' }, { eligibility: 'needs_clarification', score: 90, coverageBps: 9000, publicRef: 'c' }];
-    expect(xs.sort(compareMatches).map((x) => x.publicRef)).toEqual(['a', 'b', 'c']);
+    expect(xs.sort(compareMatches).map((x) => x.publicRef)).toEqual(['c', 'a', 'b']);
   });
   it('auto picks reserve a discovery slot', () => {
     const mk = (id: string, score: number, confidence: string, hasRelevantTag = true) => ({ id, eligibility: 'eligible', score, coverageBps: confidence === 'low' ? 3000 : 7000, publicRef: id, confidence, hasRelevantTag });

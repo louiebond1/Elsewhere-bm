@@ -5,7 +5,7 @@ import type { Ctx } from '../services/context';
 import { roleCharges, roleCounters, criteriaFor, roleForActor } from '../services/roles';
 import { clientCandidateDTO, candidateLabelForClient } from '../dto/candidate';
 import { resolveRoleRef } from '../services/intros';
-import { compareMatches } from '../lib/matching-rules';
+import { assessmentReady, compareMatches } from '../lib/matching-rules';
 import { balances, getWallet } from '../services/ledger';
 import { activeContractForClient, instalmentSchedule } from '../services/contracts';
 import { activeGrant, clientMaySeeCandidateOnRole } from '../policies/privacy';
@@ -48,7 +48,7 @@ export async function roleMatches(ctx: Ctx, roleId: string) {
   const ms = await ctx.tx.select().from(S.matches).where(and(eq(S.matches.roleId, roleId), ne(S.matches.eligibility, 'incompatible')));
   const refs = await ctx.tx.select({ id: S.candidates.id, ref: S.candidates.publicRef }).from(S.candidates).where(inArray(S.candidates.id, ms.length ? ms.map((m) => m.candidateId) : ['00000000-0000-0000-0000-000000000000']));
   const refOf = new Map(refs.map((r) => [r.id, r.ref]));
-  const sorted = ms.map((m) => ({ m, publicRef: refOf.get(m.candidateId) ?? '', eligibility: m.eligibility, score: m.score, coverageBps: m.coverageBps })).sort(compareMatches);
+  const sorted = ms.map((m) => ({ m, publicRef: refOf.get(m.candidateId) ?? '', eligibility: m.eligibility, score: assessmentReady(m, role) ? m.score : -1, coverageBps: m.coverageBps })).sort(compareMatches);
   const counters = await roleCounters(ctx, roleId);
   const strong: ClientMatchCard[] = [];
   const worth: ClientMatchCard[] = [];
@@ -59,6 +59,7 @@ export async function roleMatches(ctx: Ctx, roleId: string) {
     const [scr] = await ctx.tx.select({ status: S.screenings.status }).from(S.screenings).where(and(eq(S.screenings.roleId, roleId), eq(S.screenings.candidateId, s.m.candidateId)));
     const flags = { canRequestIntro: role.status === 'open' && !intro && counters.accepted + counters.pending < prototype.maxAcceptedIntros && !s.m.stale, canRequestScreening: role.status === 'open' && (!scr || scr.status === 'cancelled') && counters.screeningsUsed < prototype.includedScreenings };
     const dto = await clientCandidateDTO(ctx, { roleId, clientId: role.clientId, candidateId: s.m.candidateId, match: s.m, actionFlags: flags });
+    Object.assign(dto, { evidenceScore: assessmentReady(s.m, role) ? s.m.score : null, profileCoverage: assessmentReady(s.m, role) ? s.m.coverageBps / 100 : null });
     (s.m.confidence === 'low' ? worth : strong).push(dto);
     all.push({ candidateId: s.m.candidateId, dto });
   }
@@ -78,6 +79,7 @@ export async function candidateOnRole(ctx: Ctx, roleId: string, ref: string) {
   const flags = { canRequestIntro: role.status === 'open' && !intro && counters.accepted + counters.pending < prototype.maxAcceptedIntros && !(m?.stale), canRequestScreening: role.status === 'open' && (!scr || scr.status === 'cancelled') && counters.screeningsUsed < prototype.includedScreenings };
   const dto = await clientCandidateDTO(ctx, { roleId, clientId: role.clientId, candidateId, match: m ?? null, actionFlags: flags });
   const [hire] = intro ? await ctx.tx.select({ start: S.hires.startDate }).from(S.hires).where(eq(S.hires.introductionId, intro.id)) : [];
+  Object.assign(dto, { evidenceScore: m && assessmentReady(m, role) ? m.score : null, profileCoverage: m && assessmentReady(m, role) ? m.coverageBps / 100 : null });
   return { candidateId, hiredStart: hire?.start ?? null, role: { id: role.id, title: role.title, status: role.status }, dto, introId: intro && intro.acceptedAt ? intro.id : intro?.state === 'pending' ? intro.id : null, introState: intro?.state ?? null, counters };
 }
 
@@ -171,10 +173,10 @@ export async function bestPeople(ctx: Ctx, roleId: string, limit = 10) {
   const sims = await simulationsForRole(ctx, roleId);
   const view = (id: string): SimView | null => { const x = sims.get(id); return x ? simView(x) : null; };
   const withSim = all.map((x, order) => ({ ...x, order, sim: view(x.candidateId) }));
-  const ranked = [...withSim].sort((a, b) => (a.sim ? 0 : 1) - (b.sim ? 0 : 1) || (b.sim?.fitScore ?? 0) - (a.sim?.fitScore ?? 0) || a.order - b.order);
-  const best = ranked.filter((x) => x.sim).slice(0, limit);
+  const ranked = withSim;
+  const best = ranked.filter((x) => x.dto.evidenceScore != null).slice(0, limit);
   const bestIds = new Set(best.map((b) => b.candidateId));
-  return { best: best.map((b) => ({ dto: b.dto, sim: b.sim! })), rest: ranked.filter((x) => !bestIds.has(x.candidateId)).map((x) => x.dto), total: all.length };
+  return { best: best.map((b) => ({ dto: b.dto, sim: b.sim ?? { fitScore: b.dto.evidenceScore!, summary: 'Interview pending', concerns: [], answers: [], provider: 'pending' } })), rest: ranked.filter((x) => !bestIds.has(x.candidateId)).map((x) => x.dto), total: all.length };
 }
 
 export async function simulationForCandidate(ctx: Ctx, roleId: string, candidateId: string): Promise<SimView | null> {

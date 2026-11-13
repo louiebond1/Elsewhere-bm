@@ -1,3 +1,5 @@
+> Update 13 November 2026: evidence-based scoring and adaptive interview changes are implemented locally on `simple-hiring` and await web/worker deployment. The historical live state and subjective interview-score results below predate those changes. Read `docs/SCORING-FRAMEWORK.md` and `docs/evaluations/CONTEXT-BENCHMARK.md` for the current implementation and isolated real-model scenario evidence. Do not interpret the older 36-person results as validation of the new criteria or prompts.
+
 # Elsewhere / BondMoran: complete handover
 
 *Last updated 12 Nov 2026, about 23:40 UTC. This is the single source of truth for whoever continues the work (for example ChatGPT). Read all of it before changing anything. It covers what the product is, how to reach it, how the code is laid out, how to deploy, how every system works, the exact current state (including the AI and the first real quality results), how to fix and change things, a troubleshooting guide, the owner's rules, and a plan for the next 72 hours.*
@@ -5,6 +7,8 @@
 **No secrets are in this document.** Passwords, API keys and database URLs are held by the owner, Louie Bond, or stored in Railway. Never print, paste or commit them.
 
 ---
+
+> **13 Nov implementation update, pending deployment:** The repository now contains the evidence-based scoring framework and explicit job-checklist approval. The live state and old interview-scoring descriptions below describe the previous deployed version. Read `docs/SCORING-FRAMEWORK.md` for the new behaviour, verification and rollout requirements. Existing live jobs will require checklist approval after deployment; they are not automatically approved by the migration.
 
 ## 0. Status in one minute
 

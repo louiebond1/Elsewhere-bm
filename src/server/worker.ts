@@ -39,10 +39,14 @@ async function tickInterviews() {
   const { roles } = await import('./db/schema');
   const { and, eq } = await import('drizzle-orm');
   const { requestSimulations } = await import('./services/simulation');
+  const { recomputeRole } = await import('./services/matching');
   const open = await db().select({ id: roles.id }).from(roles).where(and(eq(roles.datasetId, ds.id), eq(roles.status, 'open')));
   let queued = 0;
   const base = await baseCtx({ kind: 'system', label: 'interview-sweep' });
-  for (const r of open) if ((await withTx(base, (ctx) => requestSimulations(ctx, r.id))).queued) queued++;
+  for (const r of open) {
+    await withTx(base, (ctx) => recomputeRole(ctx, r.id));
+    if ((await withTx(base, (ctx) => requestSimulations(ctx, r.id))).queued) queued++;
+  }
   if (queued) console.log(`[worker] interview sweep: ${queued} of ${open.length} live jobs had people to interview`);
 }
 

@@ -1,8 +1,8 @@
 /** Pure eligibility and ranking rules. No AI, no database. */
-import { prototype } from '../../config/prototype';
+export const ASSESSMENT_VERSION = 'evidence-context-v3';
 
-export type Level = 'specific' | 'partial' | 'unknown' | 'contradictory';
-export const LEVEL_VALUE: Record<Level, number> = { specific: 100, partial: 60, unknown: 30, contradictory: 0 };
+export type Level = 'specific' | 'partial' | 'unknown' | 'contradictory' | 'related' | 'clear' | 'strong';
+export const LEVEL_VALUE: Record<Level, number> = { specific: 75, partial: 50, unknown: 0, contradictory: 0, related: 25, clear: 75, strong: 100 };
 
 export type RoleShape = { roleFamily: string; salaryPence: bigint | number | string; locationRegion: string; workMode: string; workAuthorisationRequired: boolean; requires18?: boolean };
 export type CandidateShape = { preferredRoleFamilies: string[]; minSalaryPence: bigint | number | string | null; region: string; workModes: string[]; workAuthorisation: string; over18?: boolean | null; roleFamilyNonNegotiable?: boolean };
@@ -52,7 +52,7 @@ export function weightedScore(criteria: CriterionWeight[], levels: Map<string, L
 export function coverage(criteria: CriterionWeight[], levels: Map<string, Level>): number {
   const totalW = criteria.reduce((a, c) => a + c.weight, 0);
   if (!totalW) return 0;
-  const covered = criteria.filter((c) => ['specific', 'partial'].includes(levels.get(c.criterionId) ?? 'unknown')).reduce((a, c) => a + c.weight, 0);
+  const covered = criteria.filter((c) => ['specific', 'partial', 'related', 'clear', 'strong', 'contradictory'].includes(levels.get(c.criterionId) ?? 'unknown')).reduce((a, c) => a + c.weight, 0);
   return covered / totalW;
 }
 
@@ -65,17 +65,17 @@ export function confidenceFor(cov: number): 'low' | 'medium' | 'high' {
 export function combinedScore(args: { criteria: CriterionWeight[]; ai: Map<string, Level>; human: Map<string, Level> | null; adjustment: number }) {
   const ai = weightedScore(args.criteria, args.ai);
   const human = args.human ? weightedScore(args.criteria, args.human) : null;
-  const w = prototype.matchWeights;
-  const base = human == null ? ai : (ai * w.ai + human * w.human) / (w.ai + w.human);
-  const adj = Math.max(prototype.consultantAdjustmentMin, Math.min(prototype.consultantAdjustmentMax, args.adjustment));
-  const score = Math.max(0, Math.min(100, roundHalfUp(base + adj)));
-  return { score, aiScore: roundHalfUp(ai), humanScore: human == null ? null : roundHalfUp(human), coverage: coverage(args.criteria, args.ai) };
+  // Screening levels override individual criteria. No blend or arbitrary bonus.
+  const effective = new Map(args.ai);
+  for (const [id, level] of args.human ?? []) if (level !== 'unknown') effective.set(id, level);
+  const score = roundHalfUp(weightedScore(args.criteria, effective));
+  return { score, aiScore: roundHalfUp(ai), humanScore: human == null ? null : roundHalfUp(human), coverage: coverage(args.criteria, effective) };
 }
 
 export type Rankable = { eligibility: string; score: number; coverageBps: number; publicRef: string };
 
 export function compareMatches(a: Rankable, b: Rankable): number {
-  const er = (e: string) => (e === 'eligible' ? 0 : e === 'needs_clarification' ? 1 : 2);
+  const er = (e: string) => (e === 'incompatible' ? 1 : 0);
   return er(a.eligibility) - er(b.eligibility) || b.score - a.score || b.coverageBps - a.coverageBps || (a.publicRef < b.publicRef ? -1 : a.publicRef > b.publicRef ? 1 : 0);
 }
 
@@ -105,4 +105,9 @@ export function autoPicksDetailed<T extends Rankable & { id: string; confidence:
 
 export function autoPicks<T extends Rankable & { id: string; confidence: string; hasRelevantTag: boolean }>(ranked: T[], slotsLeft: number): T[] {
   return autoPicksDetailed(ranked, slotsLeft).picks;
+}
+
+/** Old, stale or fallback results are never current live assessments. */
+export function assessmentReady(m: { provider: string; assessmentVersion?: string | null; stale: boolean; roleVersion: number }, role: { roleVersion: number; rubricApprovedVersion: number }): boolean {
+  return role.rubricApprovedVersion === role.roleVersion && m.roleVersion === role.roleVersion && m.provider === 'anthropic' && !!m.assessmentVersion?.startsWith(`${ASSESSMENT_VERSION}:`) && !m.stale;
 }

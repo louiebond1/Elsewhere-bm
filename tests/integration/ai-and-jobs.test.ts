@@ -28,7 +28,7 @@ describe('provenance validation (A01, A02, A04)', () => {
     expect(out.output.items[0].tags).toEqual([]);
   });
   it('assessment validation rejects foreign evidence and missing criteria; unknown is never contradiction (A06)', async () => {
-    expect(validateAssessment({ criteria: [{ criterionId: 'c1', level: 'specific', evidenceIds: ['other'], reasonSafe: '' }] }, ['c1'], ['e1']).ok).toBe(false);
+    expect(validateAssessment({ criteria: [{ criterionId: 'c1', level: 'clear', quote: '', evidenceIds: ['other'], reasonSafe: '' }] }, ['c1'], ['e1']).ok).toBe(false);
     expect(validateAssessment({ criteria: [] }, ['c1'], ['e1']).ok).toBe(false);
     const r = await fixtureProvider.assessCriteria({ criteria: [{ criterionId: 'c1', label: 'Controls', description: '', evidenceTags: ['controls'] }], evidence: [] });
     expect(r.output.criteria[0].level).toBe('unknown');

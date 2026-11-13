@@ -4,24 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useCommand, ErrorText, Field, inputClass, textareaClass, Dialog, fillTemplate } from './client';
 import { buttonClass } from './ui';
 
-export function AdjustmentForm({ roleId, candidateId, evidence }: { roleId: string; candidateId: string; evidence: { id: string; claim: string }[] }) {
-  const { run, busy, error } = useCommand();
-  const [open, setOpen] = useState(false);
-  const [adj, setAdj] = useState(0);
-  const [reason, setReason] = useState('');
-  const [ids, setIds] = useState<string[]>([]);
-  return (
-    <>
-      <button type="button" className={buttonClass('secondary')} onClick={() => setOpen(true)}>Add ranking adjustment</button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Role-specific ranking adjustment">
-        <Field label={`Adjustment (${adj > 0 ? '+' : ''}${adj})`} hint="Between -10 and +10. Applies to this role only."><input type="range" min={-10} max={10} value={adj} onChange={(e) => setAdj(Number(e.target.value))} className="w-full" /></Field>
-        <Field label="Reason (private)"><textarea className={textareaClass} rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-        <fieldset className="mt-3"><legend className="text-[14px] font-medium">Referenced evidence</legend>{evidence.map((e) => <label key={e.id} className="mt-1 flex gap-2 text-[14px]"><input type="checkbox" checked={ids.includes(e.id)} onChange={(x) => setIds(x.target.checked ? [...ids, e.id] : ids.filter((i) => i !== e.id))} />{e.claim}</label>)}</fieldset>
-        <ErrorText error={error} />
-        <div className="mt-4 flex justify-end gap-2"><button type="button" className={buttonClass('secondary')} onClick={() => setOpen(false)}>Cancel</button><button type="button" className={buttonClass('primary')} disabled={busy} onClick={async () => { if (await run('consultant/ranking-adjustment', { roleId, candidateId, adjustment: adj, reason, evidenceIds: ids }) !== null) setOpen(false); }}>Save adjustment</button></div>
-      </Dialog>
-    </>
-  );
+export function AdjustmentForm(props: { roleId: string; candidateId: string; evidence: { id: string; claim: string }[] }) {
+  void props;
+  return <p className="text-[14px] text-muted">Ranking bonuses are retired. Record a screening assessment against each requirement instead.</p>;
 }
 
 export function SimpleForm({ path, fields, submitLabel, extra, redirect, numberFields = [] }: { path: string; fields: Array<{ name: string; label: string; type?: string; options?: Array<[string, string]>; hint?: string; textarea?: boolean; defaultValue?: string; required?: boolean }>; submitLabel: string; extra?: Record<string, unknown>; redirect?: string; numberFields?: string[] }) {
@@ -48,7 +33,7 @@ export function SimpleForm({ path, fields, submitLabel, extra, redirect, numberF
 }
 
 type Proposal = { criteria: { criterionId: string; level: string; evidenceIds: string[]; reasonSafe: string }[] };
-type ReviewRes = { proposal: Proposal; provider: string; model: string; profileVersionId: string | null; roleVersion: number };
+type ReviewRes = { proposal: Proposal; provider: string; model: string; profileVersionId: string | null; roleVersion: number; evidenceFingerprint: string };
 
 /** Consultant-requested review of an ambiguous assessment. The proposal is applied only on explicit approval. */
 export function AiReviewButton({ roleId, candidateId, criteria, current }: { roleId: string; candidateId: string; criteria: { id: string; label: string }[]; current: Record<string, string> }) {
@@ -67,7 +52,7 @@ export function AiReviewButton({ roleId, candidateId, criteria, current }: { rol
           </div>
         )}
         <ErrorText error={apply.error} />
-        <div className="mt-4 flex justify-end gap-2"><button type="button" className={buttonClass('secondary')} onClick={() => setRes(null)}>Discard</button><button type="button" className={buttonClass('primary')} disabled={apply.busy} onClick={async () => { if (res && await apply.run('consultant/matches/apply-review', { roleId, candidateId, profileVersionId: res.profileVersionId, roleVersion: res.roleVersion, proposal: res.proposal }) !== null) setRes(null); }}>Apply assessment</button></div>
+        <div className="mt-4 flex justify-end gap-2"><button type="button" className={buttonClass('secondary')} onClick={() => setRes(null)}>Discard</button><button type="button" className={buttonClass('primary')} disabled={apply.busy} onClick={async () => { if (res && await apply.run('consultant/matches/apply-review', { roleId, candidateId, profileVersionId: res.profileVersionId, roleVersion: res.roleVersion, evidenceFingerprint: res.evidenceFingerprint, proposal: res.proposal }) !== null) setRes(null); }}>Apply assessment</button></div>
       </Dialog>
     </>
   );

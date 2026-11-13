@@ -1,3 +1,4 @@
+import { contextFollowUps } from '../lib/interview-agenda';
 import 'server-only';
 import { and, eq, inArray, like } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -145,7 +146,15 @@ export async function rememberForMiniMe(ctx: Ctx, provider: string, items: { top
 export async function questionsLeft(ctx: Ctx, limit = 6) {
   const v = await onboardingView(ctx);
   const left = v.sections.flatMap((s) => s.questions.filter((q) => !q.answer).map((q) => ({ key: q.key, question: q.text, section: s.title })));
-  return { left: left.length, total: v.total, suggestions: left.slice(0, limit) };
+  const items = v.feed.filter((f) => f.answer).map((f, i) => ({ id: `profile:${i}`, text: `${f.text}\n${f.answer}` }));
+  const coveredKeys = new Set(v.sections.flatMap(s => s.questions.filter(q => q.answer).map(q => q.key)));
+  const context = contextFollowUps(items, coveredKeys);
+  const { matches, roles } = await import('../db/schema');
+  const candidateId = me(ctx);
+  const assessed = await ctx.tx.select({ results: matches.criterionResults, version: matches.roleVersion, current: roles.roleVersion, title: roles.title, provider: matches.provider, stale: matches.stale }).from(matches).innerJoin(roles, eq(roles.id, matches.roleId)).where(and(eq(matches.candidateId, candidateId), eq(roles.status, 'open')));
+  const gaps = assessed.filter((m) => m.provider === 'anthropic' && !m.stale && m.version === m.current).flatMap((m) => (m.results as { followUp?: string | null; reasonSafe: string }[]).filter((c) => c.followUp).map((c) => ({ key: null, question: c.followUp!, section: `For ${m.title}`, kind: 'follow_up' as const, targetKey: null, evidenceIds: [] as string[], reason: c.reasonSafe })));
+  const followUps = [...context, ...gaps].filter((q, i, all) => all.findIndex((x) => x.question === q.question) === i && !items.some((it) => it.text.includes(q.question.slice(0, 200) + '\n')));
+  return { left: left.length, total: v.total, followUps, suggestions: [...followUps, ...left].slice(0, limit), guidance: 'Ask one natural follow-up at a time. These are investigation leads, not facts. Never assume first job, personal hardship or resilience from age, country, title or employer brand. Save the person’s answer, not your hypothesis, and use the question as the extra-item topic so it is not asked again.' };
 }
 
 /** The mini-me's story: what was added or approved, and when, newest first. */

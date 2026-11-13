@@ -1,0 +1,201 @@
+{
+  "assessment": {
+    "type": "json_schema",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "criterionId": {
+                "type": "string"
+              },
+              "level": {
+                "type": "string",
+                "description": "{enum: [\"related\",\"partial\",\"clear\",\"strong\",\"unknown\",\"contradictory\"]}"
+              },
+              "evidenceIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "quote": {
+                "type": "string",
+                "description": "{maxLength: 600}"
+              },
+              "reasonSafe": {
+                "type": "string",
+                "description": "{maxLength: 600}"
+              },
+              "followUp": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "{maxLength: 240}"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "criterionId",
+              "level",
+              "evidenceIds",
+              "quote",
+              "reasonSafe"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "criteria"
+      ],
+      "description": "{$schema: \"https://json-schema.org/draft/2020-12/schema\"}"
+    }
+  },
+  "interview": {
+    "type": "json_schema",
+    "schema": {
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "description": "{maxLength: 200}"
+            },
+            "detail": {
+              "type": "string",
+              "description": "{maxLength: 1500}"
+            },
+            "questionKey": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "description": "{maxLength: 60}"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "topic",
+            "detail",
+            "questionKey"
+          ]
+        },
+        "__schema1": {
+          "type": "string",
+          "description": "{enum: [\"onsite\",\"hybrid\",\"remote\"]}"
+        },
+        "__schema2": {
+          "type": "string",
+          "description": "{enum: [\"finance\",\"operations\",\"commercial\"]}"
+        }
+      },
+      "type": "object",
+      "properties": {
+        "reply": {
+          "type": "string",
+          "description": "{maxLength: 900}"
+        },
+        "askedKey": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "{maxLength: 60}"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "save": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          },
+          "description": "{maxItems: 12}"
+        },
+        "preferences": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "region": {
+                  "type": "string",
+                  "description": "{enum: [\"london\",\"hertfordshire\",\"manchester\",\"remote_uk\"]}"
+                },
+                "workModes": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema1"
+                  },
+                  "minItems": 1
+                },
+                "roleFamilies": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema2"
+                  },
+                  "minItems": 1
+                },
+                "minSalaryPounds": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "{minimum: -9007199254740991, maximum: 9007199254740991}"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "noticeWeeks": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "description": "{minimum: -9007199254740991, maximum: 9007199254740991}"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "region",
+                "workModes",
+                "roleFamilies",
+                "minSalaryPounds",
+                "noticeWeeks"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "reply",
+        "askedKey",
+        "save",
+        "preferences"
+      ],
+      "description": "{$schema: \"https://json-schema.org/draft/2020-12/schema\"}"
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { miniMeChat, candidates, files } from '../db/schema';
 import { requireUser, readCtx, withTx, type BaseCtx, type Ctx } from './context';
 import { invalid } from '../lib/errors';
 import { runAi, aiMode, AiFailure } from '../ai';
-import { onboardingView, rememberForMiniMe } from './onboarding';
+import { onboardingView, rememberForMiniMe, questionsLeft } from './onboarding';
 import { updatePreferences } from './candidates';
 import { ONBOARDING_QUESTIONS, TOPIC_LABELS } from '../../config/onboarding';
 
@@ -29,10 +29,12 @@ async function state(ctx: Ctx) {
     ctx.tx.select({ text: files.extractedTextPrivate }).from(files).where(eq(files.candidateId, id)).orderBy(desc(files.createdAt)).limit(1),
     ctx.tx.select().from(miniMeChat).where(eq(miniMeChat.candidateId, id)).orderBy(desc(miniMeChat.createdAt)).limit(14),
   ]);
+  const agenda = await questionsLeft(ctx, 6);
   const all = v.sections.flatMap((s) => s.questions);
   return {
+    interviewAgenda: agenda.followUps,
     id, cv: cv?.text ?? null, preferencesSet: !!c?.prefs,
-    known: v.feed.slice(0, 40).map((f) => ({ topic: f.text, answer: (f.answer ?? '').slice(0, 300) })),
+    known: v.feed.slice(0, 70).map((f) => ({ topic: f.text, answer: (f.answer ?? '').slice(0, 1500) })),
     missing: all.filter((q) => !q.answer).map((q) => ({ key: q.key, topic: TOPIC_LABELS[q.key] ?? q.text, question: q.text })),
     messages: history.reverse().map((m) => ({ role: m.role as 'assistant' | 'user', text: m.text, askedKey: m.askedKey })),
   };
@@ -41,13 +43,15 @@ async function state(ctx: Ctx) {
 /** The free built-in interviewer: saves what they said against the last question, asks the next one. */
 function simpleTurn(s: Awaited<ReturnType<typeof state>>, text: string | null) {
   const last = [...s.messages].reverse().find((m) => m.role === 'assistant');
-  const save = text && last?.askedKey ? [{ topic: TOPIC_LABELS[last.askedKey] ?? 'Something they shared', detail: text, questionKey: last.askedKey }] : text ? [{ topic: 'Something they shared', detail: text, questionKey: null }] : [];
+  const followupTopic = last?.askedKey?.startsWith('followup:') ? last.askedKey.slice(9) : null;
+  const save = text && followupTopic ? [{topic:followupTopic,detail:text,questionKey:null}] : text && last?.askedKey ? [{ topic: TOPIC_LABELS[last.askedKey] ?? 'Something they shared', detail: text, questionKey: last.askedKey }] : text ? [{ topic: last?.text ?? 'Something they shared', detail: text, questionKey: null }] : [];
   const missing = s.missing.filter((m) => m.key !== last?.askedKey);
   const order = s.cv ? ['current_role', 'current_duties', 'past_roles', 'ex_proud', 'ex_numbers'] : ['current_role', 'current_duties'];
   const prefsFirst = !s.preferencesSet ? ['ideal_role', 'location', 'work_mode', 'salary', 'notice'] : [];
+  const follow = s.interviewAgenda.find((q) => !last?.text.endsWith(q.question) && !text?.includes(q.question));
   const next = [...prefsFirst, ...order].map((k) => missing.find((m) => m.key === k)).find(Boolean) ?? missing[0];
   const opener = !s.messages.length ? (s.cv ? 'Hi! I’ve read your CV. Let’s build your mini-me together, one quick question at a time. ' : 'Hi! Let’s build your mini-me together, one quick question at a time. ') : text ? 'Thanks, saved. ' : '';
-  return { reply: next ? `${opener}${next.question}` : `${opener}That covers everything I had on my list. Anything else you’d like employers to know?`, askedKey: next?.key ?? null, save, preferences: null };
+  return { reply: follow ? `${opener}${follow.question}` : next ? `${opener}${next.question}` : `${opener}That covers everything I had on my list. Anything else you’d like employers to know?`, askedKey: follow ? follow.targetKey ?? `followup:${follow.question.slice(0,200)}` : next?.key ?? null, save, preferences: null };
 }
 
 /** One turn: save what they said, then ask the next thing. Live AI when available and within budget; otherwise the simple interviewer. */
@@ -60,7 +64,7 @@ export async function chatTurn(base: BaseCtx, text: string | null) {
   let live = false;
   if (aiMode() === 'live') {
     try {
-      const input = { cv: s.cv ? s.cv.slice(0, 8000) : null, preferencesSet: s.preferencesSet, known: s.known, missing: s.missing.slice(0, 25).map(({ key, topic }) => ({ key, topic })), allTopics: ONBOARDING_QUESTIONS.map((q) => ({ key: q.key, topic: TOPIC_LABELS[q.key] ?? q.text })), messages: convo };
+      const input = { interviewAgenda: s.interviewAgenda, cv: s.cv ? s.cv.slice(0, 8000) : null, preferencesSet: s.preferencesSet, known: s.known, missing: s.missing.slice(0, 25).map(({ key, topic }) => ({ key, topic })), allTopics: ONBOARDING_QUESTIONS.map((q) => ({ key: q.key, topic: TOPIC_LABELS[q.key] ?? q.text })), messages: convo };
       const r = await runAi({ task: 'minime', datasetId: base.datasetId, candidateId: s.id, input }, (p) => p.miniMeChat(input));
       out = r.output; live = true;
     } catch (e) {

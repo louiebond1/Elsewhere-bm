@@ -5,7 +5,6 @@ import { rolesForClient, bestPeople } from '@/server/views/client';
 import { buttonClass, cx } from '@/components/ui';
 import { FoldArt } from '@/components/fold-art';
 import { codename, paletteFor, variantFor } from '@/lib/codename';
-import { fitLabel } from '@/components/role';
 
 /** Home for a hiring manager: who are you hiring next, your hires, and the people worth a look. */
 export default async function ClientHome() {
@@ -21,7 +20,7 @@ export default async function ClientHome() {
   const picks: { roleId: string; roleTitle: string; ref: string; name: string; line: string; fit: string }[] = [];
   for (let i = 0; picks.length < 3 && i < 3; i++) for (const l of live) {
     const p = l.people[i];
-    if (p && picks.length < 3) picks.push({ roleId: l.role.id, roleTitle: l.role.title, ref: p.dto.roleScopedReference, name: p.dto.identity ? p.dto.identity.fullName : codename(p.dto.roleScopedReference), line: p.dto.safeHeadline, fit: fitLabel(p.sim.fitScore).text });
+    if (p && picks.length < 3) picks.push({ roleId: l.role.id, roleTitle: l.role.title, ref: p.dto.roleScopedReference, name: p.dto.identity ? p.dto.identity.fullName : codename(p.dto.roleScopedReference), line: p.dto.safeHeadline, fit: `${p.dto.evidenceScore}/100 evidenced` });
   }
 
   return (

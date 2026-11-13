@@ -20,15 +20,17 @@ export function validateExtraction(out: ExtractionOutput, sources: Source[]) {
   return { accepted, rejected, conflicts: out.conflicts.filter((c) => c.sourceIds.every((s) => byId.has(s))) };
 }
 
-export function validateAssessment(out: AssessmentOutput, criterionIds: string[], evidenceIds: string[]) {
+export function validateAssessment(out: AssessmentOutput, criterionIds: string[], evidenceIds: string[], sources?: { id: string; safeClaim: string | null }[]) {
   const ev = new Set(evidenceIds);
   const seen = new Set<string>();
   for (const c of out.criteria) {
     if (!criterionIds.includes(c.criterionId)) return { ok: false as const, reason: 'unknown_criterion' };
     if (seen.has(c.criterionId)) return { ok: false as const, reason: 'duplicate_criterion' };
     seen.add(c.criterionId);
+    if (sources && c.level !== 'unknown' && (!c.quote?.trim() || !c.evidenceIds.some((id) => sources.find((s) => s.id === id)?.safeClaim?.includes(c.quote)))) return { ok: false as const, reason: 'quote_not_in_source' };
+    if (c.level === 'unknown' && (c.evidenceIds.length || c.quote)) return { ok: false as const, reason: 'unknown_with_evidence' };
     if (c.evidenceIds.some((e) => !ev.has(e))) return { ok: false as const, reason: 'foreign_evidence' };
-    if ((c.level === 'specific' || c.level === 'partial') && !c.evidenceIds.length) return { ok: false as const, reason: 'missing_evidence' };
+    if (c.level !== 'unknown' && !c.evidenceIds.length) return { ok: false as const, reason: 'missing_evidence' };
   }
   if (seen.size !== criterionIds.length) return { ok: false as const, reason: 'missing_criterion' };
   return { ok: true as const };

@@ -15,7 +15,7 @@ afterEach(() => { setProviderForTests(null); delete process.env.AI_MONTHLY_BUDGE
 const usage = { inputTokens: 500, outputTokens: 200, cacheReadTokens: 0, cacheWriteTokens: 0, modelId: 'claude-haiku-5-5' };
 
 describe('simulated interviews and your best 10', () => {
-  it('demo mode: interviews the top matches from their own examples and ranks the best 10', async () => {
+  it('demo mode: interviews remain readable without ranking basic scores', async () => {
     const w = await load();
     const R1 = w.ids.roles.R1;
     await w.T(w.client('A'), (c) => requestSimulations(c, R1));
@@ -26,12 +26,11 @@ describe('simulated interviews and your best 10', () => {
     expect(rows.length).toBeLessThanOrEqual(SIM_LIMIT);
     expect(rows.every((r) => r.provider === 'fixture' && r.fitScore >= 0 && r.fitScore <= 100)).toBe(true);
     const { best, rest } = await bestPeople(readCtx(w.client('A')), R1);
-    expect(best.length).toBeGreaterThan(0);
-    expect(best.length).toBeLessThanOrEqual(10);
-    for (let i = 1; i < best.length; i++) expect(best[i - 1].sim.fitScore).toBeGreaterThanOrEqual(best[i].sim.fitScore);
+    expect(best).toHaveLength(0); // Basic interviews cannot determine current evidence rankings.
+    expect(rest.length).toBeGreaterThan(0);
     expect(rest.every((r) => !best.some((b) => b.dto.roleScopedReference === r.roleScopedReference))).toBe(true);
     // Answers are the candidate's approved, anonymised examples: no names or employers.
-    const text = JSON.stringify(best);
+    const text = JSON.stringify(rest);
     for (const s of ['Maya', 'Ellis', 'Mallow', 'candidate.c01', 'Hannah Cole']) expect(text).not.toContain(s);
     // Nothing more to do: a second request queues nothing.
     expect(await w.T(w.client('A'), (c) => requestSimulations(c, R1))).toEqual({ queued: false });

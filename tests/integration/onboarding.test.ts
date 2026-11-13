@@ -42,7 +42,7 @@ describe('candidate onboarding: welcome email and the 50-question checklist', ()
     expect(list.result.structuredContent).toMatchObject({ total: ONBOARDING_QUESTIONS.length, answered: 0 });
     expect(list.result.content[0].text).toMatch(/mock interview/);
     expect(list.result.content[0].text).toMatch(/in batches/);
-    expect(ONBOARDING_QUESTIONS.length).toBe(50);
+    expect(ONBOARDING_QUESTIONS.length).toBe(62);
     const saved = await call(tok, 'save_onboarding_answers', { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations, Excel, staying calm' }, { key: 'made_up', answer: 'x' }, { key: 'salary', answer: '' }] });
     expect(saved.result.isError).toBeUndefined();
     expect(saved.result.content[0].text).toMatch(/Saved 2 answers straight into their profile/);
@@ -125,7 +125,7 @@ describe('always-on mode', () => {
     const w = await load();
     const tok = await token(w, 'C01');
     const next = await call(tok, 'next_mini_me_questions');
-    expect(next.result.structuredContent).toMatchObject({ left: 50, total: 50 });
+    expect(next.result.structuredContent).toMatchObject({ left: 62, total: 62 });
     expect((next.result.structuredContent as { suggestions: unknown[] }).suggestions).toHaveLength(6);
     expect(next.result.content[0].text).toMatch(/natural, conversational/);
     const r = await call(tok, 'remember_for_my_mini_me', { items: [
@@ -137,7 +137,7 @@ describe('always-on mode', () => {
     const v = await onboardingView(readCtx(w.cand('C01')));
     expect(v.answered).toBe(1);
     expect(v.extras.map((e) => e.text)).toEqual(expect.arrayContaining(['Weekend football coaching', 'Bad key']));
-    expect(((await call(tok, 'next_mini_me_questions')).result.structuredContent as { left: number }).left).toBe(49);
+    expect(((await call(tok, 'next_mini_me_questions')).result.structuredContent as { left: number }).left).toBe(61);
     // What they wrote themselves is never overwritten by always-on saves.
     await w.T(w.cand('C01'), (c) => saveOwnAnswer(c, 'current_role', 'Finance assistant (my words)'));
     const again = await call(tok, 'remember_for_my_mini_me', { items: [{ topic: 'Job', detail: 'Something else', question_key: 'current_role' }] });

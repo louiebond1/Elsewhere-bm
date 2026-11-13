@@ -39,7 +39,7 @@ export function QualityView({ report }: { report: Report }) {
         </div>
         {view === 'order' ? (<>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl bg-page p-4"><p className="font-display text-[28px] font-semibold">{job.topTen} of 10</p><p className="text-[14px] text-muted">of our top 10 are in the AI’s top 10</p></div>
+            <div className="rounded-2xl bg-page p-4"><p className="font-display text-[28px] font-semibold">{job.topTen} of {Math.min(10, job.people.length)}</p><p className="text-[14px] text-muted">of our top {Math.min(10, job.people.length)} are in the AI’s top {Math.min(10, job.people.length)}</p></div>
             <div className="rounded-2xl bg-page p-4"><p className="font-display text-[28px] font-semibold">{job.order}<span className="text-[16px] text-muted"> / 100</span></p><p className="text-[14px] text-muted">how alike the two orders are (100 = identical)</p></div>
           </div>
           <div className="mt-4 hidden grid-cols-[56px_minmax(0,1fr)_96px_80px] gap-x-3 border-b border-line pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted sm:grid"><span>AI</span><span>Person</span><span className="text-right">Our place</span><span className="text-right">Apart</span></div>

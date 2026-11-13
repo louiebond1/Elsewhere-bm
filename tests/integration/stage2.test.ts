@@ -11,7 +11,7 @@ import { recomputeRole, applyAssessment, assessmentInput } from '../../src/serve
 import { drainJobs } from '../../src/server/services/worker-handlers';
 import { rebuildProfile } from '../../src/server/services/profiles';
 import { createContractDraft, activateContract } from '../../src/server/services/contracts';
-import { createDraftRole, activateRole } from '../../src/server/services/roles';
+import { createDraftRole, approveRubric, activateRole } from '../../src/server/services/roles';
 import { login } from '../../src/server/auth';
 import { resetDemo } from '../../src/server/services/demo';
 
@@ -35,6 +35,7 @@ describe('empty workspace', () => {
     const k = await w.T(w.consultant(), (c) => createContractDraft(c, { clientId: created.id, planType: 'annual', startDate: '2026-11-01', endDate: '2027-10-31', creditRatePounds: 3800, includedOpenRoles: 2, committedCredits: 10, instalmentCount: 12 }));
     await w.T(w.consultant(), (c) => activateContract(c, k.id));
     const role = await w.T(w.consultant(), (c) => createDraftRole(c, { clientId: created.id, vacancyKey: 'T-1', title: 'Analyst', roleFamily: 'finance', salaryPounds: 44000, locationRegion: 'london', workMode: 'hybrid', outcomes: ['Do good work'], criteria: [{ key: 'rec', label: 'Reconciliations', importance: 'essential', weight: 5, evidenceTags: ['reconciliations'] }, { key: 'rep', label: 'Reporting', importance: 'essential', weight: 3, evidenceTags: ['reporting'] }, { key: 'learn', label: 'Learning', importance: 'desirable', weight: 2, evidenceTags: ['learning'] }] }));
+    await w.T(w.consultant(), (c) => approveRubric(c, role.id, role.rowVersion));
     const open = await w.T(w.consultant(), (c) => activateRole(c, role.id, { confirmExtraDeposit: false, idempotencyKey: w.key() }));
     expect(open.status).toBe('open');
     const [{ posted }] = (await db().execute(sql`select coalesce(sum(delta_units),0)::text as posted from credit_transactions where client_id = ${created.id}`)).rows as { posted: string }[];
@@ -50,7 +51,7 @@ describe('live assessment job (stand-in provider)', () => {
       async assessCriteria(i) {
         // Mark every criterion "specific" with the first evidence item, except one candidate gets a foreign ID.
         const bad = i.evidence.some((e) => e.safeClaim.includes('ticket sales'));
-        return { provider: 'anthropic', usage, output: { criteria: i.criteria.map((c) => ({ criterionId: c.criterionId, level: 'specific' as const, evidenceIds: [bad ? '00000000-0000-4000-8000-000000000000' : i.evidence[0].id], reasonSafe: 'Relevant approved example.' })) } };
+        return { provider: 'anthropic', usage, output: { criteria: i.criteria.map((c) => ({ criterionId: c.criterionId, level: 'strong' as const, quote: i.evidence[0].safeClaim, evidenceIds: [bad ? '00000000-0000-4000-8000-000000000000' : i.evidence[0].id], reasonSafe: 'Relevant approved example.' })) } };
       },
     }));
     await w.T(w.consultant(), (c) => recomputeRole(c, roleId));

@@ -20,6 +20,7 @@ export function TastePicker({ pair }: { pair: Pair }) {
   );
   return (
     <section aria-label="Which answer suits you better?" className="rounded-3xl bg-surface p-5 shadow-[0_8px_24px_rgb(18_37_29/0.06)] lg:p-6">
+      <p className="mb-3 text-[14px] text-muted">Your choices are saved for review. They do not change rankings. Any checklist change needs approval.</p>
       <p className="text-[14px] text-muted">From your job: {pair.roleTitle}</p>
       <p className="mt-1 font-display text-[20px] font-semibold leading-snug">{pair.question}</p>
       <div className="mt-4 grid gap-3 md:grid-cols-2">

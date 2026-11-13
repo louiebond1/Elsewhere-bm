@@ -8,7 +8,7 @@ import { inferTags } from '../../lib/tags';
 import { ONBOARDING_QUESTIONS } from '../../config/onboarding';
 
 /** Practical details are for matching filters, not for interview answers. */
-export const NOT_FOR_INTERVIEWS = new Set(['why_move', 'salary', 'notice', 'location', 'work_mode', 'hours', 'right_to_work', 'gaps', 'not_interested', 'deal_breakers', 'questions_for_employers', 'employment_status']);
+export const NOT_FOR_INTERVIEWS = new Set(['support_preference', 'environment_preference', 'why_move', 'salary', 'notice', 'location', 'work_mode', 'hours', 'right_to_work', 'gaps', 'not_interested', 'deal_breakers', 'questions_for_employers', 'employment_status']);
 const QUESTION = new Map(ONBOARDING_QUESTIONS.map((q) => [q.key, q.text]));
 
 /**
@@ -21,7 +21,7 @@ export async function miniMeEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: string) 
   return rows.map((r) => {
     const about = r.questionText ?? QUESTION.get(r.questionKey) ?? '';
     // Practical details (salary, notice...) only ever answer screening questions.
-    return { id: `mm:${r.questionKey}`, safeClaim: r.answer.slice(0, 900), tags: inferTags(`${about} ${r.answer}`), strength: 'partial', key: r.questionKey.startsWith('extra:') ? null : r.questionKey, topic: r.questionText, practical: NOT_FOR_INTERVIEWS.has(r.questionKey) };
+    return { id: `mm:${r.questionKey}`, safeClaim: r.answer, tags: inferTags(`${about} ${r.answer}`), strength: 'partial', key: r.questionKey.startsWith('extra:') ? null : r.questionKey, topic: r.questionText, practical: NOT_FOR_INTERVIEWS.has(r.questionKey) };
   });
 }
 
@@ -62,8 +62,16 @@ export async function miniMeMatchEvidence(ctx: Pick<Ctx, 'tx'>, candidateId: str
   const all = (await miniMeEvidence(ctx, candidateId)).filter((e) => !e.practical);
   if (!all.length) return [];
   const forbidden = await identifyingStrings(ctx, candidateId);
-  return all.filter((e) => !safeClaimProblems(e.safeClaim, forbidden).length && !COMPANY.test(e.safeClaim))
-    .map((e) => ({ id: e.id, safeClaim: e.safeClaim.slice(0, 600), tags: e.tags, strength: e.strength, uncertainty: null as string | null }));
+  return all.map((e) => {
+    let claim = e.safeClaim;
+    for (const name of [...forbidden].sort((a, b) => b.length - a.length)) {
+      if (name.trim().length < 3) continue;
+      claim = claim.replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[name hidden]');
+    }
+    claim = claim.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email hidden]').replace(/(?:https?:\/\/|www\.)\S+/gi, '[link hidden]').replace(/(?:\+?\d[\s-]?){9,}/g, '[phone hidden]');
+    return { ...e, safeClaim: claim };
+  }).filter((e) => !safeClaimProblems(e.safeClaim, forbidden).length && !COMPANY.test(e.safeClaim))
+    .map((e) => ({ id: e.id, safeClaim: e.safeClaim, tags: e.tags, strength: e.strength, uncertainty: null as string | null }));
 }
 
 /**
