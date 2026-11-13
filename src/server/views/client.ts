@@ -34,7 +34,8 @@ export async function rolesForClient(ctx: Ctx, clientId: string) {
     const ch = r.status === 'draft' ? null : await roleCharges(ctx, r.id);
     const pipe = await ctx.tx.select({ stage: S.pipelineEntries.stage }).from(S.pipelineEntries).innerJoin(S.introductions, eq(S.introductions.id, S.pipelineEntries.introductionId)).where(eq(S.introductions.roleId, r.id));
     const activePipe = pipe.filter((p) => !['rejected', 'withdrawn', 'hired'].includes(p.stage)).length;
-    const next = r.status === 'draft' ? 'Finish setting it up' : ch && ch.pending ? `Waiting for ${ch.pending} ${ch.pending === 1 ? 'person' : 'people'} to answer` : activePipe ? `${activePipe} ${activePipe === 1 ? 'person' : 'people'} to interview` : ch && ch.accepted === 0 ? 'Look at your candidates' : 'Keep interviews moving';
+    let next = r.status === 'draft' ? 'Finish setting it up' : ch && ch.pending ? `Waiting for ${ch.pending} ${ch.pending === 1 ? 'person' : 'people'} to answer` : activePipe ? `${activePipe} ${activePipe === 1 ? 'person' : 'people'} to interview` : ch && ch.accepted === 0 ? 'Look at your candidates' : 'Keep interviews moving';
+    if(r.shortlistEnabled&&r.status==='open'){const {shortlistStatus}=await import('../services/shortlists');const delivery=await shortlistStatus(ctx,r.id);if(delivery.waiting)next=`Top 10 due ${delivery.due?new Date(delivery.due).toLocaleString('en-GB'): 'after the evidence window'}`;}
     out.push({ id: r.id, title: r.title, vacancyKey: r.vacancyKey, status: r.status, salaryPence: r.salaryPence.toString(), workMode: r.workMode, isExtra: r.isExtraRole, isReplacement: r.isReplacementRole, mode: r.defaultServiceMode, charges: ch, activePipe, next });
   }
   return out;
@@ -43,7 +44,7 @@ export async function rolesForClient(ctx: Ctx, clientId: string) {
 export type ClientMatchCard = Awaited<ReturnType<typeof clientCandidateDTO>> & { score?: number };
 
 /** Matches for a role, policy-filtered at read time. Low confidence goes to "Worth a conversation". */
-export async function roleMatches(ctx: Ctx, roleId: string) {
+export async function liveRoleMatches(ctx: Ctx, roleId: string) {
   const role = await roleForActor(ctx, roleId);
   const ms = await ctx.tx.select().from(S.matches).where(and(eq(S.matches.roleId, roleId), ne(S.matches.eligibility, 'incompatible')));
   const refs = await ctx.tx.select({ id: S.candidates.id, ref: S.candidates.publicRef }).from(S.candidates).where(inArray(S.candidates.id, ms.length ? ms.map((m) => m.candidateId) : ['00000000-0000-0000-0000-000000000000']));
@@ -66,9 +67,19 @@ export async function roleMatches(ctx: Ctx, roleId: string) {
   return { strong, worth, all };
 }
 
-export async function candidateOnRole(ctx: Ctx, roleId: string, ref: string) {
+/** Employers read immutable delivered lists. Consultants retain the working assessment view. */
+export async function roleMatches(ctx:Ctx,roleId:string){
+ if(ctx.actor.kind!=='user'||ctx.actor.userType!=='client')return liveRoleMatches(ctx,roleId);
+ const {ensureLegacyPublication,disclosedPublication}=await import('../services/shortlists');await ensureLegacyPublication(ctx,roleId);
+ const p=await disclosedPublication(ctx,roleId);const all=(p?.payload.entries??[]).map(e=>({candidateId:e.candidateId,dto:e.dto}));
+ return {all,strong:all.filter(x=>(x.dto.profileCoverage??0)>=50).map(x=>x.dto),worth:all.filter(x=>(x.dto.profileCoverage??0)<50).map(x=>x.dto)};
+}
+
+export async function candidateOnRole(ctx: Ctx, roleId: string, ref: string, version?:number) {
   const role = await roleForActor(ctx, roleId);
   const candidateId = await resolveRoleRef(ctx, roleId, ref);
+  let snapshot:Awaited<ReturnType<typeof import('../services/shortlists').publicationEntry>>=null;
+  if(ctx.actor.kind==='user'&&ctx.actor.userType==='client'){const {publicationEntry}=await import('../services/shortlists');snapshot=await publicationEntry(ctx,roleId,candidateId,version);if(!snapshot)throw notFound();}else if(role.shortlistEnabled){const {workingCandidateEntry}=await import('../services/shortlists');snapshot=await workingCandidateEntry(ctx,roleId,candidateId);}
   const [m] = await ctx.tx.select().from(S.matches).where(and(eq(S.matches.roleId, roleId), eq(S.matches.candidateId, candidateId)));
   const [intro] = await ctx.tx.select().from(S.introductions).where(and(eq(S.introductions.roleId, roleId), eq(S.introductions.candidateId, candidateId)));
   const hasIntro = !!intro && ['pending', 'accepted'].includes(intro.state);
@@ -80,7 +91,8 @@ export async function candidateOnRole(ctx: Ctx, roleId: string, ref: string) {
   const dto = await clientCandidateDTO(ctx, { roleId, clientId: role.clientId, candidateId, match: m ?? null, actionFlags: flags });
   const [hire] = intro ? await ctx.tx.select({ start: S.hires.startDate }).from(S.hires).where(eq(S.hires.introductionId, intro.id)) : [];
   Object.assign(dto, { evidenceScore: m && assessmentReady(m, role) ? m.score : null, profileCoverage: m && assessmentReady(m, role) ? m.coverageBps / 100 : null });
-  return { candidateId, hiredStart: hire?.start ?? null, role: { id: role.id, title: role.title, status: role.status }, dto, introId: intro && intro.acceptedAt ? intro.id : intro?.state === 'pending' ? intro.id : null, introState: intro?.state ?? null, counters };
+  if(snapshot){const identity=dto.identity,permittedActionFlags=dto.permittedActionFlags,introState=dto.introState;Object.assign(dto,snapshot.dto,{identity,permittedActionFlags,introState});}
+  return { candidateId, hiredStart: hire?.start ?? null, role: { id: role.id, title: role.title, status: role.status, shortlistEnabled:role.shortlistEnabled }, dto, introId: intro && intro.acceptedAt ? intro.id : intro?.state === 'pending' ? intro.id : null, introState: intro?.state ?? null, counters };
 }
 
 export async function pipelineForRole(ctx: Ctx, roleId: string) {
@@ -100,7 +112,7 @@ export async function pipelineForRole(ctx: Ctx, roleId: string) {
 export async function screeningsForRole(ctx: Ctx, roleId: string) {
   await roleForActor(ctx, roleId);
   const rows = await ctx.tx.select().from(S.screenings).where(eq(S.screenings.roleId, roleId)).orderBy(desc(S.screenings.createdAt));
-  return rows.map((s) => ({ id: s.id, status: s.status, mode: s.selectionMode, summarySafe: s.status === 'completed' ? s.summarySafe : null, ref: roleScopedRef(roleId, s.candidateId), scheduledAt: s.scheduledAt?.toISOString() ?? null }));
+  return rows.filter(s=>ctx.actor.kind!=='user'||ctx.actor.userType!=='client'||!['declined','expired'].includes(s.status)).map((s) => ({ id: s.id, outcome:s.outcome, disputeReason:s.disputeReason, status: s.status, mode: s.selectionMode, summarySafe: s.status === 'completed' ? s.summarySafe : null, ref: roleScopedRef(roleId, s.candidateId), scheduledAt: s.scheduledAt?.toISOString() ?? null }));
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -167,7 +179,8 @@ function simView(s: StoredSim): SimView {
 }
 
 /** Everyone ranked by their interview (best first); anyone not interviewed yet comes after, in match order. The top `limit` are "your best". */
-export async function bestPeople(ctx: Ctx, roleId: string, limit = 10) {
+export async function bestPeople(ctx: Ctx, roleId: string, limit = 10, version?:number) {
+  if(ctx.actor.kind==='user'&&ctx.actor.userType==='client'){const {ensureLegacyPublication,disclosedPublication}=await import('../services/shortlists');await ensureLegacyPublication(ctx,roleId);const p=await disclosedPublication(ctx,roleId,version);return {best:(p?.payload.entries??[]).map(e=>({dto:e.dto,sim:(e.sim?{...e.sim,answers:e.sim.answers.map(a=>({...a,kind:a.kind??'interview',score:a.score??null,reason:a.reason??null}))}:{fitScore:0,summary:'Interview pending',concerns:[],answers:[],provider:'pending'}) as SimView})),rest:(p?.payload.previous??[]).map(e=>e.dto),total:p?.payload.entries.length??0};}
   const { all } = await roleMatches(ctx, roleId);
   const { simulationsForRole } = await import('../services/simulation');
   const sims = await simulationsForRole(ctx, roleId);
@@ -179,7 +192,9 @@ export async function bestPeople(ctx: Ctx, roleId: string, limit = 10) {
   return { best: best.map((b) => ({ dto: b.dto, sim: b.sim ?? { fitScore: b.dto.evidenceScore!, summary: 'Interview pending', concerns: [], answers: [], provider: 'pending' } })), rest: ranked.filter((x) => !bestIds.has(x.candidateId)).map((x) => x.dto), total: all.length };
 }
 
-export async function simulationForCandidate(ctx: Ctx, roleId: string, candidateId: string): Promise<SimView | null> {
+export async function simulationForCandidate(ctx: Ctx, roleId: string, candidateId: string, version?:number): Promise<SimView | null> {
+  if(ctx.actor.kind==='user'&&ctx.actor.userType==='client'){const {publicationEntry}=await import('../services/shortlists');const e=await publicationEntry(ctx,roleId,candidateId,version);return e?.sim?{...e.sim,answers:e.sim.answers.map(a=>({...a,kind:a.kind??'interview',score:a.score??null,reason:a.reason??null}))}:null;}
+  const role=await roleForActor(ctx,roleId);if(role.shortlistEnabled){const {workingCandidateEntry}=await import('../services/shortlists');const e=await workingCandidateEntry(ctx,roleId,candidateId);if(e?.sim)return {...e.sim,answers:e.sim.answers.map(a=>({...a,kind:a.kind??'interview',score:a.score??null,reason:a.reason??null}))};}
   const { simulationsForRole } = await import('../services/simulation');
   const s = (await simulationsForRole(ctx, roleId)).get(candidateId);
   if (!s) return null;

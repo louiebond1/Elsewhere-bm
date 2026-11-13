@@ -157,6 +157,7 @@ export async function runJob(base: BaseCtx, job: JobRow) {
     case 'generate_feedback': return handleFeedback(base, job);
     case 'send_email': return handleSendEmail(base, job.subject_id!);
     case 'simulate_interviews': return handleSimulateJob(base, job.subject_id!);
+    case 'shortlist_tick': { const {expireScreeningInvitations}=await import('./screenings');await withTx(base,c=>expireScreeningInvitations(c));const {processShortlists}=await import('./shortlists');return processShortlists(base,job.subject_id??undefined); }
     case 'quality_check': {
       // One chunk at a time; queue the next so real interviews can run in between.
       const { runQualityChunk } = await import('../eval/quality');
@@ -178,6 +179,7 @@ export async function processOne(workerId: string): Promise<boolean> {
   const job = await claimJob(db(), workerId, ds.id);
   if (!job) return false;
   const base: BaseCtx = { datasetId: ds.id, generation: ds.generation, now: ds.businessNow ?? new Date(), actor: { kind: 'system', label: 'worker' } };
+  const heartbeat=setInterval(()=>{void db().update(jobs).set({leaseExpiresAt:new Date(Date.now()+120000)}).where(and(eq(jobs.id,job.id),eq(jobs.lockedBy,workerId),eq(jobs.status,'running'))).catch(()=>{});},30000);
   try {
     await runJob(base, job);
     await db().update(jobs).set({ status: 'succeeded', lockedBy: null, leaseExpiresAt: null, errorCode: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
@@ -188,7 +190,7 @@ export async function processOne(workerId: string): Promise<boolean> {
     await db().update(jobs).set({ status: again ? 'queued' : 'failed', availableAt: new Date(Date.now() + job.attempts * 5000 + Math.floor(Math.random() * 1000)), lockedBy: null, leaseExpiresAt: null, errorCode: code, updatedAt: new Date() }).where(eq(jobs.id, job.id));
     if (process.env.LOG_LEVEL === 'debug') console.error(`[worker] job ${job.kind} failed: ${code}`);
     if (!again) reportError(new Error(`job_failed:${job.kind}:${code}`), { where: 'job', kind: job.kind, code });
-  }
+  } finally {clearInterval(heartbeat);}
   return true;
 }
 

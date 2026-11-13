@@ -1,0 +1,5 @@
+import {test,expect} from '@playwright/test';
+import {loadScenario,switchTo} from './helpers';
+test('a new search gives the employer a delivery time and no live candidate list @phone',async({page})=>{
+ await loadScenario(page,null);await switchTo(page,'Emma Stone');await page.goto('/client/roles?tab=draft');await page.getByRole('link',{name:/Accounts Assistant/}).first().click();await page.getByRole('link',{name:'Edit draft',exact:true}).click();await page.getByRole('button',{name:'Save changes',exact:true}).click();await page.getByRole('button',{name:'These requirements are right'}).click();await page.getByRole('button',{name:'Find my best people',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:/and start|Find my best people/}).click();await expect(page.getByRole('heading',{name:'Your top 10 is being prepared'})).toBeVisible();await expect(page.getByLabel('Number 1',{exact:true})).toHaveCount(0);await page.screenshot({path:`/workspace/scratch/7b722bbfd120/test-runtime/shortlist-window-${test.info().project.name}.png`,fullPage:true});
+});

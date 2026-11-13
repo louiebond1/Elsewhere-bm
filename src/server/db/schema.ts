@@ -31,7 +31,7 @@ export const region = pgEnum('region', ['london', 'hertfordshire', 'manchester',
 export const workAuth = pgEnum('work_authorisation', ['confirmed', 'needs_discussion', 'unknown']);
 export const experienceBand = pgEnum('experience_band', ['early_career', 'established', 'leadership', 'unknown']);
 export const blockReason = pgEnum('block_reason', ['current_employer', 'candidate_choice']);
-export const consentKind = pgEnum('consent_kind', ['terms', 'ai_processing', 'discovery', 'aggregate_insights', 'screening_recording']);
+export const consentKind = pgEnum('consent_kind', ['terms', 'ai_processing', 'discovery', 'aggregate_insights', 'screening_recording', 'screening_job']);
 export const filePurpose = pgEnum('file_purpose', ['cv', 'screening_recording']);
 export const uploadState = pgEnum('upload_state', ['uploaded', 'processing', 'ready', 'failed', 'deleting', 'deleted']);
 export const conversationKind = pgEnum('conversation_kind', ['initial_screening', 'check_in']);
@@ -65,7 +65,7 @@ export const confidence = pgEnum('confidence', ['low', 'medium', 'high']);
 export const introState = pgEnum('intro_state', ['pending', 'accepted', 'declined', 'expired', 'cancelled', 'withdrawn']);
 export const revocationReason = pgEnum('revocation_reason', ['candidate_withdrew', 'employer_block', 'deletion']);
 export const selectionMode = pgEnum('selection_mode', ['manual', 'automatic']);
-export const screeningStatus = pgEnum('screening_status', ['requested', 'scheduled', 'completed', 'cancelled', 'returned']);
+export const screeningStatus = pgEnum('screening_status', ['requested', 'scheduled', 'completed', 'cancelled', 'returned', 'invited', 'accepted', 'declined', 'expired']);
 export const pipelineStage = pgEnum('pipeline_stage', ['introduced', 'interview', 'offer', 'hired', 'rejected', 'withdrawn']);
 export const hireSource = pgEnum('hire_source', ['in_system', 'outside_system', 'replacement']);
 export const hireStatus = pgEnum('hire_status', ['confirmed', 'started', 'left']);
@@ -74,7 +74,7 @@ export const replacementStatus = pgEnum('replacement_status', ['requested', 'app
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system', 'welcome']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
-export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews', 'quality_check']);
+export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews', 'quality_check', 'shortlist_tick']);
 export const hiringConversationStatus = pgEnum('hiring_conversation_status', ['active', 'saved', 'abandoned']);
 export const emailStatus = pgEnum('email_status', ['queued', 'recorded', 'sent', 'suppressed', 'failed']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
@@ -403,6 +403,7 @@ export const roles = pgTable('roles', {
   closureReason: closureReason('closure_reason'),
   closedAt: ts('closed_at'),
   assignedConsultantId: uuid('assigned_consultant_id').notNull().references(() => users.id),
+  shortlistEnabled: boolean('shortlist_enabled').notNull().default(false),
   rubricApprovedVersion: integer('rubric_approved_version').notNull().default(0),
   roleVersion: integer('role_version').notNull().default(1),
   pricingLockedAt: ts('pricing_locked_at'),
@@ -594,6 +595,11 @@ export const screenings = pgTable('screenings', {
   status: screeningStatus('status').notNull().default('requested'),
   scheduledAt: ts('scheduled_at'),
   completedAt: ts('completed_at'),
+  invitedAt: ts('invited_at'),
+  inviteExpiresAt: ts('invite_expires_at'),
+  respondedAt: ts('responded_at'),
+  outcome: text('outcome'),
+  disputeReason: text('dispute_reason'),
   recordingConsentAt: ts('recording_consent_at'),
   notesPrivate: text('notes_private'),
   summarySafe: text('summary_safe'),
@@ -891,3 +897,18 @@ export const localObjects = pgTable('local_objects', {
   contentType: text('content_type').notNull(),
   createdAt: ts('created_at').notNull().defaultNow(),
 });
+
+/** Job-level delivery windows. Existing jobs remain legacy until explicitly edited and approved. */
+export const shortlistCycles=pgTable('shortlist_cycles',{
+ ...common(),roleId:uuid('role_id').notNull().references(()=>roles.id,{onDelete:'cascade'}),roleVersion:integer('role_version').notNull(),startedAt:ts('started_at').notNull(),cutoffAt:ts('cutoff_at').notNull(),publishAt:ts('publish_at').notNull(),forcePublishAt:ts('force_publish_at').notNull(),nextUpdateAt:ts('next_update_at').notNull(),criteria:jsonb('criteria').notNull(),roleSnapshot:jsonb('role_snapshot').notNull(),
+},t=>[uniqueIndex('shortlist_cycle_role_version').on(t.roleId,t.roleVersion)]);
+export const shortlistMembers=pgTable('shortlist_members',{
+ ...common(),cycleId:uuid('cycle_id').notNull().references(()=>shortlistCycles.id,{onDelete:'cascade'}),candidateId:uuid('candidate_id').notNull().references(()=>candidates.id,{onDelete:'cascade'}),notifiedAt:ts('notified_at').notNull(),remindedAt:ts('reminded_at'),windowEndsAt:ts('window_ends_at').notNull(),notificationId:uuid('notification_id'),reviewState:text('review_state').notNull().default('pending'),reviewReason:text('review_reason'),reviewedAt:ts('reviewed_at'),
+},t=>[uniqueIndex('shortlist_member_uq').on(t.cycleId,t.candidateId)]);
+/** Inputs are append-only. Outputs are attached by the worker without changing submitted evidence. */
+export const shortlistRevisions=pgTable('shortlist_revisions',{
+ ...common(),memberId:uuid('member_id').notNull().references(()=>shortlistMembers.id,{onDelete:'cascade'}),candidateId:uuid('candidate_id').notNull().references(()=>candidates.id,{onDelete:'cascade'}),fingerprint:text('fingerprint').notNull(),submittedAt:ts('submitted_at').notNull(),payload:jsonb('payload').notNull(),assessment:jsonb('assessment'),interview:jsonb('interview'),provider:text('provider'),failure:text('failure'),attempts:integer('attempts').notNull().default(0),
+},t=>[uniqueIndex('shortlist_revision_uq').on(t.memberId,t.fingerprint)]);
+export const shortlists=pgTable('shortlists',{
+ ...common(),roleId:uuid('role_id').notNull().references(()=>roles.id,{onDelete:'cascade'}),cycleId:uuid('cycle_id').references(()=>shortlistCycles.id,{onDelete:'cascade'}),version:integer('version').notNull(),kind:text('kind').notNull(),publishedAt:ts('published_at').notNull(),cutoffAt:ts('cutoff_at').notNull(),reason:text('reason').notNull(),scoringVersion:text('scoring_version').notNull(),promptVersion:text('prompt_version').notNull(),payload:jsonb('payload').notNull(),
+},t=>[uniqueIndex('shortlist_publication_uq').on(t.roleId,t.version)]);

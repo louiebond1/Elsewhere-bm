@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import {myScreeningInvitations} from '@/server/services/screenings';
+import {ScreeningInvitation} from '@/components/shortlist-actions';
 import { ChevronRight } from 'lucide-react';
 import { pageViewer } from '@/server/page-auth';
 import { myInterviews } from '@/server/services/candidate-interviews';
@@ -12,9 +14,11 @@ export const dynamic = 'force-dynamic';
 export default async function Interviews() {
   const { ctx } = await pageViewer('candidate');
   const list = await myInterviews(ctx);
+  const invitations=await myScreeningInvitations(ctx);
   return (
     <div className="mx-auto max-w-[1000px]">
-      <PageHeader compact title="Your interviews" subtitle="Every job that fits you, your mini-me is interviewed for. See what was asked and what it said. You have 24 hours to fill gaps or change answers." />
+      <PageHeader compact title="Your interviews" subtitle="Every job that fits you, your mini-me is interviewed for. See what was asked and what it said. Add missing examples during your first 24 hours. Later answers can still help in a shortlist update." />
+      <div className="mb-5 space-y-4">{invitations.map(i=><ScreeningInvitation key={i.id} {...i} expiresAt={i.expiresAt?.toISOString()??null}/>)}</div>
       {list.length === 0 ? (
         <div className="rounded-3xl bg-surface p-8 text-center shadow-[0_8px_24px_rgb(18_37_29/0.06)]">
           <p className="font-display text-[22px] font-semibold">No interviews yet</p>

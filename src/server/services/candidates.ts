@@ -283,6 +283,7 @@ export async function requestDeletion(ctx: Ctx, password: string, confirmText: s
 export async function purgeCandidate(ctx: Ctx, candidateId: string) {
   const [c] = await ctx.tx.select().from(candidates).where(eq(candidates.id, candidateId));
   if (!c || (c.status !== 'deleting' && c.status !== 'deleted')) return { done: true };
+  const {eraseShortlistEvidence}=await import('./shortlists');await eraseShortlistEvidence(ctx,candidateId);
   const fl = await ctx.tx.select().from(files).where(eq(files.candidateId, candidateId));
   const scr = await ctx.tx.select({ id: screenings.id }).from(screenings).where(eq(screenings.candidateId, candidateId));
   const recs = scr.length ? await ctx.tx.select().from(files).where(inArray(files.screeningId, scr.map((s) => s.id))) : [];
@@ -328,6 +329,7 @@ export async function resetMyProfile(ctx: Ctx, confirm: string) {
   const id = candidateIdOf(ctx);
   if (confirm !== 'RESET') throw invalid('Type RESET to confirm.');
   await lockCandidates(ctx.tx, [id]);
+  const {eraseShortlistEvidence}=await import('./shortlists');await eraseShortlistEvidence(ctx,id);
   const { simulatedInterviews } = await import('../db/schema');
   const fl = await ctx.tx.select().from(files).where(eq(files.candidateId, id));
   for (const f of fl) {

@@ -6,8 +6,7 @@ import * as S from '../../src/server/db/schema';
 import { readCtx, type BaseCtx } from '../../src/server/services/context';
 import { signupCandidate, resetMyProfile } from '../../src/server/services/candidates';
 import { saveOwnAnswer } from '../../src/server/services/onboarding';
-import { roleMatches } from '../../src/server/views/client';
-import { roleScopedRef } from '../../src/server/dto/refs';
+import { roleMatches, liveRoleMatches } from '../../src/server/views/client';
 
 type W = Awaited<ReturnType<typeof load>>;
 async function newCandidate(w: W, email: string) {
@@ -28,7 +27,8 @@ describe('the mini-me feeds matching: visible from sign-up, more visible the mor
     expect(m).toBeTruthy();
     expect(m.eligibility).toBe('needs_clarification'); // no job preferences yet: to discuss, never ruled out
     const view = await roleMatches(readCtx(w.client('A')), w.ids.roles.R1);
-    expect(JSON.stringify(view)).toContain(roleScopedRef(w.ids.roles.R1, id));
+    expect(m.candidateId).toBe(id); // Matched immediately; an unassessed newcomer is not inserted into a delivered top 10.
+    expect(view.all).toHaveLength(0);
     expect(JSON.stringify(view)).not.toContain('Ada');
   });
 
@@ -42,7 +42,7 @@ describe('the mini-me feeds matching: visible from sign-up, more visible the mor
     expect(after.coverageBps).toBeGreaterThan(before.coverageBps);
     // An answer with their own name in it never reaches a client.
     await w.T(me, (c) => saveOwnAnswer(c, 'past_roles', 'Ada Stone wrote the monthly report pack in Excel.'));
-    const view = JSON.stringify(await roleMatches(readCtx(w.client('A')), w.ids.roles.R1));
+    const view = JSON.stringify(await liveRoleMatches(readCtx(w.consultant()), w.ids.roles.R1));
     expect(view).toContain('weekly bank reconciliation');
     expect(view).not.toContain('Ada Stone');
   });

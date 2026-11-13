@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { candidateIdentity, organisations } from '../db/schema';
 import { validateAssessment, safeClaimProblems } from '../ai/validate';
 import type { AssessmentOutput } from '../ai/schemas';
-import { and, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { candidates, evidenceItems, matches, profileVersions, rankingAdjustments, roles, screenings } from '../db/schema';
 import { ASSESSMENT_VERSION, eligibilityFor, combinedScore, confidenceFor, type Level } from '../lib/matching-rules';
 import { fixtureProvider } from '../ai/providers/fixture';
@@ -64,7 +64,7 @@ async function computePair(ctx: Ctx, role: typeof roles.$inferSelect, crit: Awai
         evidence: evidence.map((e) => ({ id: e.id, safeClaim: e.safeClaim!, tags: e.tags, strength: e.strength, uncertainty: e.uncertainty })),
       });
   const awaitingAi = role.rubricApprovedVersion === role.roleVersion && !reuse && aiMode() === 'live' && el.eligibility !== 'incompatible' && evidence.length > 0;
-  const [scr] = await ctx.tx.select().from(screenings).where(and(eq(screenings.roleId, role.id), eq(screenings.candidateId, cand.id), eq(screenings.status, 'completed')));
+  const [scr] = await ctx.tx.select().from(screenings).where(and(eq(screenings.roleId, role.id), eq(screenings.candidateId, cand.id), sql`(${screenings.status} = 'completed' or (${screenings.status} = 'returned' and ${screenings.outcome} = 'fail'))`));
   const human = scr ? new Map((scr.criterionAssessments as { criterionId: string; level: Level }[]).map((a) => [a.criterionId, a.level])) : null;
   const ai = new Map(assess.output.criteria.map((c) => [c.criterionId, c.level as Level]));
   const adj = await latestAdjustment(ctx, role.id, cand.id);
@@ -100,6 +100,7 @@ export async function recomputeRole(ctx: Ctx, roleId: string) {
   for (const { row } of rows) {
     await ctx.tx.insert(matches).values(row).onConflictDoUpdate({ target: [matches.roleId, matches.candidateId], set: { ...row, updatedAt: new Date() } });
   }
+  if (role.shortlistEnabled) { const {captureShortlistEvidence}=await import('./shortlists'); for(const {row} of rows) await captureShortlistEvidence(ctx,roleId,row.candidateId); return; }
   if (rows.some((r) => r.awaitingAi)) await queueAssessment(ctx, roleId);
   // Everyone eligible for a live job is interviewed in the background, without anyone opening the job page.
   if (role.status === 'open') { const { requestSimulations } = await import('./simulation'); await requestSimulations(ctx, roleId); }
@@ -124,6 +125,7 @@ export async function recomputeCandidate(ctx: Ctx, candidateId: string) {
     }
     const { row, awaitingAi } = await computePair(ctx, role, await criteriaFor(ctx, role.id), cand);
     await ctx.tx.insert(matches).values(row).onConflictDoUpdate({ target: [matches.roleId, matches.candidateId], set: { ...row, updatedAt: new Date() } });
+    if(role.shortlistEnabled){const {captureShortlistEvidence}=await import('./shortlists');await captureShortlistEvidence(ctx,role.id,candidateId);continue;}
     if (awaitingAi) await queueAssessment(ctx, role.id);
     // Newly eligible (e.g. they just signed up): interview them for this live job.
     if (role.status === 'open' && row.eligibility !== 'incompatible') { const { requestSimulations } = await import('./simulation'); await requestSimulations(ctx, role.id); }
@@ -174,7 +176,7 @@ export async function applyAssessment(ctx: Ctx, args: { roleId: string; candidat
   if (args.output.criteria.some((c) => safeClaimProblems(c.reasonSafe + ' ' + (c.followUp ?? ''), forbidden).length)) return { applied: false, reason: 'identifying_reason' as const };
   const [prev] = await ctx.tx.select().from(matches).where(and(eq(matches.roleId, args.roleId), eq(matches.candidateId, args.candidateId)));
   if (!prev) return { applied: false, reason: 'no_match' as const };
-  const [scr] = await ctx.tx.select().from(screenings).where(and(eq(screenings.roleId, args.roleId), eq(screenings.candidateId, args.candidateId), eq(screenings.status, 'completed')));
+  const [scr] = await ctx.tx.select().from(screenings).where(and(eq(screenings.roleId, args.roleId), eq(screenings.candidateId, args.candidateId), sql`(${screenings.status} = 'completed' or (${screenings.status} = 'returned' and ${screenings.outcome} = 'fail'))`));
   const human = scr ? new Map((scr.criterionAssessments as { criterionId: string; level: Level }[]).map((a) => [a.criterionId, a.level])) : null;
   const ai = new Map(args.output.criteria.map((c) => [c.criterionId, c.level as Level]));
   const adj = await latestAdjustment(ctx, args.roleId, args.candidateId);
@@ -198,3 +200,4 @@ export async function pairsAwaitingAssessment(ctx: Pick<Ctx, 'tx'>, roleId: stri
   return rows.filter((r) => (r.provider !== 'anthropic' || !r.assessmentVersion?.startsWith(`${ASSESSMENT_VERSION}:`) || r.stale) && r.eligibility !== 'incompatible').map((r) => r.candidateId);
 }
 
+export async function assessmentPrivacySafe(ctx:Pick<Ctx,'tx'|'datasetId'>,candidateId:string,output:AssessmentOutput){const [id]=await ctx.tx.select().from(candidateIdentity).where(eq(candidateIdentity.candidateId,candidateId));const orgs=await ctx.tx.select({n:organisations.displayName}).from(organisations).where(eq(organisations.datasetId,ctx.datasetId));const forbidden=[...(id?[id.fullName,...id.fullName.split(/\s+/).filter(x=>x.length>=3),id.currentEmployerLabel??'']:[]),...orgs.map(o=>o.n)];return !output.criteria.some(c=>safeClaimProblems(c.reasonSafe+' '+(c.followUp??''),forbidden).length);}

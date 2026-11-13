@@ -67,6 +67,8 @@ describe('S04 extra role', () => {
     const w = await load('S04');
     await expect(w.T(w.client('A'), (c) => activateRole(c, w.ids.roles.R3, { confirmExtraDeposit: false, idempotencyKey: w.key() }))).rejects.toMatchObject({ code: 'EXTRA_ROLE_CONFIRMATION_REQUIRED' });
     await w.T(w.client('A'), (c) => activateRole(c, w.ids.roles.R3, { confirmExtraDeposit: true, idempotencyKey: w.key() }));
+    // Isolate accounting on a delivered legacy fixture; shortlist timing has its own integration tests.
+    await db().update(S.roles).set({shortlistEnabled:false}).where(eq(S.roles.id,w.ids.roles.R3));
     const t = (await w.txs('A')).filter((x) => x.roleId === w.ids.roles.R3);
     expect(t.map((x) => [x.type, x.deltaUnits, x.deltaPence])).toEqual([['deposit_debit', -1250n, -47500n]]);
     const intro = await w.T(w.client('A'), (c) => requestIntroduction(c, { roleId: w.ids.roles.R3, candidateRef: w.ref('R3', 'C03'), message: '', idempotencyKey: w.key() }));
@@ -245,6 +247,7 @@ describe('S24/S26 and corrections', () => {
   it('full search from the outset still uses the standard-base deposit', async () => {
     const w = await load('S26');
     await w.T(w.client('A'), (c) => activateRole(c, w.ids.roles.R1, { confirmExtraDeposit: false, idempotencyKey: w.key() }));
+    await db().update(S.roles).set({shortlistEnabled:false}).where(eq(S.roles.id,w.ids.roles.R1));
     const intro = await w.T(w.client('A'), (c) => requestIntroduction(c, { roleId: w.ids.roles.R1, candidateRef: w.ref('R1', 'C01'), message: '', idempotencyKey: w.key() }));
     await w.T(w.cand('C01'), (c) => acceptIntroduction(c, intro.id, w.key()));
     const ch = await w.T(w.client('A'), (c) => roleCharges(c, w.ids.roles.R1));

@@ -8,17 +8,19 @@ type C = { id: string; label: string };
 
 export function CompleteScreening({ screeningId, criteria, evidence }: { screeningId: string; criteria: C[]; evidence: { id: string; claim: string }[] }) {
   const { run, busy, error } = useCommand();
+  const [outcome,setOutcome]=useState('');
   const [minutes, setMinutes] = useState('18');
   const [notes, setNotes] = useState('');
   const [summary, setSummary] = useState('');
   const [a, setA] = useState(() => Object.fromEntries(criteria.map((c) => [c.id, { level: 'unknown', obs: '', ev: [] as string[] }])));
   return (
-    <form className="space-y-4" onSubmit={async (e) => { e.preventDefault(); await run(`screenings/${screeningId}/complete`, { minutes: Number(minutes), notesPrivate: notes, summarySafe: summary, assessments: criteria.map((c) => ({ criterionId: c.id, level: a[c.id].level, evidenceIds: a[c.id].ev, observationPrivate: a[c.id].obs })) }); }}>
+    <form className="space-y-4" onSubmit={async (e) => { e.preventDefault(); await run(`screenings/${screeningId}/complete`, { outcome, minutes: Number(minutes), notesPrivate: notes, summarySafe: summary, assessments: criteria.map((c) => ({ criterionId: c.id, level: a[c.id].level, evidenceIds: a[c.id].ev, observationPrivate: a[c.id].obs })) }); }}>
+      <Field label="Screening outcome"><select className={inputClass} value={outcome} required onChange={e=>setOutcome(e.target.value)}><option value="">Choose against the agreed requirements</option><option value="pass">Pass: consumes one coupon</option><option value="fail">Fail: returns the coupon</option></select></Field>
       {criteria.map((c) => (
         <fieldset key={c.id} className="rounded-lg border border-line p-3">
           <legend className="px-1 font-medium">{c.label}</legend>
           <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
-            <select className={inputClass} value={a[c.id].level} onChange={(e) => setA({ ...a, [c.id]: { ...a[c.id], level: e.target.value } })} aria-label={`Observation level for ${c.label}`}><option value="strong">Strong evidence · 100</option><option value="clear">Clear evidence · 75</option><option value="partial">Some evidence · 50</option><option value="related">Related experience · 25</option><option value="unknown">Needs confirming</option><option value="contradictory">Explicitly not met · 0</option></select>
+            <select className={inputClass} value={a[c.id].level} onChange={(e) => setA({ ...a, [c.id]: { ...a[c.id], level: e.target.value } })} aria-label={`Observation level for ${c.label}`}><option value="strong">Strong evidence · 100</option><option value="clear">Clear evidence · 75</option><option value="partial">Some evidence · 50</option><option value="related">Related experience · 25</option><option value="unknown">Needs confirming</option><option value="none_stated">No experience stated · 0</option><option value="not_met">Cannot meet requirement · 0</option></select>
             <input className={inputClass} placeholder="Private observation" value={a[c.id].obs} onChange={(e) => setA({ ...a, [c.id]: { ...a[c.id], obs: e.target.value } })} aria-label={`Observation for ${c.label}`} />
           </div>
           {evidence.length > 0 && <div className="mt-2 flex flex-wrap gap-3 text-[13px]">{evidence.map((ev) => <label key={ev.id} className="flex items-center gap-1"><input type="checkbox" checked={a[c.id].ev.includes(ev.id)} onChange={(x) => setA({ ...a, [c.id]: { ...a[c.id], ev: x.target.checked ? [...a[c.id].ev, ev.id] : a[c.id].ev.filter((i) => i !== ev.id) } })} />{ev.claim.slice(0, 50)}…</label>)}</div>}

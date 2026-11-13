@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import {ScreeningDispute} from '@/components/shortlist-actions';
 import { and, eq } from 'drizzle-orm';
 import { pageViewer } from '@/server/page-auth';
 import * as S from '@/server/db/schema';
@@ -36,13 +37,14 @@ export default async function Screening({ params }: { params: Promise<{ id: stri
               <ul className="space-y-2">{crit.map((c) => { const x = assess.find((y) => y.criterionId === c.id); return <li key={c.id} className="text-[15px]"><span className="font-medium">{c.label}</span> <LevelBadge level={x?.level ?? 'unknown'} /><p className="text-[14px] text-muted">{x?.observationPrivate}</p></li>; })}</ul>
               <p className="mt-3 text-[15px]"><span className="text-muted">Client-safe summary:</span> {s.summarySafe}</p>
               {s.notesPrivate && <p className="mt-2 text-[14px]"><span className="text-muted">Private notes:</span> {s.notesPrivate}</p>}
-              <div className="mt-4"><ActionButton path={`screenings/${id}/return`} body={{ reason: 'Not right for this job' }} label="Not right: give the coupon back" variant="secondary" confirm={{ title: 'Give the screening coupon back?', body: <p>Use this when, after the call, this person isn’t right for the job. The client gets their coupon back and can send someone else.</p>, confirmLabel: 'Give it back' }} /></div>
+              {s.outcome==='pass'&&<ScreeningDispute id={id} consultant reason={s.disputeReason}/>}
+              {!s.outcome&&<div className="mt-4"><ActionButton path={`screenings/${id}/return`} body={{ reason: 'Not right for this job' }} label="Not right: give the coupon back" variant="secondary" confirm={{ title: 'Give the screening coupon back?', body: <p>Use this when, after the call, this person isn’t right for the job. The client gets their coupon back and can send someone else.</p>, confirmLabel: 'Give it back' }} /></div>}
             </Card>
-          ) : s.status === 'cancelled' ? <Card><p>Cancelled before completion. The slot was released.</p></Card> : s.status === 'returned' ? <Card><p>Not right for this job. The client’s screening coupon was given back{s.returnedReasonSafe ? `: ${s.returnedReasonSafe}` : ''}.</p></Card> : (
+          ) : s.status === 'invited'?<Card><p>Waiting for the candidate to consent to this job's screening. No coupon is reserved yet.</p></Card>:['declined','expired'].includes(s.status)?<Card><p>Invitation closed. No coupon was used.</p></Card>: s.status === 'cancelled' ? <Card><p>Cancelled before completion. The slot was released.</p></Card> : s.status === 'returned' ? <Card><p>Not right for this job. The client’s screening coupon was given back{s.returnedReasonSafe ? `: ${s.returnedReasonSafe}` : ''}.</p></Card> : (
             <Card title="Record the screening">
               <ScheduleScreening screeningId={id} />
               <div className="mt-4"><CompleteScreening screeningId={id} criteria={crit.map((c) => ({ id: c.id, label: c.label }))} evidence={ev.map((e) => ({ id: e.id, claim: e.safeClaim! }))} /></div>
-              <div className="mt-3"><ActionButton path={`screenings/${id}/return`} body={{ reason: 'Not right for this job' }} label="Not right: give the coupon back" variant="secondary" confirm={{ title: 'Give the screening coupon back?', body: <p>Use this when this person isn’t right for the job. The client gets their coupon back and can send someone else. They’re told by notification.</p>, confirmLabel: 'Give it back' }} /></div>
+              {!s.invitedAt&&<div className="mt-3"><ActionButton path={`screenings/${id}/return`} body={{ reason: 'Not right for this job' }} label="Not right: give the coupon back" variant="secondary" confirm={{ title: 'Give the screening coupon back?', body: <p>Use this when this person isn’t right for the job. The client gets their coupon back and can send someone else. They’re told by notification.</p>, confirmLabel: 'Give it back' }} /></div>}
               <div className="mt-3"><ActionButton path={`screenings/${id}/cancel`} label="Cancel screening" variant="ghost" confirm={{ title: 'Cancel screening', body: <p>The included screening slot is released. History is kept.</p> }} /></div>
             </Card>
           )}

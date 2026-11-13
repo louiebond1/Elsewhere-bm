@@ -47,6 +47,9 @@ export async function onboardingView(ctx: Ctx) {
 /** The person writes or edits an answer themselves: it counts as checked. An empty answer removes it. */
 export async function saveOwnAnswer(ctx: Ctx, key: string, answer: string) {
   const candidateId = me(ctx);
+  const { lockCandidates } = await import('./context');
+  await lockCandidates(ctx.tx, [candidateId]);
+  ctx.evidenceSubmittedAt = new Date();
   if (!ONBOARDING_KEYS.has(key) && !isExtra(key)) throw invalid('That question isn’t on the checklist.');
   const body = clean(answer);
   if (isExtra(key)) {
@@ -71,6 +74,7 @@ export async function saveOwnAnswer(ctx: Ctx, key: string, answer: string) {
 /** "Looks right": approve answers their AI drafted (one, or all of them). */
 export async function approveAnswers(ctx: Ctx, keys: string[] | 'all') {
   const candidateId = me(ctx);
+  const {lockCandidates}=await import('./context');await lockCandidates(ctx.tx,[candidateId]);ctx.evidenceSubmittedAt=new Date();
   const where = keys === 'all' ? and(eq(onboardingAnswers.candidateId, candidateId), eq(onboardingAnswers.status, 'draft'))
     : and(eq(onboardingAnswers.candidateId, candidateId), inArray(onboardingAnswers.questionKey, keys.filter((k) => ONBOARDING_KEYS.has(k) || isExtra(k)).length ? keys.filter((k) => ONBOARDING_KEYS.has(k) || isExtra(k)) : ['-']));
   const r = await ctx.tx.update(onboardingAnswers).set({ status: 'approved', approvedAt: ctx.now, updatedAt: new Date() }).where(where).returning({ id: onboardingAnswers.id });
@@ -84,6 +88,7 @@ export async function approveAnswers(ctx: Ctx, keys: string[] | 'all') {
  */
 export async function saveAiAnswers(ctx: Ctx, provider: string, items: { key: string; answer: string }[]) {
   const candidateId = me(ctx);
+  const {lockCandidates}=await import('./context');await lockCandidates(ctx.tx,[candidateId]);ctx.evidenceSubmittedAt=new Date();
   const existing = await ctx.tx.select({ key: onboardingAnswers.questionKey, source: onboardingAnswers.source }).from(onboardingAnswers).where(eq(onboardingAnswers.candidateId, candidateId));
   const locked = new Set(existing.filter((e) => e.source === 'self').map((e) => e.key));
   const saved: string[] = []; const skipped: { key: string; reason: string }[] = [];
@@ -114,6 +119,7 @@ export async function onboardingToCheck(ctx: Ctx) {
  */
 export async function addExtras(ctx: Ctx, items: { topic: string; answer: string }[], from: { provider: string } | 'self') {
   const candidateId = me(ctx);
+  const {lockCandidates}=await import('./context');await lockCandidates(ctx.tx,[candidateId]);ctx.evidenceSubmittedAt=new Date();
   const have = await ctx.tx.select({ id: onboardingAnswers.id }).from(onboardingAnswers).where(and(eq(onboardingAnswers.candidateId, candidateId), like(onboardingAnswers.questionKey, `${EXTRA}%`)));
   let room = MAX_EXTRAS - have.length;
   const saved: string[] = []; const skipped: { topic: string; reason: string }[] = [];
@@ -153,7 +159,8 @@ export async function questionsLeft(ctx: Ctx, limit = 6) {
   const candidateId = me(ctx);
   const assessed = await ctx.tx.select({ results: matches.criterionResults, version: matches.roleVersion, current: roles.roleVersion, title: roles.title, provider: matches.provider, stale: matches.stale }).from(matches).innerJoin(roles, eq(roles.id, matches.roleId)).where(and(eq(matches.candidateId, candidateId), eq(roles.status, 'open')));
   const gaps = assessed.filter((m) => m.provider === 'anthropic' && !m.stale && m.version === m.current).flatMap((m) => (m.results as { followUp?: string | null; reasonSafe: string }[]).filter((c) => c.followUp).map((c) => ({ key: null, question: c.followUp!, section: `For ${m.title}`, kind: 'follow_up' as const, targetKey: null, evidenceIds: [] as string[], reason: c.reasonSafe })));
-  const followUps = [...context, ...gaps].filter((q, i, all) => all.findIndex((x) => x.question === q.question) === i && !items.some((it) => it.text.includes(q.question.slice(0, 200) + '\n')));
+  const {candidateFollowUps}=await import('./shortlists');const deliveredGaps=await candidateFollowUps(ctx,candidateId);
+  const followUps = [...context, ...deliveredGaps, ...gaps].filter((q, i, all) => all.findIndex((x) => x.question === q.question) === i && !items.some((it) => it.text.includes(q.question.slice(0, 200) + '\n')));
   return { left: left.length, total: v.total, followUps, suggestions: [...followUps, ...left].slice(0, limit), guidance: 'Ask one natural follow-up at a time. These are investigation leads, not facts. Never assume first job, personal hardship or resilience from age, country, title or employer brand. Save the person’s answer, not your hypothesis, and use the question as the extra-item topic so it is not asked again.' };
 }
 

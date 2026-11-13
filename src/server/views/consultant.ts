@@ -7,7 +7,7 @@ import { roleScopedRef } from '../dto/refs';
 
 export async function workQueue(ctx: Ctx) {
   const ds = ctx.datasetId;
-  const scr = await ctx.tx.select({ s: S.screenings, title: S.roles.title, name: S.candidateIdentity.fullName }).from(S.screenings).innerJoin(S.roles, eq(S.roles.id, S.screenings.roleId)).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.screenings.candidateId)).where(and(eq(S.screenings.datasetId, ds), inArray(S.screenings.status, ['requested', 'scheduled'])));
+  const scr = await ctx.tx.select({ s: S.screenings, title: S.roles.title, name: S.candidateIdentity.fullName }).from(S.screenings).innerJoin(S.roles, eq(S.roles.id, S.screenings.roleId)).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.screenings.candidateId)).where(and(eq(S.screenings.datasetId, ds), inArray(S.screenings.status, ['requested', 'invited', 'accepted', 'scheduled'])));
   const review = await ctx.tx.select({ e: S.evidenceItems, name: S.candidateIdentity.fullName, ref: S.candidates.publicRef }).from(S.evidenceItems).innerJoin(S.candidates, eq(S.candidates.id, S.evidenceItems.candidateId)).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.candidates.id)).where(and(eq(S.evidenceItems.datasetId, ds), eq(S.evidenceItems.anonymityReview, 'pending'), inArray(S.evidenceItems.reviewState, ['candidate_approved', 'consultant_verified'])));
   const unresolved = await ctx.tx.select({ id: S.candidates.id, ref: S.candidates.publicRef, label: S.candidateIdentity.currentEmployerLabel, name: S.candidateIdentity.fullName }).from(S.candidates).leftJoin(S.candidateIdentity, eq(S.candidateIdentity.candidateId, S.candidates.id)).where(and(eq(S.candidates.datasetId, ds), eq(S.candidates.employerResolutionStatus, 'unresolved')));
   const drafts = await ctx.tx.select({ id: S.contracts.id, clientId: S.contracts.clientId, name: S.organisations.displayName }).from(S.contracts).innerJoin(S.clients, eq(S.clients.id, S.contracts.clientId)).innerJoin(S.organisations, eq(S.organisations.id, S.clients.organisationId)).where(and(eq(S.contracts.datasetId, ds), eq(S.contracts.status, 'draft')));
@@ -87,7 +87,7 @@ export async function candidateOverviewModel(ctx: Ctx, id: string) {
   const pendingReview = current.filter((e) => (e.reviewState === 'candidate_approved' || e.reviewState === 'consultant_verified') && e.anonymityReview === 'pending');
   const drafts = current.filter((e) => e.reviewState === 'draft');
   const scr = await ctx.tx.select({ id: S.screenings.id, status: S.screenings.status, title: S.roles.title, createdAt: S.screenings.createdAt, completedAt: S.screenings.completedAt }).from(S.screenings).innerJoin(S.roles, eq(S.roles.id, S.screenings.roleId)).where(eq(S.screenings.candidateId, id));
-  const openScr = scr.find((s) => s.status === 'requested' || s.status === 'scheduled');
+  const openScr = scr.find((s) => ['requested','invited','accepted','scheduled'].includes(s.status));
   const [pv] = r.c.latestProfileVersionId ? await ctx.tx.select({ feedback: S.profileVersions.feedback }).from(S.profileVersions).where(eq(S.profileVersions.id, r.c.latestProfileVersionId)) : [];
   const fb = (pv?.feedback ?? null) as { gaps?: { text: string }[]; nextQuestion?: string } | null;
   let next: { text: string; href: string | null };

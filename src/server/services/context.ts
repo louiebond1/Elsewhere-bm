@@ -16,6 +16,8 @@ export type Ctx = {
   now: Date;
   actor: Actor;
   operationId: string;
+  evidenceSubmittedAt?: Date;
+  transactional?: boolean;
 };
 
 export type BaseCtx = Omit<Ctx, 'tx' | 'operationId'>;
@@ -38,7 +40,7 @@ export async function baseCtx(actor: Actor): Promise<BaseCtx> {
 }
 
 export function readCtx(base: BaseCtx): Ctx {
-  return { ...base, tx: db(), operationId: randomUUID() };
+  return { ...base, tx: db(), operationId: randomUUID(), transactional:false };
 }
 
 const RETRYABLE = ['40P01', '40001'];
@@ -59,7 +61,7 @@ export async function withTx<T>(base: BaseCtx, fn: (ctx: Ctx) => Promise<T>, opt
           if (!row || row.active_dataset_id !== base.datasetId) throw new AppError('STALE_DATASET', 409, 'The demo was reset. Sign in again to continue.');
           if (row.maintenance) throw new AppError('MAINTENANCE', 503, 'The demo is being reset. Try again in a moment.');
         }
-        return fn({ ...base, tx, operationId });
+        return fn({ ...base, tx, operationId, transactional:true });
       });
     } catch (e) {
       if (attempt < 3 && RETRYABLE.some((c) => isPgError(e, c))) continue;

@@ -81,7 +81,7 @@ export function RequestIntro({ roleId, candidateRef, depositPaid, holdExists, de
 }
 
 export function RequestScreening({ roleId, candidateRef, disabledReason }: { roleId: string; candidateRef: string; disabledReason?: string | null }) {
-  return <ActionButton path="screenings/request" body={{ roleId, candidateRef }} label="Send to BondMoran screening" variant="ghost" disabledReason={disabledReason} confirm={{ title: 'Send to BondMoran screening?', confirmLabel: 'Send', body: <><p>A BondMoran consultant calls this person and tells you what they found. This uses 1 of your 5 screening coupons for this job. If BondMoran thinks they aren’t right, you get the coupon back.</p><p>You can cancel before it is completed to free the slot.</p></> }} />;
+  return <ActionButton path="screenings/request" body={{ roleId, candidateRef }} label="Invite to BondMoran screening" variant="ghost" disabledReason={disabledReason} confirm={{ title: 'Invite to BondMoran screening?', confirmLabel: 'Invite', body: <><p>The candidate first chooses whether to accept a screening for this job. Acceptance reserves one coupon. A consultant-confirmed pass uses it; a fail returns it.</p><p>An invitation alone uses no coupon.</p></> }} />;
 }
 
 type Pick = { ref: string; confidence: string; discoverySlot: boolean };

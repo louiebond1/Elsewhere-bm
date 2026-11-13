@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import {ScreeningDispute} from './shortlist-actions';
+import {ShortlistDelivery} from './shortlist-delivery';
 import { RubricReview } from './rubric-review';
 import { eq, and } from 'drizzle-orm';
 import type { Ctx } from '../server/services/context';
@@ -13,7 +15,7 @@ import { ActivateRole, CloseRole, ReopenRole, UpgradeRole, AutoPicks, StageMenu,
 import { gbp, label, date, relative, creditsLabel } from '../lib/format';
 import { prototype } from '../config/prototype';
 
-export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consultant, show }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean; show?: number }) {
+export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consultant, show, version }: { ctx: Ctx; roleId: string; tab: string; base: string; consultant?: boolean; show?: number; version?:number }) {
   let tab = requestedTab;
   const role = await roleForActor(ctx, roleId);
   const crit = await criteriaFor(ctx, roleId);
@@ -78,20 +80,22 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   let body: React.ReactNode = null;
   if (tab === 'matches') {
     const howMany = show === 5 || show === 20 ? show : 10;
-    const { best, rest } = await bestPeople(ctx, roleId, howMany);
-    const href = (ref: string) => `${base}/roles/${roleId}/candidates/${ref}`;
+    const { best, rest } = await bestPeople(ctx, roleId, howMany,version);
+    const href = (ref: string) => `${base}/roles/${roleId}/candidates/${ref}${version?`?version=${version}`:""}`;
     const top = best.slice(0, 3);
     const couponsLeft = ch ? Math.max(0, prototype.includedScreenings - ch.screeningsUsed) : 0;
     body = (
       <div>
+        <ShortlistDelivery ctx={ctx} roleId={roleId} consultant={consultant} version={version}/>
         {role.rubricApprovedVersion !== role.roleVersion && <RubricReview roleId={roleId} rowVersion={role.rowVersion} approved={false} criteria={crit} />}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-[34px] leading-[38px] lg:text-[44px] lg:leading-[48px]">Your best people.</h2>
-          <nav aria-label="How many to show" className="flex rounded-2xl bg-surface p-1 shadow-[0_2px_8px_rgb(18_37_29/0.06)]">
+          {consultant&&<nav aria-label="How many to show" className="flex rounded-2xl bg-surface p-1 shadow-[0_2px_8px_rgb(18_37_29/0.06)]">
             {[5, 10, 20].map((n) => <Link key={n} href={`${base}/roles/${roleId}?tab=matches&show=${n}`} aria-current={n === howMany ? 'true' : undefined} className={cx('press tnum flex h-11 min-w-16 items-center justify-center rounded-xl px-4 font-display text-[17px] font-semibold no-underline', n === howMany ? 'bg-primary text-white' : 'text-ink hover:bg-page')}>{n}</Link>)}
-          </nav>
+          </nav>}
         </div>
-        {role.status === 'open' && <div className="mt-4"><FindingBest roleId={roleId} hasResults={best.length > 0} /></div>}
+        {consultant && role.status === 'open' && <div className="mt-4"><FindingBest roleId={roleId} hasResults={best.length > 0} /></div>}
+        {!consultant&&best.length>0&&<details className="mt-3 text-[14px] text-muted"><summary className="cursor-pointer">How this list is ordered</summary><p className="mt-2">The displayed points show demonstrated evidence. Ordering includes a small allowance for unanswered requirements so a gap differs from confirmed inability. Important gaps can be referred to BondMoran for confirmation.</p></details>}
         {top.length > 0 && (
           <section aria-labelledby="top-picks" className="mt-8">
             <h3 id="top-picks">Top picks</h3>
@@ -104,7 +108,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
           <section aria-labelledby="ranked" className="mt-10">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 id="ranked">All {best.length}, ranked</h3>
-              <p className="text-[15px] text-muted">Ranked by evidence against your checklist. Fuller profiles can earn more points.</p>
+              <p className="text-[15px] text-muted">Ordered using your approved requirements. Displayed points reflect demonstrated evidence; missing information is labelled.</p>
             </div>
             <ul className="-mx-3 mt-3">{best.map((b, i) => <li key={b.dto.roleScopedReference}><PersonRow rank={i + 1} m={b.dto} sim={b.sim} href={href(b.dto.roleScopedReference)} index={i} /></li>)}</ul>
           </section>
@@ -117,7 +121,7 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
         )}
         {rest.length > 0 && (
           <details className="mt-6 rounded-3xl bg-surface p-2">
-            <summary className="cursor-pointer px-3 py-3 font-display text-[18px] font-semibold">Everyone else who fits ({rest.length})</summary>
+            <summary className="cursor-pointer px-3 py-3 font-display text-[18px] font-semibold">{consultant?'Everyone else who fits':role.shortlistEnabled?'Previously shortlisted':'Previously available profiles'} ({rest.length})</summary>
             <ul className="pb-2">{rest.map((m, i) => <li key={m.roleScopedReference}><PersonRow m={m} href={href(m.roleScopedReference)} index={i} /></li>)}</ul>
           </details>
         )}
@@ -155,9 +159,10 @@ export async function RoleDetail({ ctx, roleId, tab: requestedTab, base, consult
   } else if (tab === 'screenings') {
     const rows = await screeningsForRole(ctx, roleId);
     const picker = role.status === 'open' && ch ? <div className="mb-4"><AutoPicks roleId={roleId} slotsLeft={prototype.includedScreenings - ch.screeningsUsed} /></div> : null;
-    body = rows.length === 0 ? <>{picker}<Empty>No screenings yet. You have 5 screening coupons for this job: send someone and a BondMoran consultant calls them and tells you what they found. If BondMoran thinks they aren’t right, you get the coupon back.</Empty></> : (<>{picker}
+    body = rows.length === 0 ? <>{picker}<Empty>No screenings yet. You have 5 screening coupons for this job. Invite a person first. Their acceptance reserves a coupon; a consultant-confirmed pass uses it and a fail returns it.</Empty></> : (<>{picker}
       <div className="space-y-3">{rows.map((s) => (
         <Card key={s.id} title={`Candidate ${s.ref.slice(0, 9)}`} action={<Badge tone={s.status === 'completed' ? 'success' : 'neutral'}>{label(s.status)}</Badge>}>
+          {s.outcome==='pass'&&!consultant&&<ScreeningDispute id={s.id}/>}
           <p className="text-[15px]">{s.status === 'completed' ? s.summarySafe : s.status === 'returned' ? 'BondMoran didn’t think this person was right. Your coupon is back.' : s.status === 'cancelled' ? 'Cancelled. Your coupon is back.' : 'Your consultant has this request.'}</p>
           {consultant && <Link href={`/consultant/screenings/${s.id}`} className="text-[14px]">Open screening</Link>}
         </Card>

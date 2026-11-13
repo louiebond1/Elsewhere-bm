@@ -1,8 +1,8 @@
 /** Pure eligibility and ranking rules. No AI, no database. */
-export const ASSESSMENT_VERSION = 'evidence-context-v3';
+export const ASSESSMENT_VERSION = 'evidence-context-v4';
 
-export type Level = 'specific' | 'partial' | 'unknown' | 'contradictory' | 'related' | 'clear' | 'strong';
-export const LEVEL_VALUE: Record<Level, number> = { specific: 75, partial: 50, unknown: 0, contradictory: 0, related: 25, clear: 75, strong: 100 };
+export type Level = 'specific' | 'partial' | 'unknown' | 'contradictory' | 'related' | 'clear' | 'strong' | 'none_stated' | 'not_met';
+export const LEVEL_VALUE: Record<Level, number> = { none_stated: 0, not_met: 0, specific: 75, partial: 50, unknown: 0, contradictory: 0, related: 25, clear: 75, strong: 100 };
 
 export type RoleShape = { roleFamily: string; salaryPence: bigint | number | string; locationRegion: string; workMode: string; workAuthorisationRequired: boolean; requires18?: boolean };
 export type CandidateShape = { preferredRoleFamilies: string[]; minSalaryPence: bigint | number | string | null; region: string; workModes: string[]; workAuthorisation: string; over18?: boolean | null; roleFamilyNonNegotiable?: boolean };
@@ -52,7 +52,7 @@ export function weightedScore(criteria: CriterionWeight[], levels: Map<string, L
 export function coverage(criteria: CriterionWeight[], levels: Map<string, Level>): number {
   const totalW = criteria.reduce((a, c) => a + c.weight, 0);
   if (!totalW) return 0;
-  const covered = criteria.filter((c) => ['specific', 'partial', 'related', 'clear', 'strong', 'contradictory'].includes(levels.get(c.criterionId) ?? 'unknown')).reduce((a, c) => a + c.weight, 0);
+  const covered = criteria.filter((c) => ['specific', 'partial', 'related', 'clear', 'strong', 'contradictory', 'none_stated', 'not_met'].includes(levels.get(c.criterionId) ?? 'unknown')).reduce((a, c) => a + c.weight, 0);
   return covered / totalW;
 }
 

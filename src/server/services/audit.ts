@@ -23,11 +23,13 @@ export async function logActivity(ctx: Ctx, e: { subjectType: string; subjectId:
 type NotificationType = (typeof notifications.$inferInsert)['type'];
 
 /** Notification titles must never contain a candidate name. Names resolve at read time. */
-export async function notify(ctx: Ctx, recipientUserIds: string[], n: { type: NotificationType; subjectRefType: string; subjectRefId: string; safeTitle: string }) {
+export async function notify(ctx: Ctx, recipientUserIds: string[], n: { type: NotificationType; subjectRefType: string; subjectRefId: string; safeTitle: string }, options?:{inAppOnly?:boolean}) {
   const ids = [...new Set(recipientUserIds)];
   if (!ids.length) return;
-  await ctx.tx.insert(notifications).values(ids.map((r) => ({ datasetId: ctx.datasetId, recipientUserId: r, ...n })));
-  await queueEmails(ctx, ids, n);
+  const created=await ctx.tx.insert(notifications).values(ids.map((r) => ({ datasetId: ctx.datasetId, recipientUserId: r, ...n }))).returning({id:notifications.id});
+  await logActivity(ctx,{subjectType:'notification',subjectId:n.subjectRefId,action:'notification.created',metadata:{channel:'in_app',recipients:ids.length}});
+  if(!options?.inAppOnly)await queueEmails(ctx, ids, n);
+  return created;
 }
 
 export async function clientUserIds(ctx: Ctx, clientId: string): Promise<string[]> {

@@ -27,7 +27,7 @@ export function NotificationBell({ base }: { base: string }) {
     if (n.ref === 'interview') return base === '/candidate' ? `/candidate/interviews/${n.refId}` : `${base}/home`;
     if (n.ref === 'role') return `${base}/roles/${n.refId}`;
     if (n.ref === 'introduction') return base === '/candidate' ? '/candidate/introductions' : `${base}/introductions/${n.refId}/prep`;
-    if (n.ref === 'screening') return base === '/consultant' ? `/consultant/screenings/${n.refId}` : `${base}/home`;
+    if (n.ref === 'screening') return base === '/consultant' ? `/consultant/screenings/${n.refId}` : base==='/candidate'?'/candidate/interviews':`${base}/home`;
     if (n.ref === 'hire') return `${base}/hires`;
     if (n.ref === 'replacement') return base === '/consultant' ? `/consultant/replacements/${n.refId}` : `${base}/hires`;
     if (n.ref === 'candidate') return base === '/consultant' ? `/consultant/candidates/${n.refId}` : '/candidate/profile';

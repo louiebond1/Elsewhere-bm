@@ -18,7 +18,7 @@ export default async function Interview({ params }: { params: Promise<{ roleId: 
   return (
     <div className="mx-auto max-w-[860px]">
       <PageHeader compact back={{ href: '/candidate/interviews', label: 'Your interviews' }} title={i.title} subtitle={`${label(i.mode)} · ${label(i.region)} · interviewed ${new Date(i.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })} · ${i.answers.length} questions. The employer never sees your name.`} />
-      <div className="mb-4"><Countdown deadline={i.deadline} gaps={i.answers.filter((a) => !a.answer).length} /></div>
+      <div className="mb-4"><Countdown lateAllowed={i.lateAllowed} deadline={i.deadline} gaps={i.answers.filter((a) => !a.answer).length} /></div>
       <InterviewDeck answers={i.answers} open={i.open} />
     </div>
   );

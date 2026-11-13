@@ -18,13 +18,13 @@ function useLeft(deadline: string) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function Countdown({ deadline, gaps }: { deadline: string; gaps: number }) {
+export function Countdown({ deadline, gaps, lateAllowed=false }: { deadline: string; gaps: number; lateAllowed?:boolean }) {
   const left = useLeft(deadline);
-  if (!left) return <p className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-[15px] text-muted shadow-[0_2px_8px_rgb(18_37_29/0.06)]"><Lock size={18} aria-hidden /> This interview is final. What you add to your mini-me now helps your next ones.</p>;
+  if (!left) return <p className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-[15px] text-muted shadow-[0_2px_8px_rgb(18_37_29/0.06)]"><Lock size={18} aria-hidden /> {lateAllowed?'The first window has closed. You can still add evidence for a later shortlist update.':'This interview is final. What you add to your mini-me now helps your next ones.'}</p>;
   return (
     <p className="flex flex-wrap items-center gap-2 rounded-2xl bg-warning-tint px-4 py-3 text-[16px] text-ink">
       <Clock size={18} aria-hidden className="text-warning" />
-      <span><span className="font-semibold">{left} left</span> to {gaps ? `answer the ${gaps} it didn’t know and ` : ''}change any answer. Your interview updates straight away.</span>
+      <span><span className="font-semibold">{left} left</span> to {gaps ? `answer the ${gaps} it didn’t know and ` : ''}change any answer. Your evidence is reassessed after you save.</span>
     </p>
   );
 }
@@ -37,7 +37,7 @@ function EditAnswer({ qa, open }: { qa: QA; open: boolean }) {
   const [text, setText] = useState(qa.answer ?? '');
   const [saved, setSaved] = useState(false);
   if (!open) return null;
-  if (saved) return <p role="status" className="mt-4 text-[15px] font-semibold text-primary">✓ Saved to your mini-me. Updating this interview…</p>;
+  if (saved) return <p role="status" className="mt-4 text-[15px] font-semibold text-primary">Saved to your mini-me. Your evidence will be reassessed.</p>;
   if (!editing) return <button type="button" className={cx(buttonClass(qa.answer ? 'secondary' : 'primary'), 'mt-4 min-h-11 rounded-full!')} onClick={() => setEditing(true)}>{qa.answer ? 'Change this answer' : 'Answer this one'}</button>;
   const save = async () => {
     const ok = qa.key

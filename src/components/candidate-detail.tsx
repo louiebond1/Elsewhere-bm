@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {AssessmentCorrection} from './shortlist-actions';
 import type { Ctx } from '../server/services/context';
 import { candidateOnRole, simulationForCandidate } from '../server/views/client';
 import { roleCharges } from '../server/services/roles';
@@ -10,9 +11,9 @@ import { RequestIntro, RequestScreening, RecordHire } from './role-actions';
 import { ClientInterview } from './client-interview';
 
 /** Full role-specific anonymous evidence view. Identity appears only under an active grant for this role. */
-export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }: { ctx: Ctx; roleId: string; candidateRef: string; base: string; view?: string }) {
-  const { candidateId, role, dto, introId, introState, counters, hiredStart } = await candidateOnRole(ctx, roleId, candidateRef);
-  const sim = await simulationForCandidate(ctx, roleId, candidateId);
+export async function CandidateDetail({ ctx, roleId, candidateRef, base, view, version }: { ctx: Ctx; roleId: string; candidateRef: string; base: string; view?: string; version?:number }) {
+  const { candidateId, role, dto, introId, introState, counters, hiredStart } = await candidateOnRole(ctx, roleId, candidateRef,version);
+  const sim = await simulationForCandidate(ctx, roleId, candidateId,version);
   const here = `${base}/roles/${roleId}/candidates/${candidateRef}`;
   const section = view === 'interview' && sim ? 'interview' : view === 'evidence' ? 'evidence' : 'overview';
   const ch = await roleCharges(ctx, roleId);
@@ -20,6 +21,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
   const evidenceFit = { text: dto.evidenceScore != null ? `${dto.evidenceScore}/100 evidenced · ${dto.profileCoverage}% covered` : 'Assessment pending', tone: 'neutral' as const };
   return (
     <>
+      {ctx.actor.kind==='user'&&ctx.actor.userType==='consultant'&&role.shortlistEnabled&&<AssessmentCorrection roleId={roleId} candidateRef={candidateRef} criteria={dto.criteria}/> }
       <PageHeader title="" back={{ href: `${base}/roles/${roleId}`, label: role.title }} />
       <section className="mb-8 grid gap-6 lg:grid-cols-[440px_1fr] lg:items-end lg:gap-10">
         <FoldArt id={`hero-${candidateRef}`} palette={paletteFor(dto.roleScopedReference)} variant={variantFor(dto.roleScopedReference)} className="aspect-[16/10] w-full rounded-3xl shadow-[0_8px_24px_rgb(18_37_29/0.08)]" />
@@ -37,7 +39,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
       </section>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-4">
-          <Tabs current={section} tabs={[{ key: 'overview', label: 'Overview', href: `${here}?view=overview` }, ...(sim ? [{ key: 'interview', label: 'Interview', href: `${here}?view=interview` }] : []), { key: 'evidence', label: 'Evidence', href: `${here}?view=evidence` }]} />
+          <Tabs current={section} tabs={[{ key: 'overview', label: 'Overview', href: `${here}?${version?`version=${version}&`:""}view=overview` }, ...(sim ? [{ key: 'interview', label: 'Interview', href: `${here}?${version?`version=${version}&`:""}view=interview` }] : []), { key: 'evidence', label: 'Evidence', href: `${here}?${version?`version=${version}&`:""}view=evidence` }]} />
           {section === 'overview' && (
             <Card>
               {sim && <div className="mb-3 flex items-start gap-2"><span className="shrink-0 whitespace-nowrap"><Badge tone={evidenceFit.tone}>{evidenceFit.text}</Badge></span><span className="text-[15px]">{sim.summary}</span></div>}
@@ -57,7 +59,7 @@ export async function CandidateDetail({ ctx, roleId, candidateRef, base, view }:
                   <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Checked by BondMoran</Badge>}</div>
                   <p className="text-[14px] text-muted">{c.reasonSafe}</p>
                   {c.followUp && <p className="mt-2 text-[14px] text-primary">To explore: {c.followUp}</p>}
-                  {c.essential && (c.humanLevel ?? c.level) === 'contradictory' && <p className="text-[14px] text-warning">Essential requirement needs review.</p>}
+                  {c.essential && (c.humanLevel ?? c.level) === 'not_met' && <p className="text-[14px] text-warning">Essential requirement needs review.</p>}
                   {dto.safeEvidence.filter((e) => c.evidenceIds.includes(e.id)).map((e) => (
                     <blockquote key={e.id} className="mt-2 border-l-4 border-line pl-3 text-[15px]">{e.claim}{e.uncertainty && <span className="mt-1 block text-[13px] text-warning">Worth asking about: {e.uncertainty}</span>}<span className="mt-1 block text-[12px] text-muted">In their own words, with names removed. Not checked with an employer.</span></blockquote>
                   ))}

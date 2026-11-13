@@ -24,6 +24,7 @@ export function validateAssessment(out: AssessmentOutput, criterionIds: string[]
   const ev = new Set(evidenceIds);
   const seen = new Set<string>();
   for (const c of out.criteria) {
+    if(c.level==='contradictory')return {ok:false as const,reason:'deprecated_level'};
     if (!criterionIds.includes(c.criterionId)) return { ok: false as const, reason: 'unknown_criterion' };
     if (seen.has(c.criterionId)) return { ok: false as const, reason: 'duplicate_criterion' };
     seen.add(c.criterionId);
@@ -49,7 +50,8 @@ export function safeClaimProblems(text: string, forbidden: string[]): string[] {
   const lower = text.toLowerCase();
   for (const f of forbidden) {
     const t = f.trim().toLowerCase();
-    if (t.length >= 3 && lower.includes(t)) out.push(`Contains an identifying name: "${f}"`);
+    const escaped=t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    if (t.length >= 3 && new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`,'iu').test(lower)) out.push(`Contains an identifying name: "${f}"`);
   }
   return out;
 }

@@ -134,6 +134,20 @@
       "when": 1794528688869,
       "tag": "0018_evidence_scoring",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794585008274,
+      "tag": "0019_shortlist_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794596682487,
+      "tag": "0020_shortlist_reminder",
+      "breakpoints": true
     }
   ]
 }

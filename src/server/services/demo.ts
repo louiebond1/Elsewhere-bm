@@ -10,7 +10,7 @@ import { seedDataset, type SeedIds, type SeedOptions } from './demo-seed';
 import { withTx, type BaseCtx, type Ctx, type Actor } from './context';
 import { requestIntroduction, acceptIntroduction } from './intros';
 import { recordHire, recordOutsideHire } from './hires';
-import { requestScreening, completeScreening } from './screenings';
+import { requestScreening, completeScreening, respondToScreening } from './screenings';
 import { criteriaFor } from './roles';
 import { roleScopedRef } from '../dto/refs';
 import { storage } from './storage';
@@ -83,7 +83,8 @@ export const SCENARIOS: Scenario[] = [
       const crit = await h.T(h.asConsultant(), (c) => criteriaFor(c, role));
       for (const code of ['C01', 'C02', 'C03', 'C04', 'C06']) {
         const s = await h.T(h.asClient('A'), (c) => requestScreening(c, { roleId: role, candidateRef: roleScopedRef(role, h.ids.candidates[code]) }));
-        await h.T(h.asConsultant(), (c) => completeScreening(c, s.id, { minutes: 15, notesPrivate: 'Fictional scenario notes.', summarySafe: 'Screening completed for the demonstration scenario.', assessments: crit.map((k) => ({ criterionId: k.id, level: 'unknown' as const, evidenceIds: [], observationPrivate: '' })) }));
+        await h.T(h.asCandidate(code),c=>respondToScreening(c,s.id,true));
+        await h.T(h.asConsultant(), (c) => completeScreening(c, s.id, { outcome:'pass', minutes: 15, notesPrivate: 'Fictional scenario notes.', summarySafe: 'Screening completed for the demonstration scenario.', assessments: crit.map((k) => ({ criterionId: k.id, level: 'unknown' as const, evidenceIds: [], observationPrivate: '' })) }));
       }
     } },
   { code: 'S21', title: 'Two clients', persona: 'Maya Ellis (C01)', personaCode: 'C01', action: 'Accept only the Alder introduction.', expected: 'Only Alder on that role sees the name. Beacon still sees the anonymous profile and can be accepted later.', options: { c01Operations: true },

@@ -30,6 +30,7 @@ export async function requestIntroduction(ctx: Ctx, input: { roleId: string; can
   if (actor.userType === 'candidate') throw notFound();
   const pre = await roleForActor(ctx, input.roleId);
   const candidateId = await resolveRoleRef(ctx, input.roleId, input.candidateRef);
+  const {ensureLegacyPublication,assertPublishedCandidate}=await import('./shortlists');await ensureLegacyPublication(ctx,input.roleId);await assertPublishedCandidate(ctx,input.roleId,candidateId);
   await lockCandidates(ctx.tx, [candidateId]);
   const contract = await requireActiveContract(ctx, pre.clientId, true);
   const walletId = await lockWallet(ctx, pre.clientId);

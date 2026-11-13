@@ -29,7 +29,7 @@ export const feedbackOutput = z.object({
 export type FeedbackOutput = z.infer<typeof feedbackOutput>;
 
 export const assessmentOutput = z.object({
-  criteria: z.array(z.object({ criterionId: z.string(), level: z.enum(['related', 'partial', 'clear', 'strong', 'unknown', 'contradictory']), evidenceIds: z.array(z.string()), quote: z.string().max(600), reasonSafe: z.string().max(600), followUp: z.string().max(240).nullable().optional() })),
+  criteria: z.array(z.object({ criterionId: z.string(), level: z.enum(['related', 'partial', 'clear', 'strong', 'unknown', 'none_stated', 'not_met', 'contradictory']), evidenceIds: z.array(z.string()), quote: z.string().max(600), reasonSafe: z.string().max(600), followUp: z.string().max(240).nullable().optional() })),
 });
 export type AssessmentOutput = z.infer<typeof assessmentOutput>;
 

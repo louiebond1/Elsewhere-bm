@@ -148,7 +148,7 @@ export function interviewTouched(sim: { updatedAt: Date; scoreCard: unknown; ans
 
 export async function simulationTargets(ctx: Ctx, roleId: string) {
   const [role] = await ctx.tx.select().from(roles).where(eq(roles.id, roleId));
-  if (!role || role.status !== 'open') return { role: role ?? null, targets: [] as { candidateId: string }[] };
+  if (!role || role.status !== 'open' || role.shortlistEnabled) return { role: role ?? null, targets: [] as { candidateId: string }[] };
   const ms = await ctx.tx.select().from(matches).where(and(eq(matches.roleId, roleId), ne(matches.eligibility, 'incompatible')));
   const refs = await ctx.tx.select({ id: candidates.id, ref: candidates.publicRef, pv: candidates.latestProfileVersionId }).from(candidates).where(inArray(candidates.id, ms.length ? ms.map((m) => m.candidateId) : ['00000000-0000-0000-0000-000000000000']));
   const info = new Map(refs.map((r) => [r.id, r]));
@@ -188,11 +188,11 @@ export async function simulationPending(ctx: Ctx, roleId: string) {
 }
 
 /** Validates and stores one simulation. Rejects foreign evidence ids and anything identifying; stale results are discarded. */
-export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId: string; roleVersion: number; profileVersionId: string; answers: SimAnswer[]; fitScore: number; summary: string; concerns: string[]; provider: 'fixture' | 'anthropic'; evidenceIds: string[]; questions?: ReturnType<typeof interviewQuestions>; guidanceVersion?: number }) {
+export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId: string; roleVersion: number; profileVersionId: string; answers: SimAnswer[]; fitScore: number; summary: string; concerns: string[]; provider: 'fixture' | 'anthropic'; evidenceIds: string[]; questions?: ReturnType<typeof interviewQuestions>; guidanceVersion?: number; snapshotOnly?: boolean }) {
   const [role] = await ctx.tx.select().from(roles).where(eq(roles.id, a.roleId)).for('update');
   const [cand] = await ctx.tx.select().from(candidates).where(eq(candidates.id, a.candidateId));
   if (!role || !cand || cand.status === 'deleting' || cand.status === 'deleted') return { stored: false, reason: 'unavailable' };
-  if (role.roleVersion !== a.roleVersion || cand.latestProfileVersionId !== a.profileVersionId) return { stored: false, reason: 'stale_discarded' };
+  if (!a.snapshotOnly && (role.roleVersion !== a.roleVersion || cand.latestProfileVersionId !== a.profileVersionId)) return { stored: false, reason: 'stale_discarded' };
   const [idn] = await ctx.tx.select({ n: candidateIdentity.fullName, e: candidateIdentity.currentEmployerLabel }).from(candidateIdentity).where(eq(candidateIdentity.candidateId, a.candidateId));
   const orgNames = (await ctx.tx.select({ n: organisations.displayName }).from(organisations).where(eq(organisations.datasetId, ctx.datasetId))).map((o) => o.n);
   // Any real person's name in this dataset (not only this candidate's) and any organisation name is blocked.
@@ -212,6 +212,7 @@ export async function storeSimulation(ctx: Ctx, a: { roleId: string; candidateId
   const summary = clean(a.summary) || (answers.some((x) => x.grounded) ? 'Has relevant examples for this job.' : 'Not much to go on yet.');
   const concerns = a.concerns.map(clean).filter(Boolean).slice(0, 3);
   const fitScore = Math.max(0, Math.min(100, Math.round(a.fitScore)));
+  if (a.snapshotOnly) return { stored: true, snapshot: { answers, fitScore: 0, summary, concerns, provider: a.provider } };
   // The first time their mini-me is interviewed for a job, tell them. No score: just that it happened.
   const [before] = await ctx.tx.select({ id: simulatedInterviews.id }).from(simulatedInterviews).where(and(eq(simulatedInterviews.roleId, a.roleId), eq(simulatedInterviews.candidateId, a.candidateId)));
   if (!before && cand.userId) {

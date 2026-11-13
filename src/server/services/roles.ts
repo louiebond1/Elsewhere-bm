@@ -213,7 +213,7 @@ export async function activateRole(ctx: Ctx, roleId: string, opts: { confirmExtr
     await insertTransaction(ctx, { walletId, clientId: role.clientId, contractId: contract.id, orderId: order.id, roleId: role.id, type: 'deposit_debit', deltaUnits: -q.deposit, ratePence: q.rate, idempotencyKey: `${opts.idempotencyKey}:deposit:${order.id}`, reason: 'Extra role deposit paid at activation' });
     await ctx.tx.update(hireOrders).set({ status: 'deposit_paid', updatedAt: new Date() }).where(eq(hireOrders.id, order.id));
   }
-  const [updated] = await ctx.tx.update(roles).set({ status: 'open', isExtraRole: isExtra, contractId: contract.id, pricingLockedAt: ctx.now, updatedAt: new Date(), rowVersion: role.rowVersion + 1 }).where(eq(roles.id, role.id)).returning();
+  const [updated] = await ctx.tx.update(roles).set({ status: 'open', shortlistEnabled: true, isExtraRole: isExtra, contractId: contract.id, pricingLockedAt: ctx.now, updatedAt: new Date(), rowVersion: role.rowVersion + 1 }).where(eq(roles.id, role.id)).returning();
   await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: isExtra ? 'role.activated_extra' : 'role.activated', clientId: role.clientId, metadata: { orderId: order.id, depositUnits: isExtra ? q.deposit.toString() : '0' } });
   const { recomputeRole } = await import('./matching');
   await recomputeRole(ctx, role.id);
@@ -244,7 +244,7 @@ export async function closeRole(ctx: Ctx, roleId: string, reason: 'filled' | 'ca
   if (role.status !== 'open') throw conflict('ROLE_NOT_OPEN', 'Only an open role can be closed.');
   const cancelled = await ctx.tx.update(introductions).set({ state: 'cancelled', respondedAt: ctx.now, updatedAt: new Date() }).where(and(eq(introductions.roleId, roleId), eq(introductions.state, 'pending'))).returning({ id: introductions.id });
   await releaseHoldIfUnneeded(ctx, roleId, true);
-  await ctx.tx.update(screenings).set({ status: 'cancelled', updatedAt: new Date() }).where(and(eq(screenings.roleId, roleId), inArray(screenings.status, ['requested', 'scheduled'])));
+  await ctx.tx.update(screenings).set({ status: 'cancelled', updatedAt: new Date() }).where(and(eq(screenings.roleId, roleId), inArray(screenings.status, ['requested', 'invited', 'accepted', 'scheduled'])));
   const order = await primaryOrder(ctx, roleId, true);
   if (order && (order.status === 'quoted' || order.status === 'deposit_paid')) {
     await ctx.tx.update(hireOrders).set({ status: 'no_hire_closed', updatedAt: new Date() }).where(eq(hireOrders.id, order.id));
@@ -310,7 +310,7 @@ export async function roleCounters(ctx: Ctx, roleId: string) {
       count(*) filter (where accepted_at is not null)::int as accepted,
       count(*) filter (where state = 'pending' and expires_at > ${ctx.now.toISOString()}::timestamptz)::int as pending
     from introductions where role_id = ${roleId}`);
-  const s = await ctx.tx.execute(sql`select count(*) filter (where status in ('requested','scheduled','completed'))::int as used, count(*) filter (where status = 'completed')::int as completed from screenings where role_id = ${roleId}`);
+  const s = await ctx.tx.execute(sql`select count(*) filter (where status in ('requested','accepted','scheduled','completed'))::int as used, count(*) filter (where status = 'completed')::int as completed from screenings where role_id = ${roleId}`);
   const a = r.rows[0] as { accepted: number; pending: number };
   const b = s.rows[0] as { used: number; completed: number };
   return { accepted: a.accepted, pending: a.pending, screeningsUsed: b.used, screeningsCompleted: b.completed };
@@ -383,7 +383,8 @@ export async function approveRubric(ctx: Ctx, roleId: string, expectedRowVersion
   if (role.rowVersion !== expectedRowVersion) throw conflict('STALE_VERSION', 'The checklist changed. Refresh and review it again.');
   const criteria = await criteriaFor(ctx, roleId);
   if (criteria.length < 3 || criteria.length > 12) throw invalid('Review 3 to 12 requirements first.');
-  await ctx.tx.update(roles).set({ rubricApprovedVersion: role.roleVersion, updatedAt: new Date() }).where(eq(roles.id, roleId));
+  const total=criteria.reduce((n,c)=>n+c.weight,0);if(!total||criteria.filter(c=>c.importance==='desirable').reduce((n,c)=>n+c.weight,0)/total>0.30)throw invalid('Keep desirable requirements to at most 30% of the total weight.');
+  await ctx.tx.update(roles).set({ rubricApprovedVersion: role.roleVersion, ...(role.status==='open'?{shortlistEnabled:true}:{}), updatedAt: new Date() }).where(eq(roles.id, roleId));
   await logActivity(ctx, { subjectType: 'role', subjectId: roleId, action: 'rubric.approved', clientId: role.clientId, metadata: { roleVersion: role.roleVersion, criteria: JSON.stringify(criteria) } });
   if (role.status === 'open') { const { recomputeRole } = await import('./matching'); await recomputeRole(ctx, roleId); }
   return { approved: true };

@@ -26,6 +26,7 @@ async function tickExpiry() {
   if (!ds) return;
   const bucket = Math.floor(Date.now() / 60000);
   await enqueue({ tx: db(), datasetId: ds.id }, 'expire_intros', null, `expire:${bucket}`);
+  await enqueue({ tx: db(), datasetId: ds.id }, 'shortlist_tick', null, `shortlists:${bucket}`);
 }
 
 /**

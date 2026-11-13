@@ -14,6 +14,8 @@ const LEVEL: Record<string, { label: string; tone: 'success' | 'neutral' | 'warn
   specific: { label: 'Strong example', tone: 'success' },
   partial: { label: 'Some evidence', tone: 'neutral' },
   unknown: { label: 'Not known yet', tone: 'warning' },
+  none_stated: { label: 'No experience stated', tone: 'neutral' },
+  not_met: { label: 'Requirement not met', tone: 'danger' },
   contradictory: { label: 'Requirement not met', tone: 'danger' },
 };
 
@@ -120,7 +122,7 @@ export function MatchCard({ m, href, actions }: { m: AcceptedCandidateDTO; href:
               <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{c.label}</span><LevelBadge level={c.level} />{c.humanLevel && <Badge tone="primary">Phone screening: {LEVEL[c.humanLevel]?.label ?? c.humanLevel}</Badge>}</div>
               <p className="text-muted">{c.reasonSafe}</p>
               {c.quote && <p className="mt-1 text-[14px]">“{c.quote}”</p>}
-              {c.essential && c.level === 'contradictory' && <p className="text-warning">Essential requirement needs review.</p>}
+              {c.essential && c.level === 'not_met' && <p className="text-warning">Essential requirement needs review.</p>}
             </li>
           ))}
         </ul>

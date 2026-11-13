@@ -73,10 +73,11 @@ export const reversalInput = z.object({ transactionId: z.string().uuid(), reason
 
 export const screeningRequestInput = z.object({ roleId: z.string().uuid(), candidateRef: z.string().min(8).max(80) });
 export const screeningCompleteInput = z.object({
+  outcome:z.enum(['pass','fail']).optional(),
   minutes: z.number().int().positive().max(600),
   notesPrivate: text(4000).default(''),
   summarySafe: text(800).min(10, 'Write a short client-safe summary'),
-  assessments: z.array(z.object({ criterionId: z.string().uuid(), level: z.enum(['specific', 'strong', 'clear', 'related', 'partial', 'unknown', 'contradictory']), evidenceIds: z.array(z.string().uuid()).default([]), observationPrivate: text(1000).default('') })),
+  assessments: z.array(z.object({ criterionId: z.string().uuid(), level: z.enum(['specific', 'strong', 'clear', 'related', 'partial', 'unknown', 'none_stated', 'not_met', 'contradictory']), evidenceIds: z.array(z.string().uuid()).default([]), observationPrivate: text(1000).default('') })),
 });
 
 export const adjustmentInput = z.object({ roleId: z.string().uuid(), candidateId: z.string().uuid(), adjustment: z.number().int().min(prototype.consultantAdjustmentMin).max(prototype.consultantAdjustmentMax), reason: text(500).min(5), evidenceIds: z.array(z.string().uuid()).min(1, 'Reference at least one evidence item') });

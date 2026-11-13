@@ -22,15 +22,16 @@ export async function correctScore(ctx: Ctx, raw: unknown) {
   const actor = requireUser(ctx.actor);
   if (actor.userType !== 'client' && actor.userType !== 'consultant') throw notFound();
   const role = await roleForActor(ctx, input.roleId);
-  const { candidateOnRole } = await import('../views/client');
+  const { candidateOnRole, simulationForCandidate } = await import('../views/client');
   const { candidateId } = await candidateOnRole(ctx, input.roleId, input.candidateRef);
-  const [sim] = await ctx.tx.select().from(simulatedInterviews).where(and(eq(simulatedInterviews.roleId, role.id), eq(simulatedInterviews.candidateId, candidateId)));
+  const sim=await simulationForCandidate(ctx,role.id,candidateId);
   const a = (sim?.answers as StoredAnswer[] | undefined)?.[input.questionIndex];
   if (!sim || !a) throw notFound();
   if (a.kind === 'screening') throw invalid('Screening questions aren’t scored.');
   await ctx.tx.insert(scoringFeedback).values({ datasetId: ctx.datasetId, clientId: role.clientId, roleId: role.id, candidateId, kind: 'correction', question: a.question, answer: a.grounded ? a.answer : NOT_SHARED, aiScore: a.score ?? null, humanScore: input.humanScore, reason: input.reason, createdByUserId: actor.userId });
   await logActivity(ctx, { subjectType: 'role', subjectId: role.id, action: 'interview.score_corrected', clientId: role.clientId, metadata: { from: a.score ?? null, to: input.humanScore } });
 
+  const {annotatePublishedAnswer}=await import('./shortlists');await annotatePublishedAnswer(ctx,role.id,candidateId,a.question,input.humanScore,input.reason);
   return { saved: true };
 }
 

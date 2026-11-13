@@ -14,7 +14,7 @@
               },
               "level": {
                 "type": "string",
-                "description": "{enum: [\"related\",\"partial\",\"clear\",\"strong\",\"unknown\",\"contradictory\"]}"
+                "description": "{enum: [\"related\",\"partial\",\"clear\",\"strong\",\"unknown\",\"none_stated\",\"not_met\",\"contradictory\"]}"
               },
               "evidenceIds": {
                 "type": "array",
