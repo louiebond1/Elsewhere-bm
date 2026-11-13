@@ -24,7 +24,7 @@ Known names and contact details are redacted while retaining useful mini-me text
 
 New quality runs assess criteria and calculate totals rather than measuring the interview's subjective overall score. They store per-criterion output. Old interview-score runs are excluded from the current quality page. The reference ratings remain developer-created and provisional. Recruiter-approved criterion labels and examples, more job types and a paid live quality run are still needed before trusting the results for real hiring.
 
-Deploy the web migration before the worker. Review and approve a test role, then inspect pending/current assessment status and candidate detail evidence. Do not raise budget limits or reset live data. The foundation verification below was local. The later isolated paid scenario evaluation is described separately below; production deployment is still pending.
+Deploy the web migration before the worker. Review and approve a test role, then inspect pending/current assessment status and candidate detail evidence. Do not raise budget limits or reset live data. The foundation verification below was local. The later isolated paid scenario evaluation is described separately below; production web and worker are now deployed at `11fc4bd` (13 November, 14:41 and 14:44 London time).
 
 ## Verification on 13 November
 
@@ -35,3 +35,11 @@ An earlier full 199-test run passed 196 tests and exposed three legacy assertion
 ## Adaptive interview extension
 
 The subsequent context extension adds shared follow-up agendas for the connector and built-in coach, up to 12 job-specific criteria, bounded four-criterion AI assessments and richer work-context profile questions. Context clues prompt investigation rather than assumed traits. See [the scenario report](evaluations/CONTEXT-BENCHMARK.md) and its machine-readable snapshot for the real-model fictional comparisons, actual follow-up conversations and limitations. This isolated evaluation does not deploy the application or validate it for general hiring.
+
+## Release verification
+
+Web deployment `c576e507-1b98-4d6c-8166-94f5b54be2d6` and worker deployment `6e21e858-750c-4a07-8455-9b1575c2b2a3` both reached SUCCESS at `11fc4bd`. The web ran its migration before the worker rollout. The public health endpoint returned HTTP 200 and `{"status":"ok"}`; the unauthenticated review route correctly redirected to the demo gate. All 208 tests across 36 unit/integration files passed in one fresh disposable-database run. Desktop and phone checklist browser checks passed. The comparison browser checks passed when rerun separately after the single-process Chromium harness closed before opening their pages in a combined run. No live reset was used.
+
+### Interview commentary correction
+
+A fresh paired comparison exposed an irrelevant group-reporting criticism in the hands-on job interview. The simulation now receives the exact criterion description and anchors per question, uses their scale for explanatory marks and avoids requirements from another job. Ranking remains a separate fixed calculation. Prompt version is `prompts-v4`. The correction is live at `53aec51`: web deployment `19eb7ba4-aae3-46b4-a3e8-ee4c36876170` and worker `0838cf8c-1f97-4261-9143-21c101c2c89f` reached SUCCESS. All 83 focused unit/simulation/bounded-assessment regression tests passed after this correction; typecheck and lint passed with the same seven existing warnings. The fresh paired results and their remaining disagreements are in `docs/evaluations/PAIRED-INTERVIEWS.md`.

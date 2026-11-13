@@ -1,0 +1,1574 @@
+{
+  "generatedAt": "2026-11-13T14:57:40.672Z",
+  "checks": {
+    "completed": true,
+    "fourAssessments": true,
+    "expectedWinners": true,
+    "aggregateWithinTen": true,
+    "criteriaWithinOneLevel": true,
+    "allFortyInterviewAnswersValid": true,
+    "eightAdaptiveTurnsValid": true,
+    "factoryCommentaryUsesItsOwnRole": true
+  },
+  "pass": true,
+  "configuredCostUsd": 0.027029,
+  "expectations": {
+    "hands_on": {
+      "p01": {
+        "recs": "strong",
+        "close": "clear",
+        "ethics": "strong",
+        "learning": "strong",
+        "constraints": "strong",
+        "floor": "strong",
+        "triage": "strong",
+        "practical": "strong",
+        "independence": "strong",
+        "trust": "strong"
+      },
+      "p02": {
+        "recs": "strong",
+        "close": "strong",
+        "ethics": "strong",
+        "learning": "clear",
+        "constraints": "related",
+        "floor": "related",
+        "triage": "related",
+        "practical": "related",
+        "independence": "partial",
+        "trust": "partial"
+      }
+    },
+    "group": {
+      "p01": {
+        "recs": "strong",
+        "close": "clear",
+        "ethics": "strong",
+        "learning": "strong",
+        "consolidation": "related",
+        "controls": "related",
+        "stakeholders": "related",
+        "systems": "related",
+        "review": "related",
+        "board": "related"
+      },
+      "p02": {
+        "recs": "strong",
+        "close": "strong",
+        "ethics": "strong",
+        "learning": "clear",
+        "consolidation": "strong",
+        "controls": "strong",
+        "stakeholders": "strong",
+        "systems": "partial",
+        "review": "strong",
+        "board": "strong"
+      }
+    }
+  },
+  "acceptance": {
+    "aggregateTolerance": 10,
+    "criterionLevelTolerance": 1,
+    "requiredWinners": {
+      "hands_on": "p01",
+      "group": "p02"
+    }
+  },
+  "assessments": [
+    {
+      "person": "p01",
+      "label": "Hands-on factory finance leader",
+      "job": "hands_on",
+      "title": "Hands-on Finance Lead: small manufacturer",
+      "valid": true,
+      "expectedScore": 98,
+      "actualScore": 98,
+      "delta": 0,
+      "criteria": [
+        {
+          "id": "recs",
+          "label": "Accurate reconciliations",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I personally reconciled the bank, supplier ledger and stock records each week",
+          "reason": "Personally reconciled bank, ledger and stock weekly, investigated missing items, and introduced weekly reconciliations as a repeated practice."
+        },
+        {
+          "id": "close",
+          "label": "Reliable month-end reporting",
+          "weight": 3,
+          "expectedLevel": "clear",
+          "actualLevel": "clear",
+          "delta": 0,
+          "quote": "I owned close and reporting for this one site.",
+          "reason": "Owned close and reporting for one site and prepared monthly accounts; timeliness and recipients' use of reports are not shown."
+        },
+        {
+          "id": "ethics",
+          "label": "Responsible financial judgement",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I documented what was owed, challenged the owner, escalated through the available worker grievance channel",
+          "reason": "Personally challenged a wage-delay proposal, escalated it, and secured a payment schedule before other cash commitments."
+        },
+        {
+          "id": "learning",
+          "label": "Help colleagues use changes",
+          "weight": 2,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "The team could keep using it without me.",
+          "reason": "Introduced weekly reconciliations, trained a colleague on a handover log, and set up a backup owner so the team maintained the process."
+        },
+        {
+          "id": "constraints",
+          "label": "Deliver with limited resources",
+          "weight": 5,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet. I introduced weekly reconciliations and a backup owner.",
+          "reason": "Personally delivered finance work with two staff, no ERP, and short cash, and built a maintainable manual process the team kept using."
+        },
+        {
+          "id": "floor",
+          "label": "Understand frontline operations",
+          "weight": 4,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "Operators reported different stock figures to the ledger. I listened to each shift, demonstrated a simple handover log and trained a colleague to maintain it.",
+          "reason": "Personally investigated stock discrepancies with operators on the floor, resolved them jointly, and improved the shared handover practice."
+        },
+        {
+          "id": "triage",
+          "label": "Prioritise under immediate constraints",
+          "weight": 4,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I prioritised safe production and wages, negotiated staged supplier payments and kept the owner informed.",
+          "reason": "Personally chose between wages, production and supplier payments, reached a staged payment agreement, and escalated the wage issue appropriately."
+        },
+        {
+          "id": "practical",
+          "label": "Build maintainable simple processes",
+          "weight": 4,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "The team could keep using it without me.",
+          "reason": "Personally built a manual purchase-and-stock process with weekly reconciliations and a backup owner, and the team maintained it afterwards."
+        },
+        {
+          "id": "independence",
+          "label": "Hands-on ownership",
+          "weight": 4,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I introduced weekly reconciliations and a backup owner. The team could keep using it without me.",
+          "reason": "Personally ran weekly reconciliations without ERP support, completed stock checks alone, escalated when limited, and set up a backup owner so the process continued."
+        },
+        {
+          "id": "trust",
+          "label": "Earn trust across a small workforce",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I listened to each shift, demonstrated a simple handover log and trained a colleague to maintain it.",
+          "reason": "Personally listened to each shift, adapted a handover log with operators, trained a colleague to maintain it, and investigated discrepancies jointly rather than blaming staff."
+        }
+      ]
+    },
+    {
+      "person": "p01",
+      "label": "Hands-on factory finance leader",
+      "job": "group",
+      "title": "Group Financial Controller: complex international business",
+      "valid": true,
+      "expectedScore": 46,
+      "actualScore": 53,
+      "delta": 7,
+      "criteria": [
+        {
+          "id": "recs",
+          "label": "Accurate reconciliations",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I personally reconciled the bank, supplier ledger and stock records each week, prepared monthly accounts and explained cash movements to the owner.",
+          "reason": "Personally performed weekly bank, supplier and stock reconciliations, investigated missing items with staff, and introduced ongoing weekly reconciliations."
+        },
+        {
+          "id": "close",
+          "label": "Reliable month-end reporting",
+          "weight": 3,
+          "expectedLevel": "clear",
+          "actualLevel": "clear",
+          "delta": 0,
+          "quote": "I owned close and reporting for this one site.",
+          "reason": "Owned recurring close and reporting for one site. Timeliness and how recipients used the reports are not yet evidenced."
+        },
+        {
+          "id": "ethics",
+          "label": "Responsible financial judgement",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I documented what was owed, challenged the owner, escalated through the available worker grievance channel and secured a wage-payment schedule before committing cash elsewhere.",
+          "reason": "Personally challenged and escalated a proposed wage delay, and secured a payment schedule before cash was committed elsewhere."
+        },
+        {
+          "id": "learning",
+          "label": "Help colleagues use changes",
+          "weight": 2,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "The team could keep using it without me.",
+          "reason": "Implemented a stock handover log and weekly reconciliations, trained a colleague to maintain them, and set up a backup owner."
+        },
+        {
+          "id": "consolidation",
+          "label": "Multi-entity consolidation",
+          "weight": 5,
+          "expectedLevel": "related",
+          "actualLevel": "contradictory",
+          "delta": -1,
+          "quote": "I have not owned multi-entity consolidation, enterprise ERP access controls or group board reporting.",
+          "reason": "Candidate states they have not owned multi-entity consolidation; experience is single-site close and reporting only."
+        },
+        {
+          "id": "controls",
+          "label": "Enterprise governance and controls",
+          "weight": 5,
+          "expectedLevel": "related",
+          "actualLevel": "partial",
+          "delta": 1,
+          "quote": "I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet.",
+          "reason": "Introduced manual checks, weekly reconciliations and a backup owner; no enterprise control design or testing shown."
+        },
+        {
+          "id": "stakeholders",
+          "label": "Coordinate complex reporting stakeholders",
+          "weight": 4,
+          "expectedLevel": "related",
+          "actualLevel": "partial",
+          "delta": 1,
+          "quote": "negotiated staged supplier payments and kept the owner informed.",
+          "reason": "Coordinated owner, suppliers and workers on cash and wage conflicts; no auditor or board-level coordination shown."
+        },
+        {
+          "id": "systems",
+          "label": "Controlled enterprise system changes",
+          "weight": 4,
+          "expectedLevel": "related",
+          "actualLevel": "related",
+          "delta": 0,
+          "quote": "I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet.",
+          "reason": "Improved manual and spreadsheet processes with no ERP environment; no authorised or tested system change shown."
+        },
+        {
+          "id": "review",
+          "label": "Lead through specialist colleagues",
+          "weight": 4,
+          "expectedLevel": "related",
+          "actualLevel": "partial",
+          "delta": 1,
+          "quote": "I introduced weekly reconciliations and a backup owner.",
+          "reason": "Shows a backup owner and trained a colleague on a handover log. No evidence yet of reviewing specialist work or challenging exceptions."
+        },
+        {
+          "id": "board",
+          "label": "Explain material reporting decisions",
+          "weight": 3,
+          "expectedLevel": "related",
+          "actualLevel": "partial",
+          "delta": 1,
+          "quote": "explained cash movements to the owner",
+          "reason": "Explained cash movements to the owner, but no evidence of presenting reporting decisions to a board or audit committee."
+        }
+      ]
+    },
+    {
+      "person": "p02",
+      "label": "Complex group finance leader",
+      "job": "hands_on",
+      "title": "Hands-on Finance Lead: small manufacturer",
+      "valid": true,
+      "expectedScore": 52,
+      "actualScore": 56,
+      "delta": 4,
+      "criteria": [
+        {
+          "id": "recs",
+          "label": "Accurate reconciliations",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I personally reviewed bank and supplier reconciliations, owned monthly group close and signed off reporting across twelve entities.",
+          "reason": "Personally reviewed bank and supplier reconciliations monthly across entities and investigated exceptions, a repeated practice at group scope."
+        },
+        {
+          "id": "close",
+          "label": "Reliable month-end reporting",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "clear",
+          "delta": -1,
+          "quote": "owned monthly group close and signed off reporting across twelve entities",
+          "reason": "Owned recurring group close and sign-off, but timeliness and how recipients used the reports are not evidenced."
+        },
+        {
+          "id": "ethics",
+          "label": "Responsible financial judgement",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I presented the board pack and challenged misleading revenue presentation despite commercial pressure.",
+          "reason": "Personally challenged misleading revenue presentation, obtained independent review, corrected the disclosure and documented the decision."
+        },
+        {
+          "id": "learning",
+          "label": "Help colleagues use changes",
+          "weight": 2,
+          "expectedLevel": "clear",
+          "actualLevel": "clear",
+          "delta": 0,
+          "quote": "I coached site controllers through new close controls and obtained feedback before rolling them out.",
+          "reason": "Personally designed and coached colleagues through new close controls, but how the controls were maintained or handed over is not shown."
+        },
+        {
+          "id": "constraints",
+          "label": "Deliver with limited resources",
+          "weight": 5,
+          "expectedLevel": "related",
+          "actualLevel": "partial",
+          "delta": 1,
+          "quote": "Site finance teams prepared schedules; I investigated exceptions and reviewed their work.",
+          "reason": "Supported site teams by investigating exceptions and reviewing their schedules; no personal delivery with limited staff or unreliable records shown."
+        },
+        {
+          "id": "floor",
+          "label": "Understand frontline operations",
+          "weight": 4,
+          "expectedLevel": "related",
+          "actualLevel": "related",
+          "delta": 0,
+          "quote": "I coached site controllers through new close controls and obtained feedback before rolling them out.",
+          "reason": "Coached site controllers on close controls, a neighbouring operational contact; no personal investigation with frontline operators or stock shown."
+        },
+        {
+          "id": "triage",
+          "label": "Prioritise under immediate constraints",
+          "weight": 4,
+          "expectedLevel": "related",
+          "actualLevel": "related",
+          "delta": 0,
+          "quote": "I explained trade-offs, agreed a revised materiality-based timetable and escalated unresolved issues before sign-off.",
+          "reason": "Prioritised and escalated trade-offs in an acquisition close, a different setting; no cash, supplier or production choice shown."
+        },
+        {
+          "id": "practical",
+          "label": "Build maintainable simple processes",
+          "weight": 4,
+          "expectedLevel": "related",
+          "actualLevel": "partial",
+          "delta": 1,
+          "quote": "I coached site controllers through new close controls and obtained feedback before rolling them out.",
+          "reason": "Helped roll out new close controls with site controllers; the process design and maintenance by a small team are not shown."
+        },
+        {
+          "id": "independence",
+          "label": "Hands-on ownership",
+          "weight": 4,
+          "expectedLevel": "partial",
+          "actualLevel": "partial",
+          "delta": 0,
+          "quote": "I personally reviewed bank and supplier reconciliations, owned monthly group close",
+          "reason": "Shows personal review and exception work in a supported finance team, and escalation to auditors. No example of completing essential work without specialist help."
+        },
+        {
+          "id": "trust",
+          "label": "Earn trust across a small workforce",
+          "weight": 3,
+          "expectedLevel": "partial",
+          "actualLevel": "partial",
+          "delta": 0,
+          "quote": "I coached site controllers through new close controls and obtained feedback before rolling them out.",
+          "reason": "Shows coaching site controllers and seeking their feedback before rollout. Does not show how feedback changed the practice or the outcome."
+        }
+      ]
+    },
+    {
+      "person": "p02",
+      "label": "Complex group finance leader",
+      "job": "group",
+      "title": "Group Financial Controller: complex international business",
+      "valid": true,
+      "expectedScore": 93,
+      "actualScore": 91,
+      "delta": -2,
+      "criteria": [
+        {
+          "id": "recs",
+          "label": "Accurate reconciliations",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I personally reviewed bank and supplier reconciliations, owned monthly group close and signed off reporting across twelve entities.",
+          "reason": "Personally reviewed bank and supplier reconciliations monthly, investigated exceptions, and kept an auditable record of adjustments."
+        },
+        {
+          "id": "close",
+          "label": "Reliable month-end reporting",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "clear",
+          "delta": -1,
+          "quote": "owned monthly group close and signed off reporting across twelve entities",
+          "reason": "Owned the recurring monthly group close across twelve entities; timeliness and how recipients used the reports are not stated."
+        },
+        {
+          "id": "ethics",
+          "label": "Responsible financial judgement",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "challenged misleading revenue presentation despite commercial pressure. I obtained an independent accounting review, corrected the disclosure",
+          "reason": "Personally challenged misleading revenue presentation, escalated for independent review, corrected the disclosure and documented the decision."
+        },
+        {
+          "id": "learning",
+          "label": "Help colleagues use changes",
+          "weight": 2,
+          "expectedLevel": "clear",
+          "actualLevel": "clear",
+          "delta": 0,
+          "quote": "I coached site controllers through new close controls and obtained feedback before rolling them out.",
+          "reason": "Designed access reviews and coached site controllers on new close controls; how colleagues maintained them afterward is not shown."
+        },
+        {
+          "id": "consolidation",
+          "label": "Multi-entity consolidation",
+          "weight": 5,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I led intercompany elimination and foreign-currency consolidation in the enterprise ERP, reconciled group reporting to entity ledgers and maintained an auditable record of adjustments.",
+          "reason": "Personally led intercompany and FX consolidation across entities, with owned monthly group close and exception investigation over repeated closes."
+        },
+        {
+          "id": "controls",
+          "label": "Enterprise governance and controls",
+          "weight": 5,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I designed segregation-of-duties and ERP access reviews, tested controls with internal audit and tracked remediation.",
+          "reason": "Personally designed SoD and ERP access reviews, tested them with internal audit and tracked remediation through."
+        },
+        {
+          "id": "stakeholders",
+          "label": "Coordinate complex reporting stakeholders",
+          "weight": 4,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I coordinated site controllers, external auditors and the board audit committee.",
+          "reason": "Personally coordinated site controllers, auditors and audit committee on an acquisition boundary conflict, agreed a revised timetable and escalated."
+        },
+        {
+          "id": "systems",
+          "label": "Controlled enterprise system changes",
+          "weight": 4,
+          "expectedLevel": "partial",
+          "actualLevel": "partial",
+          "delta": 0,
+          "quote": "Access changes required approved change tickets and testing before release.",
+          "reason": "Used the ERP for consolidation and governed access changes through approved tickets and testing; no personally owned ERP change is shown."
+        },
+        {
+          "id": "review",
+          "label": "Lead through specialist colleagues",
+          "weight": 4,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "Site finance teams prepared schedules; I investigated exceptions and reviewed their work.",
+          "reason": "Monthly review of site teams' schedules across twelve entities, with exceptions investigated and sign-off accountability. Documented challenge is not explicit."
+        },
+        {
+          "id": "board",
+          "label": "Explain material reporting decisions",
+          "weight": 3,
+          "expectedLevel": "strong",
+          "actualLevel": "strong",
+          "delta": 0,
+          "quote": "I presented the board pack and challenged misleading revenue presentation despite commercial pressure.",
+          "reason": "Personally presented board pack, challenged a misleading disclosure, obtained independent review, corrected it and documented the decision."
+        }
+      ]
+    }
+  ],
+  "interviews": [
+    {
+      "person": "p01",
+      "job": "hands_on",
+      "valid": true,
+      "summary": "Hands-on finance lead with direct experience of weekly reconciliations, site close, cash and stock control, and practical process repair at one small site, with strengths in working alongside operators; group consolidation and board reporting are not yet shown.",
+      "questions": [
+        {
+          "question": "Tell me about a time you worked on accurate reconciliations. What did you do, and what happened?",
+          "questionIndex": 0,
+          "answer": "I personally reconciled the bank, supplier ledger and stock records each week while preparing monthly accounts. When operators' stock figures differed from the ledger, I investigated the differences with them rather than assigning blame.",
+          "evidenceIds": [
+            "f2",
+            "f5"
+          ],
+          "score": 8,
+          "reason": "Personally performs weekly reconciliations and investigates exceptions with operators, though improvement beyond the existing process is not described."
+        },
+        {
+          "question": "Tell me about a time you worked on reliable month-end reporting. What did you do, and what happened?",
+          "questionIndex": 1,
+          "answer": "I owned close and reporting for the one site, preparing monthly accounts and explaining cash movements to the owner. I have not owned multi-entity consolidation or group board reporting, and I would need training before taking those on.",
+          "evidenceIds": [
+            "f2",
+            "f7"
+          ],
+          "score": 7,
+          "reason": "Owns recurring site close and reporting, but on-time delivery and how recipients used the reports are not shown."
+        },
+        {
+          "question": "Tell me about a time you worked on responsible financial judgement. What did you do, and what happened?",
+          "questionIndex": 2,
+          "answer": "I found a proposal to delay wages, so I documented what was owed and challenged the owner. I escalated through the available worker grievance channel and secured a wage-payment schedule before cash was committed elsewhere.",
+          "evidenceIds": [
+            "f4"
+          ],
+          "score": 9,
+          "reason": "Personally challenged and escalated a concrete wage concern and secured a payment schedule as the outcome."
+        },
+        {
+          "question": "Tell me about a time you worked on help colleagues use changes. What did you do, and what happened?",
+          "questionIndex": 3,
+          "answer": "I demonstrated a simple handover log to operators and trained a colleague to maintain it. I also introduced weekly reconciliations and a backup owner so the manual stock process could run without me.",
+          "evidenceIds": [
+            "f5",
+            "f6"
+          ],
+          "score": 9,
+          "reason": "Implemented a practical process, trained colleagues, and shows it was maintained with a backup owner after handover."
+        },
+        {
+          "question": "Tell me about a time you worked on deliver with limited resources. What did you do, and what happened?",
+          "questionIndex": 4,
+          "answer": "With two finance staff and no ERP support, I personally reconciled the bank, supplier ledger and stock records each week. I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet that the team kept using.",
+          "evidenceIds": [
+            "f2",
+            "f6"
+          ],
+          "score": 9,
+          "reason": "Delivered finance work with limited staff and manual records, and left a maintainable resolution the team kept using."
+        },
+        {
+          "question": "Tell me about a time you worked on understand frontline operations. What did you do, and what happened?",
+          "questionIndex": 5,
+          "answer": "When supplier deliveries stopped and cash was short, I walked the production floor and checked actual stock with operators. I then listened to each shift about stock figures that differed from the ledger and trained a colleague on a handover log.",
+          "evidenceIds": [
+            "f3",
+            "f5"
+          ],
+          "score": 9,
+          "reason": "Personally investigated stock with operators and resolved the issue by improving the shared handover practice."
+        },
+        {
+          "question": "Tell me about a time you worked on prioritise under immediate constraints. What did you do, and what happened?",
+          "questionIndex": 6,
+          "answer": "When supplier deliveries stopped and cash was short, I prioritised safe production and wages. I negotiated staged supplier payments and kept the owner informed of the trade-offs.",
+          "evidenceIds": [
+            "f3"
+          ],
+          "score": 8,
+          "reason": "Personally chose between wages, production and supplier payments, with a staged agreement and owner communication."
+        },
+        {
+          "question": "Tell me about a time you worked on build maintainable simple processes. What did you do, and what happened?",
+          "questionIndex": 7,
+          "answer": "I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet. I introduced weekly reconciliations and a backup owner, and the team could keep using it without me.",
+          "evidenceIds": [
+            "f6"
+          ],
+          "score": 10,
+          "reason": "Built a simple process and shows the small team maintained it without the creator."
+        },
+        {
+          "question": "Tell me about a time you worked on hands-on ownership. What did you do, and what happened?",
+          "questionIndex": 8,
+          "answer": "With no ERP support, I personally completed the reconciliations, monthly accounts and stock checks myself. When I could not independently change staffing or all factory conditions, I escalated through the available channels and stated those limits clearly.",
+          "evidenceIds": [
+            "f2",
+            "f4"
+          ],
+          "score": 9,
+          "reason": "Completed essential finance tasks without specialist support and clearly recognised and escalated its limits."
+        },
+        {
+          "question": "Tell me about a time you worked on earn trust across a small workforce. What did you do, and what happened?",
+          "questionIndex": 9,
+          "answer": "I listened to each shift when operators reported stock figures that differed from the ledger. I demonstrated a simple handover log, trained a colleague to maintain it, and investigated missing items together rather than blaming staff.",
+          "evidenceIds": [
+            "f5"
+          ],
+          "score": 10,
+          "reason": "Listened to frontline staff, changed the practice with them, and shows shared use and handover."
+        }
+      ]
+    },
+    {
+      "person": "p01",
+      "job": "group",
+      "valid": true,
+      "summary": "Hands-on site controller with strong reconciliation and wage-protection judgement, but no evidence yet of group consolidation, ERP controls or board reporting.",
+      "questions": [
+        {
+          "question": "Tell me about a time you worked on accurate reconciliations. What did you do, and what happened?",
+          "questionIndex": 0,
+          "answer": "I personally reconciled the bank, supplier ledger and stock records each week while preparing monthly accounts. I also introduced weekly reconciliations within a repaired manual process, so the checks ran reliably.",
+          "evidenceIds": [
+            "f2",
+            "f6"
+          ],
+          "score": 8,
+          "reason": "Shows personal weekly reconciliation and a reliable routine, though exception investigation is only indirectly evidenced."
+        },
+        {
+          "question": "Tell me about a time you worked on reliable month-end reporting. What did you do, and what happened?",
+          "questionIndex": 1,
+          "answer": "I owned close and reporting for one site, preparing monthly accounts and explaining cash movements to the owner. I have not shown on-time delivery metrics or how recipients used the reports beyond that.",
+          "evidenceIds": [
+            "f2",
+            "f7"
+          ],
+          "score": 7,
+          "reason": "Clear ownership of recurring site close and reporting, but no evidence of timeliness or recipient use."
+        },
+        {
+          "question": "Tell me about a time you worked on responsible financial judgement. What did you do, and what happened?",
+          "questionIndex": 2,
+          "answer": "When I found a proposal to delay wages, I documented what was owed and challenged the owner. I escalated through the available grievance channel and secured a wage-payment schedule before cash was committed elsewhere.",
+          "evidenceIds": [
+            "f4"
+          ],
+          "score": 9,
+          "reason": "Concrete challenge, escalation and an agreed payment schedule as the follow-through."
+        },
+        {
+          "question": "Tell me about a time you worked on help colleagues use changes. What did you do, and what happened?",
+          "questionIndex": 3,
+          "answer": "I demonstrated a simple handover log to operators and trained a colleague to maintain it. I also introduced weekly reconciliations and a backup owner so the team could keep using the process without me.",
+          "evidenceIds": [
+            "f5",
+            "f6"
+          ],
+          "score": 9,
+          "reason": "Implemented a practice, trained colleagues and showed it was maintained after handover."
+        },
+        {
+          "question": "Tell me about a time you worked on multi-entity consolidation. What did you do, and what happened?",
+          "questionIndex": 4,
+          "answer": "I haven't shared an example of this yet.",
+          "evidenceIds": [],
+          "score": 0,
+          "reason": "The candidate explicitly states they have not owned multi-entity consolidation."
+        },
+        {
+          "question": "Tell me about a time you worked on enterprise governance and controls. What did you do, and what happened?",
+          "questionIndex": 5,
+          "answer": "I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet, adding weekly reconciliations. These were simple manual accuracy checks rather than segregation-of-duties or access reviews.",
+          "evidenceIds": [
+            "f6"
+          ],
+          "score": 3,
+          "reason": "Only simple manual accuracy checks are evidenced, with no control testing or access review."
+        },
+        {
+          "question": "Tell me about a time you worked on coordinate complex reporting stakeholders. What did you do, and what happened?",
+          "questionIndex": 6,
+          "answer": "I kept the owner informed while negotiating staged supplier payments during a cash shortage. I also checked stock with operators on the floor to reconcile the position.",
+          "evidenceIds": [
+            "f3"
+          ],
+          "score": 3,
+          "reason": "Coordinated the owner, suppliers and frontline staff, but not site controllers, auditors or a board."
+        },
+        {
+          "question": "Tell me about a time you worked on controlled enterprise system changes. What did you do, and what happened?",
+          "questionIndex": 7,
+          "answer": "I improved a manual purchase-and-stock process using paper checks and a shared spreadsheet. I have not owned an ERP or complex-system change.",
+          "evidenceIds": [
+            "f2",
+            "f6"
+          ],
+          "score": 3,
+          "reason": "Improved spreadsheet processes only; no ERP implementation or controlled system change is evidenced."
+        },
+        {
+          "question": "Tell me about a time you worked on lead through specialist colleagues. What did you do, and what happened?",
+          "questionIndex": 8,
+          "answer": "I trained a colleague to maintain a handover log and set up a backup owner for the process. I have not reviewed specialist or site-controller financial work in detail.",
+          "evidenceIds": [
+            "f5",
+            "f6"
+          ],
+          "score": 3,
+          "reason": "Backup and mentoring arrangements only, with no specialist work review or documented challenge."
+        },
+        {
+          "question": "Tell me about a time you worked on explain material reporting decisions. What did you do, and what happened?",
+          "questionIndex": 9,
+          "answer": "I explained cash movements and financial position to the owner and kept them informed during a cash shortage. I have not presented reporting decisions to a board or audit committee.",
+          "evidenceIds": [
+            "f2",
+            "f3"
+          ],
+          "score": 3,
+          "reason": "Explained figures to an owner only, with no board or audit committee presentation."
+        }
+      ]
+    },
+    {
+      "person": "p02",
+      "job": "hands_on",
+      "valid": true,
+      "summary": "Strong group finance and reporting background with clear evidence of reconciliations, close ownership and judgement, but little direct evidence of hands-on work with frontline operations, physical stock or limited-resource finance delivery.",
+      "questions": [
+        {
+          "question": "Tell me about a time you worked on accurate reconciliations. What did you do, and what happened?",
+          "questionIndex": 0,
+          "answer": "I personally reviewed bank and supplier reconciliations as part of owning the monthly group close. Site finance teams prepared the schedules, and I investigated exceptions and reviewed their work.",
+          "evidenceIds": [
+            "g2"
+          ],
+          "score": 9,
+          "reason": "Shows personal performance and review of reconciliations, repeated monthly, with exception investigation, which meets the top anchor."
+        },
+        {
+          "question": "Tell me about a time you worked on reliable month-end reporting. What did you do, and what happened?",
+          "questionIndex": 1,
+          "answer": "I owned the monthly group close and signed off reporting across twelve entities. I also led the consolidation and kept an auditable record of adjustments so the group reporting reconciled to entity ledgers.",
+          "evidenceIds": [
+            "g2",
+            "g3"
+          ],
+          "score": 7,
+          "reason": "Clearly owns a recurring close and reporting for a group, but timeliness and how recipients used the reports are not evidenced."
+        },
+        {
+          "question": "Tell me about a time you worked on responsible financial judgement. What did you do, and what happened?",
+          "questionIndex": 2,
+          "answer": "I presented the board pack and challenged a misleading revenue presentation despite commercial pressure. I obtained an independent accounting review, corrected the disclosure and documented the decision.",
+          "evidenceIds": [
+            "g6"
+          ],
+          "score": 9,
+          "reason": "Concrete personal challenge, escalation, correction and documented follow-through on a financial reporting concern."
+        },
+        {
+          "question": "Tell me about a time you worked on help colleagues use changes. What did you do, and what happened?",
+          "questionIndex": 3,
+          "answer": "I coached site controllers through new close controls and gathered their feedback before rolling the controls out. I also designed access review controls and tracked their remediation with internal audit.",
+          "evidenceIds": [
+            "g8",
+            "g5"
+          ],
+          "score": 7,
+          "reason": "Personally implemented controls and helped colleagues use them, though maintenance by colleagues after handover is not shown."
+        },
+        {
+          "question": "Tell me about a time you worked on deliver with limited resources. What did you do, and what happened?",
+          "questionIndex": 4,
+          "answer": "I haven't shared an example of this yet.",
+          "evidenceIds": [],
+          "score": 0,
+          "reason": "Explicitly states they have not personally delivered finance work on a production floor with only two finance staff."
+        },
+        {
+          "question": "Tell me about a time you worked on understand frontline operations. What did you do, and what happened?",
+          "questionIndex": 5,
+          "answer": "I haven't shared an example of this yet.",
+          "evidenceIds": [],
+          "score": 0,
+          "reason": "No example of working with operators or physical stock, and the candidate explicitly says they have not repaired a paper stock process on a production floor."
+        },
+        {
+          "question": "Tell me about a time you worked on prioritise under immediate constraints. What did you do, and what happened?",
+          "questionIndex": 6,
+          "answer": "I coordinated site controllers, external auditors and the board audit committee when an acquisition changed the reporting boundary before close. I explained the trade-offs, agreed a revised timetable and escalated unresolved issues before sign-off.",
+          "evidenceIds": [
+            "g4"
+          ],
+          "score": 5,
+          "reason": "Shows trade-offs, agreed resolution and escalation, but the competing demands are reporting timing rather than cash, supplier or production needs."
+        },
+        {
+          "question": "Tell me about a time you worked on build maintainable simple processes. What did you do, and what happened?",
+          "questionIndex": 7,
+          "answer": "I designed segregation-of-duties and ERP access reviews and tested the controls with internal audit. Access changes required approved change tickets and testing before release.",
+          "evidenceIds": [
+            "g5",
+            "g3"
+          ],
+          "score": 3,
+          "reason": "Related process work, but it depends on specialist ERP and audit infrastructure rather than a simple process a small team could maintain alone."
+        },
+        {
+          "question": "Tell me about a time you worked on hands-on ownership. What did you do, and what happened?",
+          "questionIndex": 8,
+          "answer": "I personally reviewed bank and supplier reconciliations and investigated exceptions while site finance teams prepared the schedules. I recognise that I have not repaired a paper stock process with two finance staff and would first need to understand the operation.",
+          "evidenceIds": [
+            "g2",
+            "g7"
+          ],
+          "score": 5,
+          "reason": "Shows personal work within a supported team and recognises limits, but no example of completing essential tasks without specialist help."
+        },
+        {
+          "question": "Tell me about a time you worked on earn trust across a small workforce. What did you do, and what happened?",
+          "questionIndex": 9,
+          "answer": "I coached site controllers through new close controls and obtained their feedback before rolling the controls out. This shows I listen to colleagues and adjust how a change is introduced.",
+          "evidenceIds": [
+            "g8"
+          ],
+          "score": 5,
+          "reason": "Shows listening and adapting with colleagues, but they are finance site controllers rather than frontline staff and no shared use or handover is shown."
+        }
+      ]
+    },
+    {
+      "person": "p02",
+      "job": "group",
+      "valid": true,
+      "summary": "Candidate is a CFO-level group finance leader with strong evidence of controls, consolidation, governance and board-level challenge, with less evidence of ERP implementation ownership and timely close delivery.",
+      "questions": [
+        {
+          "question": "Tell me about a time you worked on accurate reconciliations. What did you do, and what happened?",
+          "questionIndex": 0,
+          "answer": "I personally reviewed bank and supplier reconciliations as part of owning the monthly group close. I investigated exceptions and reviewed the schedules prepared by site finance teams.",
+          "evidenceIds": [
+            "g2"
+          ],
+          "score": 9,
+          "reason": "Shows personal review of reconciliations on a recurring basis, with exception investigation, which meets the top anchor."
+        },
+        {
+          "question": "Tell me about a time you worked on reliable month-end reporting. What did you do, and what happened?",
+          "questionIndex": 1,
+          "answer": "I owned the monthly group close and signed off reporting across twelve entities. That gave me responsibility for the recurring close and the reports that came out of it.",
+          "evidenceIds": [
+            "g2"
+          ],
+          "score": 7,
+          "reason": "Clear ownership of a recurring group close and sign-off, though on-time delivery and how recipients used the reports are not stated."
+        },
+        {
+          "question": "Tell me about a time you worked on responsible financial judgement. What did you do, and what happened?",
+          "questionIndex": 2,
+          "answer": "I challenged misleading revenue presentation even though there was commercial pressure. I obtained an independent accounting review, corrected the disclosure and documented the decision.",
+          "evidenceIds": [
+            "g6"
+          ],
+          "score": 10,
+          "reason": "Concrete challenge, escalation for independent review, correction and documentation, which is the full top anchor."
+        },
+        {
+          "question": "Tell me about a time you worked on help colleagues use changes. What did you do, and what happened?",
+          "questionIndex": 3,
+          "answer": "I coached site controllers through new close controls and gathered their feedback before rolling the controls out. This helped them use the new process properly.",
+          "evidenceIds": [
+            "g8"
+          ],
+          "score": 7,
+          "reason": "Clear evidence of introducing a change and helping colleagues use it, but no evidence of maintenance or handover afterwards."
+        },
+        {
+          "question": "Tell me about a time you worked on multi-entity consolidation. What did you do, and what happened?",
+          "questionIndex": 4,
+          "answer": "I led intercompany elimination and foreign-currency consolidation in the enterprise ERP and reconciled group reporting to entity ledgers. I kept an auditable record of adjustments, and I owned the monthly close across twelve entities.",
+          "evidenceIds": [
+            "g3",
+            "g2"
+          ],
+          "score": 9,
+          "reason": "Personally owned intercompany and currency consolidation with reconciliation to entity ledgers, plus recurring delivery across many entities."
+        },
+        {
+          "question": "Tell me about a time you worked on enterprise governance and controls. What did you do, and what happened?",
+          "questionIndex": 5,
+          "answer": "I designed segregation-of-duties and ERP access reviews and tested controls with internal audit. I tracked remediation, and access changes needed approved change tickets and testing before release.",
+          "evidenceIds": [
+            "g5"
+          ],
+          "score": 10,
+          "reason": "Designed and tested controls, kept traceable evidence and followed remediation through, meeting the top anchor."
+        },
+        {
+          "question": "Tell me about a time you worked on coordinate complex reporting stakeholders. What did you do, and what happened?",
+          "questionIndex": 6,
+          "answer": "When an acquisition changed the reporting boundary just before close, I coordinated site controllers, external auditors and the board audit committee. I explained the trade-offs, agreed a revised materiality-based timetable and escalated unresolved issues before sign-off.",
+          "evidenceIds": [
+            "g4"
+          ],
+          "score": 8,
+          "reason": "Personally coordinated site controllers, auditors and the audit committee on a concrete conflict, though documentation of the resolution is not explicit."
+        },
+        {
+          "question": "Tell me about a time you worked on controlled enterprise system changes. What did you do, and what happened?",
+          "questionIndex": 7,
+          "answer": "I have worked on controlled ERP changes, including access changes that required approved change tickets and testing before release. I also led consolidation work in the enterprise ERP and kept an auditable record of adjustments.",
+          "evidenceIds": [
+            "g5",
+            "g3"
+          ],
+          "score": 6,
+          "reason": "Shows controlled, tested ERP access changes and an audit trail, but not personal ownership of a complex system implementation across entities."
+        },
+        {
+          "question": "Tell me about a time you worked on lead through specialist colleagues. What did you do, and what happened?",
+          "questionIndex": 8,
+          "answer": "My site finance teams prepared the schedules, and I reviewed their work and investigated exceptions. I also coached site controllers through new close controls before they were rolled out.",
+          "evidenceIds": [
+            "g2",
+            "g8"
+          ],
+          "score": 8,
+          "reason": "Clear personal review and challenge of specialist and site work, with accountability, though repeated documented challenge is not fully shown."
+        },
+        {
+          "question": "Tell me about a time you worked on explain material reporting decisions. What did you do, and what happened?",
+          "questionIndex": 9,
+          "answer": "I presented the board pack and challenged a misleading revenue presentation. I obtained an independent accounting review, corrected the disclosure and documented the decision.",
+          "evidenceIds": [
+            "g6",
+            "g4"
+          ],
+          "score": 10,
+          "reason": "Presented to the board, challenged a disclosure and followed an independent review and correction through, which is the top anchor."
+        }
+      ]
+    }
+  ],
+  "adaptive": [
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p01",
+      "turn": 0,
+      "answer": "I was CFO of a small factory in China. People described it as a sweatshop. I am describing my own fictional experience, not making a claim about a real employer.",
+      "output": {
+        "reply": "Thanks, I've noted this as a fictional CFO role at a small factory in China, which others described as a sweatshop. To understand it properly, what were the actual working conditions like there, and what did you personally handle as CFO day to day?",
+        "askedKey": "operating_context",
+        "save": [
+          {
+            "topic": "Fictional past role: CFO of a small factory in China",
+            "detail": "Fictional experience, not a claim about a real employer. Describes being CFO of a small factory in China. People described the factory as a sweatshop.",
+            "questionKey": "past_roles"
+          }
+        ],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000684,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p01",
+      "turn": 1,
+      "answer": "I personally reconciled the bank, supplier ledger and stock records each week, prepared monthly accounts and explained cash movements to the owner. There were two finance staff and no ERP support. I discovered a proposal to delay wages. I documented what was owed, challenged the owner, escalated through the available worker grievance channel and secured a wage-payment schedule before committing cash elsewhere. I could not independently change staffing or all factory conditions.",
+      "output": {
+        "reply": "Thanks, I've noted your weekly reconciliations, monthly accounts, and the two-person finance team with no ERP support. Your wage-delay case is clear too. Roughly how many workers were affected by the wage-payment schedule you secured?",
+        "askedKey": "ex_numbers",
+        "save": [
+          {
+            "topic": "Finance team and systems in the CFO role",
+            "detail": "Two finance staff and no ERP support.",
+            "questionKey": "operating_context"
+          },
+          {
+            "topic": "Weekly reconciliations and monthly reporting",
+            "detail": "Personally reconciled the bank, supplier ledger and stock records each week, prepared monthly accounts, and explained cash movements to the owner.",
+            "questionKey": null
+          },
+          {
+            "topic": "Handling a proposal to delay wages",
+            "detail": "Discovered a proposal to delay wages. Documented what was owed, challenged the owner, escalated through the available worker grievance channel, and secured a wage-payment schedule before committing cash elsewhere.",
+            "questionKey": "ethical_judgement"
+          },
+          {
+            "topic": "Limits of authority in the CFO role",
+            "detail": "Could not independently change staffing or all factory conditions.",
+            "questionKey": "difficult_conditions"
+          }
+        ],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000948,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p01",
+      "turn": 2,
+      "answer": "I haven't shared an example of this yet.",
+      "output": {
+        "reply": "No problem, we can leave the wage case there. Could you tell me about a time you had to explain cash or financial results to someone outside finance, and how that conversation went?",
+        "askedKey": "stakeholder_tradeoffs",
+        "save": [],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.00062,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p01",
+      "turn": 3,
+      "answer": "When supplier deliveries stopped and cash was short, I walked the production floor, checked actual stock with operators and built a daily cash-and-materials sheet. I prioritised safe production and wages, negotiated staged supplier payments and kept the owner informed.",
+      "output": {
+        "reply": "Thanks, I've noted how you handled the cash shortage, including the floor checks, the daily cash-and-materials sheet and the payment priorities. How did things turn out over the following weeks, and was the shortage resolved?",
+        "askedKey": "resource_constraints",
+        "save": [
+          {
+            "topic": "Cash shortage after supplier deliveries stopped",
+            "detail": "When supplier deliveries stopped and cash was short, I walked the production floor, checked actual stock with operators and built a daily cash-and-materials sheet.",
+            "questionKey": "resource_constraints"
+          },
+          {
+            "topic": "Priorities during cash shortage",
+            "detail": "I prioritised safe production and wages, negotiated staged supplier payments and kept the owner informed.",
+            "questionKey": "stakeholder_tradeoffs"
+          }
+        ],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000825,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p02",
+      "turn": 0,
+      "answer": "I was CFO in a fictional multinational food business with annual revenue above $180 million. The brand name is not evidence of my skills or the conditions experienced by staff.",
+      "output": {
+        "reply": "Thanks for sharing that, and I'll keep the focus on what you personally did rather than the brand. Since your job preferences aren't set yet, could you tell me where you'd like to work, whether that's London, Hertfordshire, Manchester or remote UK, and whether you'd prefer onsite, hybrid or remote?",
+        "askedKey": "location",
+        "save": [
+          {
+            "topic": "Approved fictional role: CFO",
+            "detail": "Stated as CFO at a fictional multinational food business with annual revenue above $180 million. The user noted the brand name is not evidence of skills or staff conditions.",
+            "questionKey": "current_role"
+          }
+        ],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000377,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p02",
+      "turn": 1,
+      "answer": "I haven't shared an example of this yet.",
+      "output": {
+        "reply": "No problem, we can go at your pace. Let's start with something concrete from that CFO role: think of a task you took responsibility for, and tell me what you did and what happened as a result.",
+        "askedKey": "ex_responsibility",
+        "save": [],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000549,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p02",
+      "turn": 2,
+      "answer": "When an acquisition changed the reporting boundary just before close, I coordinated site controllers, external auditors and the board audit committee. I explained trade-offs, agreed a revised materiality-based timetable and escalated unresolved issues before sign-off. I presented the board pack and challenged misleading revenue presentation despite commercial pressure. I obtained an independent accounting review, corrected the disclosure and documented the decision.",
+      "output": {
+        "reply": "Thanks, that gives a clear picture of how you handled the acquisition close and the revenue disclosure. Roughly how large was the revenue or reporting impact of the boundary change, in amounts or percentages?",
+        "askedKey": "ex_numbers",
+        "save": [
+          {
+            "topic": "Reporting boundary change before acquisition close",
+            "detail": "An acquisition changed the reporting boundary just before close. I coordinated site controllers, external auditors and the board audit committee, explained trade-offs, agreed a revised materiality-based timetable and escalated unresolved issues before sign-off.",
+            "questionKey": "governance"
+          },
+          {
+            "topic": "Board pack revenue presentation challenge",
+            "detail": "I presented the board pack and challenged misleading revenue presentation despite commercial pressure. I obtained an independent accounting review, corrected the disclosure and documented the decision.",
+            "questionKey": "ethical_judgement"
+          }
+        ],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000952,
+      "valid": true
+    },
+    {
+      "level": "info",
+      "event": "pair_adaptive_turn",
+      "person": "p02",
+      "turn": 3,
+      "answer": "I haven't shared an example of this yet.",
+      "output": {
+        "reply": "That's fine, we've already covered the acquisition close and the revenue disclosure, so let's move on. How large was the finance team you coordinated during the close, and who did you report to in job-title terms?",
+        "askedKey": "team_size",
+        "save": [],
+        "preferences": null
+      },
+      "configuredCostUsd": 0.000618,
+      "valid": true
+    }
+  ],
+  "scriptSelections": [
+    {
+      "level": "info",
+      "event": "pair_script_selection",
+      "person": "p01",
+      "turn": 0,
+      "ids": [
+        "f2",
+        "f4"
+      ],
+      "configuredCostUsd": 0.000204
+    },
+    {
+      "level": "info",
+      "event": "pair_script_selection",
+      "person": "p01",
+      "turn": 1,
+      "ids": [],
+      "configuredCostUsd": 0.000138
+    },
+    {
+      "level": "info",
+      "event": "pair_script_selection",
+      "person": "p01",
+      "turn": 2,
+      "ids": [
+        "f3"
+      ],
+      "configuredCostUsd": 0.000248
+    },
+    {
+      "level": "info",
+      "event": "pair_script_selection",
+      "person": "p02",
+      "turn": 0,
+      "ids": [],
+      "configuredCostUsd": 0.000154
+    },
+    {
+      "level": "info",
+      "event": "pair_script_selection",
+      "person": "p02",
+      "turn": 1,
+      "ids": [
+        "g4",
+        "g6"
+      ],
+      "configuredCostUsd": 0.00022
+    },
+    {
+      "level": "info",
+      "event": "pair_script_selection",
+      "person": "p02",
+      "turn": 2,
+      "ids": [],
+      "configuredCostUsd": 0.000165
+    }
+  ],
+  "run": {
+    "level": "info",
+    "event": "pair_expectations",
+    "runId": "context-bench-v3-20261113-pair3",
+    "expected": {
+      "hands_on": {
+        "p01": {
+          "recs": "strong",
+          "close": "clear",
+          "ethics": "strong",
+          "learning": "strong",
+          "constraints": "strong",
+          "floor": "strong",
+          "triage": "strong",
+          "practical": "strong",
+          "independence": "strong",
+          "trust": "strong"
+        },
+        "p02": {
+          "recs": "strong",
+          "close": "strong",
+          "ethics": "strong",
+          "learning": "clear",
+          "constraints": "related",
+          "floor": "related",
+          "triage": "related",
+          "practical": "related",
+          "independence": "partial",
+          "trust": "partial"
+        }
+      },
+      "group": {
+        "p01": {
+          "recs": "strong",
+          "close": "clear",
+          "ethics": "strong",
+          "learning": "strong",
+          "consolidation": "related",
+          "controls": "related",
+          "stakeholders": "related",
+          "systems": "related",
+          "review": "related",
+          "board": "related"
+        },
+        "p02": {
+          "recs": "strong",
+          "close": "strong",
+          "ethics": "strong",
+          "learning": "clear",
+          "consolidation": "strong",
+          "controls": "strong",
+          "stakeholders": "strong",
+          "systems": "partial",
+          "review": "strong",
+          "board": "strong"
+        }
+      }
+    },
+    "acceptance": {
+      "aggregateTolerance": 10,
+      "criterionLevelTolerance": 1,
+      "requiredWinners": {
+        "hands_on": "p01",
+        "group": "p02"
+      }
+    },
+    "profiles": [
+      {
+        "id": "p01",
+        "label": "Hands-on factory finance leader",
+        "evidence": [
+          {
+            "id": "f1",
+            "safeClaim": "I was CFO of a small factory in China. People described it as a sweatshop. I am describing my own fictional experience, not making a claim about a real employer.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f2",
+            "safeClaim": "I personally reconciled the bank, supplier ledger and stock records each week, prepared monthly accounts and explained cash movements to the owner. There were two finance staff and no ERP support.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f3",
+            "safeClaim": "When supplier deliveries stopped and cash was short, I walked the production floor, checked actual stock with operators and built a daily cash-and-materials sheet. I prioritised safe production and wages, negotiated staged supplier payments and kept the owner informed.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f4",
+            "safeClaim": "I discovered a proposal to delay wages. I documented what was owed, challenged the owner, escalated through the available worker grievance channel and secured a wage-payment schedule before committing cash elsewhere. I could not independently change staffing or all factory conditions.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f5",
+            "safeClaim": "Operators reported different stock figures to the ledger. I listened to each shift, demonstrated a simple handover log and trained a colleague to maintain it. Missing items were investigated together rather than blamed on staff.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f6",
+            "safeClaim": "I repaired a manual purchase-and-stock process with paper checks and a shared spreadsheet. I introduced weekly reconciliations and a backup owner. The team could keep using it without me.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f7",
+            "safeClaim": "I owned close and reporting for this one site. I have not owned multi-entity consolidation, enterprise ERP access controls or group board reporting. I would need training and supervision before owning those.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "f8",
+            "safeClaim": "I prefer a hands-on role with close contact with operations and the authority to improve practical processes. I do not want harmful working conditions repeated.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      },
+      {
+        "id": "p02",
+        "label": "Complex group finance leader",
+        "evidence": [
+          {
+            "id": "g1",
+            "safeClaim": "I was CFO in a fictional multinational food business with annual revenue above $180 million. The brand name is not evidence of my skills or the conditions experienced by staff.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g2",
+            "safeClaim": "I personally reviewed bank and supplier reconciliations, owned monthly group close and signed off reporting across twelve entities. Site finance teams prepared schedules; I investigated exceptions and reviewed their work.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g3",
+            "safeClaim": "I led intercompany elimination and foreign-currency consolidation in the enterprise ERP, reconciled group reporting to entity ledgers and maintained an auditable record of adjustments.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g4",
+            "safeClaim": "When an acquisition changed the reporting boundary just before close, I coordinated site controllers, external auditors and the board audit committee. I explained trade-offs, agreed a revised materiality-based timetable and escalated unresolved issues before sign-off.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g5",
+            "safeClaim": "I designed segregation-of-duties and ERP access reviews, tested controls with internal audit and tracked remediation. Access changes required approved change tickets and testing before release.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g6",
+            "safeClaim": "I presented the board pack and challenged misleading revenue presentation despite commercial pressure. I obtained an independent accounting review, corrected the disclosure and documented the decision.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g7",
+            "safeClaim": "My team had specialist treasury, ERP and consolidation support. I have not personally repaired a paper stock process on a production floor with just two finance staff. I would first need to understand that operation and the tools available.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "g8",
+            "safeClaim": "I coached site controllers through new close controls and obtained feedback before rolling them out. I prefer a role coordinating a complex group with clear governance and specialist colleagues.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      }
+    ],
+    "jobs": [
+      {
+        "id": "hands_on",
+        "title": "Hands-on Finance Lead: small manufacturer",
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Accurate reconciliations",
+            "description": "Personally perform or review bank and ledger reconciliation, investigate exceptions and maintain accurate records. Scoring anchors: 25: related cash or record work. 50: supports reconciliation schedules. 75: personally performs or reviews completed reconciliations. 100: repeats this reliably and investigates exceptions or improves accuracy. Scoring anchors: 25: related cash or record work. 50: supports reconciliation schedules. 75: personally performs or reviews completed reconciliations. 100: repeats this reliably and investigates exceptions or improves accuracy.",
+            "weight": 3,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "close",
+            "label": "Reliable month-end reporting",
+            "description": "Take defined responsibility for timely close and useful financial reporting; assess what the person actually owned. Scoring anchors: 25: general finance administration. 50: supports close schedules. 75: owns recurring close and reports for a site or group, even if timeliness is not stated. 100: also shows on-time delivery and how recipients used the reports. Scoring anchors: 25: general finance administration. 50: supports close schedules. 75: owns recurring close and reports for a site or group, even if timeliness is not stated. 100: also shows on-time delivery and how recipients used the reports.",
+            "weight": 3,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "ethics",
+            "label": "Responsible financial judgement",
+            "description": "Describe a concrete decision protecting accurate reporting or fair obligations, with personal action and appropriate escalation. Hardship itself earns no points. Scoring anchors: 25: mentions a relevant concern. 50: helped another person respond. 75: personally challenged or escalated a concrete financial concern. 100: also explains the resulting correction, agreement or follow-through. Scoring anchors: 25: mentions a relevant concern. 50: helped another person respond. 75: personally challenged or escalated a concrete financial concern. 100: also explains the resulting correction, agreement or follow-through.",
+            "weight": 3,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "learning",
+            "label": "Help colleagues use changes",
+            "description": "Implement a relevant improvement and help colleagues understand and maintain it. Specific reliable practice is sufficient; numerical outcomes are optional. Scoring anchors: 25: related informal help. 50: helped introduce a process. 75: personally implemented a change and helped colleagues use it. 100: also shows how colleagues maintained it or responsibility was handed over. Scoring anchors: 25: related informal help. 50: helped introduce a process. 75: personally implemented a change and helped colleagues use it. 100: also shows how colleagues maintained it or responsibility was handed over.",
+            "weight": 2,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "constraints",
+            "label": "Deliver with limited resources",
+            "description": "Direct evidence of getting essential finance work done with limited staffing, manual records or unreliable information. Look for sensible choices, not suffering or country. Scoring anchors: 25: prioritised work with specialist support. 50: supported someone dealing with staffing or information constraints. 75: personally delivered finance work with limited staff or unreliable records. 100: also shows a maintainable resolution or repeated reliable practice.",
+            "weight": 5,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "floor",
+            "label": "Understand frontline operations",
+            "description": "Personally work with operators and stock or purchasing records to resolve an operational finance problem. Scoring anchors: 25: related operational or customer contact. 50: used reports from operations without directly investigating. 75: personally investigated a finance issue with frontline operators or physical stock. 100: also resolved it and improved the shared practice.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "triage",
+            "label": "Prioritise under immediate constraints",
+            "description": "Choose among competing cash, supplier and production demands; explain trade-offs and escalation. Scoring anchors: 25: related prioritisation in a different setting. 50: helped with a cash or production trade-off. 75: personally chose among competing cash, supplier and operational needs. 100: also shows an agreed resolution and appropriate escalation.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "practical",
+            "label": "Build maintainable simple processes",
+            "description": "Personally create or repair proportionate processes that a small team can maintain without specialist infrastructure. Scoring anchors: 25: related process improvement with specialist tools. 50: helped implement a simple process. 75: personally built a workable manual or simple-tool process. 100: also shows how a small team maintained it without the creator.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "independence",
+            "label": "Hands-on ownership",
+            "description": "Personally complete important work when specialist support is unavailable; recognise limits and escalate appropriately. Scoring anchors: 25: relevant responsibility with specialist support. 50: independently completed some tasks in a supported team. 75: personally completed essential tasks when specialist help was unavailable. 100: also shows limits, escalation and a sustainable way of working.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "trust",
+            "label": "Earn trust across a small workforce",
+            "description": "Listen to frontline colleagues, communicate respectfully and change working practices with them. Do not infer this from age, rank or workplace label. Scoring anchors: 25: related teamwork. 50: helped explain a change. 75: personally listened to frontline colleagues and adapted a practice with them. 100: also shows shared use, handover or a resulting resolution. Age and workplace labels are not evidence.",
+            "weight": 3,
+            "evidenceTags": []
+          }
+        ]
+      },
+      {
+        "id": "group",
+        "title": "Group Financial Controller: complex international business",
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Accurate reconciliations",
+            "description": "Personally perform or review bank and ledger reconciliation, investigate exceptions and maintain accurate records. Scoring anchors: 25: related cash or record work. 50: supports reconciliation schedules. 75: personally performs or reviews completed reconciliations. 100: repeats this reliably and investigates exceptions or improves accuracy. Scoring anchors: 25: related cash or record work. 50: supports reconciliation schedules. 75: personally performs or reviews completed reconciliations. 100: repeats this reliably and investigates exceptions or improves accuracy.",
+            "weight": 3,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "close",
+            "label": "Reliable month-end reporting",
+            "description": "Take defined responsibility for timely close and useful financial reporting; assess what the person actually owned. Scoring anchors: 25: general finance administration. 50: supports close schedules. 75: owns recurring close and reports for a site or group, even if timeliness is not stated. 100: also shows on-time delivery and how recipients used the reports. Scoring anchors: 25: general finance administration. 50: supports close schedules. 75: owns recurring close and reports for a site or group, even if timeliness is not stated. 100: also shows on-time delivery and how recipients used the reports.",
+            "weight": 3,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "ethics",
+            "label": "Responsible financial judgement",
+            "description": "Describe a concrete decision protecting accurate reporting or fair obligations, with personal action and appropriate escalation. Hardship itself earns no points. Scoring anchors: 25: mentions a relevant concern. 50: helped another person respond. 75: personally challenged or escalated a concrete financial concern. 100: also explains the resulting correction, agreement or follow-through. Scoring anchors: 25: mentions a relevant concern. 50: helped another person respond. 75: personally challenged or escalated a concrete financial concern. 100: also explains the resulting correction, agreement or follow-through.",
+            "weight": 3,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "learning",
+            "label": "Help colleagues use changes",
+            "description": "Implement a relevant improvement and help colleagues understand and maintain it. Specific reliable practice is sufficient; numerical outcomes are optional. Scoring anchors: 25: related informal help. 50: helped introduce a process. 75: personally implemented a change and helped colleagues use it. 100: also shows how colleagues maintained it or responsibility was handed over. Scoring anchors: 25: related informal help. 50: helped introduce a process. 75: personally implemented a change and helped colleagues use it. 100: also shows how colleagues maintained it or responsibility was handed over.",
+            "weight": 2,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "consolidation",
+            "label": "Multi-entity consolidation",
+            "description": "Own or critically review intercompany eliminations, foreign currency and consolidation across multiple entities. Company revenue or title alone is insufficient. Scoring anchors: 25: single-entity close or related accounts. 50: prepared entity inputs or assisted consolidation. 75: personally owned or reviewed intercompany and currency consolidation. 100: also shows recurring delivery and reconciliation or exception resolution across entities.",
+            "weight": 5,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "controls",
+            "label": "Enterprise governance and controls",
+            "description": "Design, test or own proportionate segregation-of-duties, access control and remediation processes with traceable evidence. Scoring anchors: 25: simple manual accuracy checks. 50: contributed to enterprise control testing. 75: owned access or segregation reviews with a record. 100: designed or tested controls and followed remediation through.",
+            "weight": 5,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "stakeholders",
+            "label": "Coordinate complex reporting stakeholders",
+            "description": "Resolve competing requirements across site controllers, auditors and a board or audit committee. Scoring anchors: 25: coordinated owner, suppliers or frontline colleagues. 50: contributed to cross-site or external-audit reporting under another lead. 75: personally coordinated site controllers with auditors or a board on a concrete conflict. 100: coordinated those layers and documented the resolution.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "systems",
+            "label": "Controlled enterprise system changes",
+            "description": "Manage an ERP or equivalent complex reporting change with testing, authorisation and an audit trail. Scoring anchors: 25: improved manual or spreadsheet processes. 50: used ERP outputs or contributed to a controlled change. 75: personally owned an authorised, tested ERP or complex-system change. 100: also demonstrates cross-entity implementation and a traceable outcome. Policy alone is not implementation.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "review",
+            "label": "Lead through specialist colleagues",
+            "description": "Review specialist work, challenge exceptions and make clear accountability arrangements instead of personally performing every task. Scoring anchors: 25: assigned a backup, handed over a checklist or mentored colleagues. 50: reviewed general finance colleagues\u2019 work and challenged exceptions. 75: personally reviewed specialist or site-controller financial work. 100: repeated that review with documented challenge and accountability. A backup owner alone is 25, not 50.",
+            "weight": 4,
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "board",
+            "label": "Explain material reporting decisions",
+            "description": "Present financial decisions and limitations clearly to a group board or equivalent senior governance audience. Scoring anchors: 25: explained figures to an owner or operational manager. 50: prepared board material without explaining decisions. 75: personally presented material reporting decisions to a board or audit committee. 100: also challenged a disclosure and followed an independent review or correction through.",
+            "weight": 3,
+            "evidenceTags": []
+          }
+        ]
+      }
+    ]
+  },
+  "caveat": "Fictional regression profiles with developer-set expectations, not independent recruiter-approved validation. Job-interview answers are AI paraphrases of approved profile facts and never new scoring evidence.",
+  "release": {
+    "commit": "53aec51d0b1f53c39126e56afad1f9394fcb7c6e",
+    "webDeployment": "19eb7ba4-aae3-46b4-a3e8-ee4c36876170",
+    "workerDeployment": "0838cf8c-1f97-4261-9143-21c101c2c89f",
+    "webStatus": "SUCCESS",
+    "workerStatus": "SUCCESS"
+  },
+  "sourceRuns": {
+    "assessmentsAndAdaptiveInterviews": "e2b1fdee-d1cb-47d3-8978-a6883885e3ea",
+    "jobInterviewsAfterCommentaryCorrection": "8e4851b8-a963-4ee5-926d-ce5c40844147"
+  },
+  "exactCriterionAgreement": {
+    "matched": 31,
+    "total": 40,
+    "withinOneLevel": 40
+  }
+}

@@ -1,6 +1,6 @@
 # Adaptive interviews and context matching
 
-13 November 2026. Implemented locally on `simple-hiring`; web and worker deployment is pending. All people and jobs used here are fictional. The real AI ran in an isolated, one-shot Railway function using the application's prompts, output contracts and fixed scoring rules. No live candidate or role records were created or changed. Only shared AI budget accounting was written.
+13 November 2026. Implemented on `simple-hiring`; web and worker subsequently deployed successfully at `11fc4bd` on 13 November. All people and jobs used here are fictional. The real AI ran in an isolated, one-shot Railway function using the application's prompts, output contracts and fixed scoring rules. No live candidate or role records were created or changed. Only shared AI budget accounting was written.
 
 ## What changed
 
@@ -45,7 +45,7 @@ This is a small synthetic scenario check, not proof of general hiring accuracy, 
 
 Monthly AI limits remain unchanged at $5. The isolated evaluation has a separate $0.50 ceiling across its development runs. Reported request costs use the repository's configured price table, not independently verified provider invoice prices.
 
-The review screen is `/consultant/quality/context`. `context-benchmark.json` is the machine-readable record with per-criterion evidence and actual conversations. Production web and worker have not been deployed with these changes.
+The review screen is `/consultant/quality/context`. `context-benchmark.json` is the machine-readable record with per-criterion evidence and actual conversations. Production web and worker first received these changes at `11fc4bd` and now run the commentary correction at `53aec51`. The fresh two-person comparison is in `PAIRED-INTERVIEWS.md`.
 
 ## Files
 
@@ -62,6 +62,6 @@ The review screen is `/consultant/quality/context`. `context-benchmark.json` is 
 
 ## Verification record
 
-TypeScript, all 77 unit tests and production build passed. ESLint had no errors and seven existing warnings. Two targeted database runs passed 24 tests (adaptive interview, onboarding, mini-me chat, quality and hiring) and 20 tests (bounded assessments, quality, stage-two behaviour and hiring); these overlap and are not 44 distinct tests. The full original integration suite has not been repeated as one run for this extension. Desktop and phone browser checks both passed: consultant access, the comparison table, the passing-check summary and the adaptive conversation view. The phone screenshot was inspected.
+TypeScript, all 77 unit tests and production build passed. ESLint had no errors and seven existing warnings. Two targeted database runs passed 24 tests (adaptive interview, onboarding, mini-me chat, quality and hiring) and 20 tests (bounded assessments, quality, stage-two behaviour and hiring); these overlap and are not 44 distinct tests. A subsequent complete run passed all 208 tests in 36 unit/integration files. Desktop and phone browser checks both passed: consultant access, the comparison table, the passing-check summary and the adaptive conversation view. The phone screenshot was inspected.
 
 The final matching and conversation requests total $0.064835 using configured prices, excluding unsuccessful development attempts and previous runs. All development runs shared the unchanged $0.50 evaluation ceiling.
