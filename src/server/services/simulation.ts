@@ -238,7 +238,7 @@ export async function runInterview(role: { title: string; outcomes: string[] }, 
   if (o.live && evidence.length) {
     try {
       const fixed = (q: (typeof questions)[number]) => !!(q.key || q.kind === 'screening' || direct(q, evidence));
-      const input = { role: { title: role.title, outcomes: role.outcomes, ...(o.guidance?.length ? { hiring_manager_guidance: o.guidance } : {}) }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
+      const input = { role: { title: role.title, outcomes: role.outcomes, ...(o.guidance?.length ? { hiring_manager_guidance: o.guidance } : {}) }, questions: questions.map((q, i) => ({ question: q.text, screening: q.kind === 'screening', ...(q.crit ? { criterion: { label: q.crit.label, description: q.crit.description } } : {}), ...(fixed(q) ? { fixed_answer: demo.built[i].answer, fixed_ids: demo.built[i].evidenceIds } : {}) })), examples: evidence.filter((e) => !e.practical).map((e) => ({ id: e.id, text: e.safeClaim, tags: e.tags })) };
       const res = await runAi({ task: 'simulate', datasetId: o.datasetId, roleId: o.roleId ?? null, candidateId: o.candidateId ?? null, input }, (p) => p.simulateInterview(input));
       const out = res.output;
       result = {

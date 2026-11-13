@@ -48,19 +48,21 @@ describe('simulated interviews and your best 10', () => {
   it('live mode: answers citing examples that are not theirs, or naming them, are replaced; scores are clamped', async () => {
     const w = await load();
     const [ident] = await db().select().from(S.candidateIdentity).where(eq(S.candidateIdentity.candidateId, w.ids.candidates.C01));
-    const standIn: AiProvider = { ...fixtureProvider, name: 'anthropic', simulateInterview: async (i) => ({ provider: 'anthropic', usage, output: {
+    let sawCriterionContext = false;
+    const standIn: AiProvider = { ...fixtureProvider, name: 'anthropic', simulateInterview: async (i) => { sawCriterionContext = i.questions.some(q => !!q.criterion?.label && !!q.criterion.description); return ({ provider: 'anthropic', usage, output: {
       answers: [
         { questionIndex: 0, answer: i.examples[0] ? `I did this. ${i.examples[0].text}` : 'x', evidenceIds: i.examples[0] ? [i.examples[0].id] : [], score: 14, reason: 'Clear example.' },
         { questionIndex: 1, answer: 'Invented answer', evidenceIds: ['00000000-0000-0000-0000-000000000000'], score: 9, reason: 'Made up.' },
         { questionIndex: 2, answer: `My name is ${ident.fullName}.`, evidenceIds: i.examples[0] ? [i.examples[0].id] : [], score: 8, reason: `${ident.fullName} did well.` },
       ],
       fitScore: 100, summary: 'Strong match.', concerns: [],
-    } }) };
+    } }); } };
     setProviderForTests(standIn);
     await w.T(w.client('A'), (c) => requestSimulations(c, w.ids.roles.R1));
     await drainJobs();
     const rows = await db().select().from(S.simulatedInterviews).where(eq(S.simulatedInterviews.roleId, w.ids.roles.R1));
     expect(rows.length).toBeGreaterThan(0);
+    expect(sawCriterionContext).toBe(true);
     for (const r of rows) {
       expect(r.provider).toBe('anthropic');
       const a = r.answers as { answer: string; grounded: boolean }[];
