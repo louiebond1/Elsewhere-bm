@@ -98,7 +98,7 @@ Seven new database integration scenarios cover publication holds across employer
 
 Desktop and phone browser checks cover the employer delivery window and candidate screening consent. Deadline tests advance the clock in a disposable database; they do not wait 24 actual hours or change live job deadlines. Unit checks exercise the fixed calculations, tie breaks, contender bounds and the rule that adding Related or stronger evidence cannot reduce working score.
 
-These checks verify implemented behaviour. They do not establish real-world hiring accuracy or fairness. The release receipt records the final full-suite result and live checks.
+These checks verify implemented behaviour. They do not establish real-world hiring accuracy or fairness. The [release receipt](evaluations/SHORTLIST-STATE-CHECK.md) records the final full-suite result, successful web/worker deployment and five passing live AI state checks.
 
 ## Code map
 

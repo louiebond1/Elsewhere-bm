@@ -1,0 +1,435 @@
+{
+  "codeCommit": "d30e842bf7747f9814dbe47e642246c7a8d89c83",
+  "deploymentId": "25cf5532-c059-44e4-b569-6f705f2dffb3",
+  "events": [
+    {
+      "level": "info",
+      "event": "state_check_started",
+      "runId": "context-bench-v3-20261113-shortlist-states",
+      "model": "claude-haiku-5-5",
+      "cases": 5,
+      "runLimitUsd": 0.5,
+      "monthlyLimitUsd": 5
+    },
+    {
+      "level": "info",
+      "event": "state_expectations",
+      "criteria": [
+        {
+          "criterionId": "recs",
+          "label": "Own bank reconciliations",
+          "description": "Related: neighbouring ledger checks. Some: supports bank reconciliations. Clear: personally reconciles bank accounts. Strong: does it regularly and investigates exceptions. Numerical totals are optional.",
+          "evidenceTags": []
+        },
+        {
+          "criterionId": "process",
+          "label": "Build a maintainable simple process",
+          "description": "Related: nearby process work. Some: supports a change. Clear: personally makes a practical improvement. Strong: also trains colleagues so they can maintain it. Numerical results are optional.",
+          "evidenceTags": []
+        }
+      ],
+      "cases": [
+        {
+          "id": "unknown",
+          "claims": [
+            "I play football at weekends."
+          ],
+          "expected": {
+            "recs": [
+              "unknown"
+            ],
+            "process": [
+              "unknown"
+            ]
+          }
+        },
+        {
+          "id": "none_stated",
+          "claims": [
+            "I have never reconciled bank or supplier accounts. I have no related finance experience.",
+            "I have never improved a work process and have no related examples."
+          ],
+          "expected": {
+            "recs": [
+              "none_stated"
+            ],
+            "process": [
+              "none_stated"
+            ]
+          }
+        },
+        {
+          "id": "related",
+          "claims": [
+            "I have never owned bank reconciliations. I compared supplier statements with ledger entries, identified discrepancies and passed them to the accountant."
+          ],
+          "expected": {
+            "recs": [
+              "related"
+            ],
+            "process": [
+              "unknown"
+            ]
+          }
+        },
+        {
+          "id": "not_met",
+          "claims": [
+            "I will not do bank reconciliations or process improvement."
+          ],
+          "expected": {
+            "recs": [
+              "not_met"
+            ],
+            "process": [
+              "not_met"
+            ]
+          }
+        },
+        {
+          "id": "missing_number",
+          "claims": [
+            "Every week I personally reconcile the bank, investigate exceptions and correct duplicated postings. I cannot remember how many transactions were involved.",
+            "I built a shared checklist, trained two colleagues to use it and handed over responsibility. They still maintain it. I cannot remember the exact hours saved."
+          ],
+          "expected": {
+            "recs": [
+              "strong"
+            ],
+            "process": [
+              "strong"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "level": "info",
+      "event": "state_result",
+      "id": "unknown",
+      "input": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Own bank reconciliations",
+            "description": "Related: neighbouring ledger checks. Some: supports bank reconciliations. Clear: personally reconciles bank accounts. Strong: does it regularly and investigates exceptions. Numerical totals are optional.",
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "process",
+            "label": "Build a maintainable simple process",
+            "description": "Related: nearby process work. Some: supports a change. Clear: personally makes a practical improvement. Strong: also trains colleagues so they can maintain it. Numerical results are optional.",
+            "evidenceTags": []
+          }
+        ],
+        "evidence": [
+          {
+            "id": "unknown:0",
+            "safeClaim": "I play football at weekends.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      },
+      "expected": {
+        "recs": [
+          "unknown"
+        ],
+        "process": [
+          "unknown"
+        ]
+      },
+      "output": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "level": "unknown",
+            "evidenceIds": [],
+            "quote": "",
+            "reasonSafe": "The supplied evidence does not mention bank reconciliation work, so this needs confirming.",
+            "followUp": "Have you personally prepared bank reconciliations? If so, how often did you do them and how did you handle unmatched items?"
+          },
+          {
+            "criterionId": "process",
+            "level": "unknown",
+            "evidenceIds": [],
+            "quote": "",
+            "reasonSafe": "The supplied evidence does not mention process design or improvement, so this needs confirming.",
+            "followUp": "Have you personally changed a finance or admin process to make it simpler? What did you change, and did colleagues continue using it afterwards?"
+          }
+        ]
+      },
+      "configuredCostUsd": 0.000457
+    },
+    {
+      "level": "info",
+      "event": "state_result",
+      "id": "none_stated",
+      "input": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Own bank reconciliations",
+            "description": "Related: neighbouring ledger checks. Some: supports bank reconciliations. Clear: personally reconciles bank accounts. Strong: does it regularly and investigates exceptions. Numerical totals are optional.",
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "process",
+            "label": "Build a maintainable simple process",
+            "description": "Related: nearby process work. Some: supports a change. Clear: personally makes a practical improvement. Strong: also trains colleagues so they can maintain it. Numerical results are optional.",
+            "evidenceTags": []
+          }
+        ],
+        "evidence": [
+          {
+            "id": "none_stated:0",
+            "safeClaim": "I have never reconciled bank or supplier accounts. I have no related finance experience.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "none_stated:1",
+            "safeClaim": "I have never improved a work process and have no related examples.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      },
+      "expected": {
+        "recs": [
+          "none_stated"
+        ],
+        "process": [
+          "none_stated"
+        ]
+      },
+      "output": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "level": "none_stated",
+            "evidenceIds": [
+              "none_stated:0"
+            ],
+            "quote": "I have never reconciled bank or supplier accounts.",
+            "reasonSafe": "Candidate states they have never reconciled bank or supplier accounts and have no related finance experience.",
+            "followUp": null
+          },
+          {
+            "criterionId": "process",
+            "level": "none_stated",
+            "evidenceIds": [
+              "none_stated:1"
+            ],
+            "quote": "I have never improved a work process and have no related examples.",
+            "reasonSafe": "Candidate states they have never improved a work process and have no related examples.",
+            "followUp": null
+          }
+        ]
+      },
+      "configuredCostUsd": 0.000274
+    },
+    {
+      "level": "info",
+      "event": "state_result",
+      "id": "related",
+      "input": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Own bank reconciliations",
+            "description": "Related: neighbouring ledger checks. Some: supports bank reconciliations. Clear: personally reconciles bank accounts. Strong: does it regularly and investigates exceptions. Numerical totals are optional.",
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "process",
+            "label": "Build a maintainable simple process",
+            "description": "Related: nearby process work. Some: supports a change. Clear: personally makes a practical improvement. Strong: also trains colleagues so they can maintain it. Numerical results are optional.",
+            "evidenceTags": []
+          }
+        ],
+        "evidence": [
+          {
+            "id": "related:0",
+            "safeClaim": "I have never owned bank reconciliations. I compared supplier statements with ledger entries, identified discrepancies and passed them to the accountant.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      },
+      "expected": {
+        "recs": [
+          "related"
+        ],
+        "process": [
+          "unknown"
+        ]
+      },
+      "output": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "level": "related",
+            "evidenceIds": [
+              "related:0"
+            ],
+            "quote": "I compared supplier statements with ledger entries, identified discrepancies and passed them to the accountant.",
+            "reasonSafe": "Neighbouring ledger checks and discrepancy identification; no bank reconciliation ownership is described.",
+            "followUp": "When you compared statements with ledger entries, did you ever check bank statements against the cash book yourself? If so, how often and how did you handle exceptions?"
+          },
+          {
+            "criterionId": "process",
+            "level": "unknown",
+            "evidenceIds": [],
+            "quote": "",
+            "reasonSafe": "No evidence provided about building or improving a process.",
+            "followUp": "Can you describe a process or routine you personally designed or changed? What was the change, and what did you do to make it practical?"
+          }
+        ]
+      },
+      "configuredCostUsd": 0.000344
+    },
+    {
+      "level": "info",
+      "event": "state_result",
+      "id": "not_met",
+      "input": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Own bank reconciliations",
+            "description": "Related: neighbouring ledger checks. Some: supports bank reconciliations. Clear: personally reconciles bank accounts. Strong: does it regularly and investigates exceptions. Numerical totals are optional.",
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "process",
+            "label": "Build a maintainable simple process",
+            "description": "Related: nearby process work. Some: supports a change. Clear: personally makes a practical improvement. Strong: also trains colleagues so they can maintain it. Numerical results are optional.",
+            "evidenceTags": []
+          }
+        ],
+        "evidence": [
+          {
+            "id": "not_met:0",
+            "safeClaim": "I will not do bank reconciliations or process improvement.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      },
+      "expected": {
+        "recs": [
+          "not_met"
+        ],
+        "process": [
+          "not_met"
+        ]
+      },
+      "output": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "level": "not_met",
+            "evidenceIds": [
+              "not_met:0"
+            ],
+            "quote": "I will not do bank reconciliations or process improvement.",
+            "reasonSafe": "Candidate explicitly states they will not do bank reconciliations.",
+            "followUp": null
+          },
+          {
+            "criterionId": "process",
+            "level": "not_met",
+            "evidenceIds": [
+              "not_met:0"
+            ],
+            "quote": "I will not do bank reconciliations or process improvement.",
+            "reasonSafe": "Candidate explicitly states they will not do process improvement.",
+            "followUp": null
+          }
+        ]
+      },
+      "configuredCostUsd": 0.00022
+    },
+    {
+      "level": "info",
+      "event": "state_result",
+      "id": "missing_number",
+      "input": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "label": "Own bank reconciliations",
+            "description": "Related: neighbouring ledger checks. Some: supports bank reconciliations. Clear: personally reconciles bank accounts. Strong: does it regularly and investigates exceptions. Numerical totals are optional.",
+            "evidenceTags": []
+          },
+          {
+            "criterionId": "process",
+            "label": "Build a maintainable simple process",
+            "description": "Related: nearby process work. Some: supports a change. Clear: personally makes a practical improvement. Strong: also trains colleagues so they can maintain it. Numerical results are optional.",
+            "evidenceTags": []
+          }
+        ],
+        "evidence": [
+          {
+            "id": "missing_number:0",
+            "safeClaim": "Every week I personally reconcile the bank, investigate exceptions and correct duplicated postings. I cannot remember how many transactions were involved.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          },
+          {
+            "id": "missing_number:1",
+            "safeClaim": "I built a shared checklist, trained two colleagues to use it and handed over responsibility. They still maintain it. I cannot remember the exact hours saved.",
+            "tags": [],
+            "strength": "specific",
+            "uncertainty": null
+          }
+        ]
+      },
+      "expected": {
+        "recs": [
+          "strong"
+        ],
+        "process": [
+          "strong"
+        ]
+      },
+      "output": {
+        "criteria": [
+          {
+            "criterionId": "recs",
+            "level": "strong",
+            "evidenceIds": [
+              "missing_number:0"
+            ],
+            "quote": "Every week I personally reconcile the bank, investigate exceptions and correct duplicated postings.",
+            "reasonSafe": "Personally reconciles the bank weekly, investigates exceptions and corrects duplicate postings. Regular practice with exception handling meets the criterion.",
+            "followUp": null
+          },
+          {
+            "criterionId": "process",
+            "level": "strong",
+            "evidenceIds": [
+              "missing_number:1"
+            ],
+            "quote": "I built a shared checklist, trained two colleagues to use it and handed over responsibility. They still maintain it.",
+            "reasonSafe": "Built a shared checklist, trained two colleagues, handed over responsibility, and it is still maintained. Meets the criterion with training for maintainability.",
+            "followUp": null
+          }
+        ]
+      },
+      "configuredCostUsd": 0.000331
+    },
+    {
+      "level": "info",
+      "event": "state_check_done",
+      "runId": "context-bench-v3-20261113-shortlist-states"
+    }
+  ]
+}
