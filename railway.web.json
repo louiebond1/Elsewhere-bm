@@ -7,7 +7,7 @@
   "deploy": {
     "startCommand": "npm run start",
     "preDeployCommand": [
-      "npm run db:migrate && npx tsx scripts/ai-incident-diagnostics.ts"
+      "npm run db:migrate && npx tsx --conditions=react-server scripts/ai-incident-diagnostics.ts"
     ],
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,

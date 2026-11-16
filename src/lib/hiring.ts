@@ -63,7 +63,7 @@ const TAG_WORDS: Array<[Tag, RegExp]> = [
   ['automation', /automat/i], ['process_design', /process|workflow|handoff|hand-off/i], ['customer_work', /customer|client[- ]facing|working with clients/i],
   ['sales', /\bsales?\b|selling|new business|business development/i], ['partnerships', /partner/i], ['project_delivery', /project|deliver/i],
   ['coordination', /coordinat|organis|organiz|schedul|juggl/i], ['leadership', /\blead\b|\bleadership\b|\bleadeship\b|leading|manag(e|ing) (a |the )?team|supervis|mentor/i],
-  ['financial_communication', /\bcommunicat(?:e|es|ing|ion|ions)\b|\bexplain(?:ing)? (?:financial |the )?(?:results|numbers|finances)\b/i],
+  ['financial_communication', /\bcommunicat(?:e|es|ing|ion|ions)\b.{0,60}\b(?:financial|finance|results|numbers)\b|\bexplain(?:ing)? (?:financial |the )?(?:results|numbers|finances)\b/i],
   ['learning', /learn|curious|pick (things )?up|eager/i],
 ];
 
