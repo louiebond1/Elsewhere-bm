@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EMPTY, readMessage, demoReply, readyToSave, missingSlots, toCriteria, sanitise, notJobRelated, QUICK_ANSWERS, type Understanding, type Slot } from '../../src/lib/hiring';
+import { EMPTY, readMessage, demoReply, readyToSave, missingSlots, toCriteria, sanitise, notJobRelated, QUICK_ANSWERS, hiringFallbackNotice, type Understanding, type Slot } from '../../src/lib/hiring';
 import { criterionInput } from '../../src/server/services/inputs';
 
 function talk(lines: string[]) {
@@ -88,4 +88,34 @@ describe('hiring assistant demo reader', () => {
 it('preserves role-specific operating conditions in the approved evidence guide', () => {
  const next = sanitise({ mustHaves: [{label:'Work with limited resources',tags:['resource_constraints'],description:'Personally maintain accurate finance records with two staff and manual tools; escalate gaps and leave a maintainable process.'}], niceToHaves:[] } as never, structuredClone(EMPTY));
  expect(toCriteria(next)[0].description).toContain('two staff and manual tools');
+});
+
+describe('hiring assistant requirement-capture regression', () => {
+  it('captures leadership, its common typo and repeats without duplicates', () => {
+    let u = readMessage(EMPTY, 'leadership', 'skills');
+    expect(u.mustHaves.map(i => i.tags[0])).toEqual(['leadership']);
+    u = readMessage(u, 'leadeship abilities', 'skills');
+    expect(u.mustHaves).toHaveLength(1);
+  });
+
+  it('captures all three CFO requirements from the reported single message', () => {
+    const u = readMessage(EMPTY, 'Three qualities a CFO might need are strong financial reporting skills, experience managing budgets and cash flow, and the ability to communicate financial results to non-finance leaders.', 'skills');
+    expect(u.mustHaves.map(i => i.tags[0])).toEqual(['reporting', 'budgeting', 'financial_communication']);
+    expect(missingSlots(u)).not.toContain('skills');
+    for (const c of toCriteria(u)) expect(criterionInput.safeParse(c).success).toBe(true);
+  });
+
+  it('keeps existing requirements when the third item is added alone', () => {
+    const prev = readMessage(EMPTY, 'reporting and budgeting', 'skills');
+    const next = readMessage(prev, 'communicate financial results to non-finance leaders', 'skills');
+    expect(next.mustHaves).toHaveLength(3);
+    expect(demoReply(prev, next, null).asked).not.toBe('skills');
+  });
+
+  it('distinguishes spending limits from provider failure without exposing raw errors', () => {
+    expect(hiringFallbackNotice('monthly_budget')).toContain('monthly AI spending limit');
+    expect(hiringFallbackNotice('daily_budget')).toContain('daily AI limit');
+    expect(hiringFallbackNotice('user_rate_limited')).toContain('hourly AI request limit');
+    expect(hiringFallbackNotice('auth')).toBe('The AI service could not process this message.');
+  });
 });

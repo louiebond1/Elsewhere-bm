@@ -326,6 +326,7 @@ export const ROUTES: R[] = [
         // Out of budget or the provider is unavailable: keep the conversation going with the labelled keyword reader.
         if (!(e instanceof AiFailure)) throw e;
         r = hiring.demoTurn(p, b.text);
+        r.reply = `${hiring.hiringFallbackNotice(e.code)} Your message is saved. I’m using a basic keyword reader, so check the captured requirements carefully. ${r.reply}`;
       }
     } else r = hiring.demoTurn(p, b.text);
     return T(base, (c) => hiring.commitTurn(c, p, b.text, r));

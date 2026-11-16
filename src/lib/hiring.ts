@@ -41,7 +41,7 @@ export const TAG_LABEL: Record<Tag, string> = {
   controls: 'Financial controls', audit: 'Audit', payroll: 'Payroll', bookkeeping: 'Bookkeeping', credit_control: 'Credit control', tax: 'Tax and VAT',
   analysis: 'Analysis', excel: 'Excel', sql: 'SQL and data', automation: 'Automating manual work', process_design: 'Improving processes',
   customer_work: 'Working with customers', sales: 'Sales', partnerships: 'Partnerships', project_delivery: 'Delivering projects',
-  coordination: 'Coordinating people and tasks', leadership: 'Leading others', learning: 'Learning quickly',
+  coordination: 'Coordinating people and tasks', leadership: 'Leading others', financial_communication: 'Communicating financial results to non-finance leaders', learning: 'Learning quickly',
 };
 
 export const REGION_LABEL: Record<Region, string> = { london: 'London', hertfordshire: 'Hertfordshire', manchester: 'Manchester', remote_uk: 'Remote, UK' };
@@ -58,11 +58,12 @@ export function notJobRelated(text: string): string | null {
 const TAG_WORDS: Array<[Tag, RegExp]> = [
   ['reconciliations', /reconcil/i], ['month_end', /month[- ]?end|period[- ]end|close process|\bthe close\b/i], ['payroll', /payroll/i],
   ['bookkeeping', /bookkeep|ledger|invoic(e|ing) process/i], ['credit_control', /credit control|chasing (invoices|payments|debts)|collections|debtors/i],
-  ['tax', /\btax\b|\bvat\b/i], ['budgeting', /budget/i], ['forecasting', /forecast/i], ['reporting', /report/i], ['controls', /\bcontrols?\b/i],
+  ['tax', /\btax\b|\bvat\b/i], ['budgeting', /budget|cash[- ]flow/i], ['forecasting', /forecast/i], ['reporting', /report/i], ['controls', /\bcontrols?\b/i],
   ['audit', /audit/i], ['analysis', /analys|insight|numbers/i], ['excel', /excel|spreadsheet/i], ['sql', /\bsql\b|database|data\b/i],
   ['automation', /automat/i], ['process_design', /process|workflow|handoff|hand-off/i], ['customer_work', /customer|client[- ]facing|working with clients/i],
   ['sales', /\bsales?\b|selling|new business|business development/i], ['partnerships', /partner/i], ['project_delivery', /project|deliver/i],
-  ['coordination', /coordinat|organis|organiz|schedul|juggl/i], ['leadership', /\blead\b|leading|manag(e|ing) (a |the )?team|supervis|mentor/i],
+  ['coordination', /coordinat|organis|organiz|schedul|juggl/i], ['leadership', /\blead\b|\bleadership\b|\bleadeship\b|leading|manag(e|ing) (a |the )?team|supervis|mentor/i],
+  ['financial_communication', /\bcommunicat(?:e|es|ing|ion|ions)\b|\bexplain(?:ing)? (?:financial |the )?(?:results|numbers|finances)\b/i],
   ['learning', /learn|curious|pick (things )?up|eager/i],
 ];
 
@@ -294,4 +295,12 @@ export function demoReply(prev: Understanding, next: Understanding, declined: st
     ? `What else matters for this job? I have ${next.mustHaves.length + next.niceToHaves.length} so far and need at least ${MIN_ITEMS}.`
     : QUESTIONS[slot];
   return { text: `${text}${q}`, asked: slot };
+}
+
+/** Explain degraded operation instead of presenting keyword parsing as live AI. */
+export function hiringFallbackNotice(code: string): string {
+  if (code === 'monthly_budget') return 'The app’s monthly AI spending limit has been reached.';
+  if (code === 'daily_budget') return 'The app’s daily AI limit has been reached.';
+  if (code === 'user_rate_limited') return 'The hourly AI request limit has been reached.';
+  return 'The AI service could not process this message.';
 }

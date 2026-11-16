@@ -1,9 +1,14 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
   "deploy": {
     "startCommand": "npm run start",
-    "preDeployCommand": ["npm run db:migrate"],
+    "preDeployCommand": [
+      "npm run db:migrate && npx tsx scripts/ai-incident-diagnostics.ts"
+    ],
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
