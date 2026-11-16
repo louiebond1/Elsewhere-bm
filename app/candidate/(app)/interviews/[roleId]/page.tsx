@@ -15,11 +15,23 @@ export default async function Interview({ params }: { params: Promise<{ roleId: 
   if (!isUuid(roleId)) notFound();
   const i = await myInterview(ctx, roleId).catch(() => null);
   if (!i) notFound();
+  // The interview is a historical snapshot. Show later candidate submissions separately
+  // so revisiting the question does not incorrectly say their answer disappeared.
+  const { onboardingView } = await import('@/server/services/onboarding');
+  const profile = await onboardingView(ctx);
+  const byKey = new Map(profile.sections.flatMap((s) => s.questions).map((q) => [q.key, q.answer]));
+  const byTopic = new Map(profile.extras.map((e) => [e.text.trim().toLowerCase(), e.answer]));
+  const answers = i.answers.map((a) => ({
+    ...a,
+    submittedAnswer: a.key
+      ? (byKey.get(a.key) ?? null)
+      : (byTopic.get(a.question.trim().toLowerCase()) ?? null),
+  }));
   return (
     <div className="mx-auto max-w-[860px]">
       <PageHeader compact back={{ href: '/candidate/interviews', label: 'Your interviews' }} title={i.title} subtitle={`${label(i.mode)} · ${label(i.region)} · interviewed ${new Date(i.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })} · ${i.answers.length} questions. The employer never sees your name.`} />
-      <div className="mb-4"><Countdown lateAllowed={i.lateAllowed} deadline={i.deadline} gaps={i.answers.filter((a) => !a.answer).length} /></div>
-      <InterviewDeck answers={i.answers} open={i.open} />
+      <div className="mb-4"><Countdown lateAllowed={i.lateAllowed} deadline={i.deadline} gaps={answers.filter((a) => !a.answer && !a.submittedAnswer).length} /></div>
+      <InterviewDeck answers={answers} open={i.open} />
     </div>
   );
 }
