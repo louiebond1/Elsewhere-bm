@@ -6,7 +6,7 @@ import { useCommand, ErrorText, textareaClass } from './client';
 import { buttonClass, cx } from './ui';
 import { ClampText } from './clamp-text';
 
-type QA = { question: string; answer: string | null; key: string | null; kind: 'interview' | 'screening' };
+type QA = { question: string; answer: string | null; submittedAnswer?: string | null; key: string | null; kind: 'interview' | 'screening' };
 
 /** "23h 10m left": time left to change answers. */
 function useLeft(deadline: string) {
@@ -30,27 +30,27 @@ export function Countdown({ deadline, gaps, lateAllowed=false }: { deadline: str
 }
 
 /** Change or add an answer. Checklist questions update that answer; job-specific ones are saved against the question. */
-function EditAnswer({ qa, open }: { qa: QA; open: boolean }) {
+function EditAnswer({ qa, open, onSaved }: { qa: QA; open: boolean; onSaved: (answer: string) => void }) {
   const router = useRouter();
   const { run, busy, error } = useCommand();
   const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(qa.answer ?? '');
+  const [text, setText] = useState(qa.submittedAnswer ?? qa.answer ?? '');
   const [saved, setSaved] = useState(false);
   if (!open) return null;
-  if (saved) return <p role="status" className="mt-4 text-[15px] font-semibold text-primary">Saved to your mini-me. Your evidence will be reassessed.</p>;
-  if (!editing) return <button type="button" className={cx(buttonClass(qa.answer ? 'secondary' : 'primary'), 'mt-4 min-h-11 rounded-full!')} onClick={() => setEditing(true)}>{qa.answer ? 'Change this answer' : 'Answer this one'}</button>;
+  if (saved) return <p role="status" className="mt-4 text-[15px] font-semibold text-primary">Answer saved to your mini-me. Reassessment may take a little time.</p>;
+  if (!editing) return <button type="button" className={cx(buttonClass(qa.answer ? 'secondary' : 'primary'), 'mt-4 min-h-11 rounded-full!')} onClick={() => setEditing(true)}>{qa.submittedAnswer || qa.answer ? 'Change this answer' : 'Answer this one'}</button>;
   const save = async () => {
     const ok = qa.key
       ? await run('onboarding/answer', { key: qa.key, answer: text }, { refresh: false })
       : await run('onboarding/extra', { topic: qa.question.slice(0, 200), answer: text }, { refresh: false });
-    if (ok !== null) { setSaved(true); setTimeout(() => router.refresh(), 2500); setTimeout(() => router.refresh(), 7000); }
+    if (ok !== null) { onSaved(text.trim()); setSaved(true); router.refresh(); }
   };
   return (
     <div className="mt-4 space-y-3">
       <textarea aria-label={`Your answer to: ${qa.question}`} className={cx(textareaClass, 'min-h-[110px]')} maxLength={1500} value={text} onChange={(e) => setText(e.target.value)} placeholder="In your own words: what did you do, and what happened?" autoFocus />
       <div className="flex flex-wrap gap-2">
         <button type="button" className={buttonClass('primary')} disabled={busy || !text.trim()} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
-        <button type="button" className={buttonClass('ghost')} onClick={() => { setText(qa.answer ?? ''); setEditing(false); }}>Cancel</button>
+        <button type="button" className={buttonClass('ghost')} onClick={() => { setText(qa.submittedAnswer ?? qa.answer ?? ''); setEditing(false); }}>Cancel</button>
       </div>
       <ErrorText error={error} />
     </div>
@@ -59,8 +59,11 @@ function EditAnswer({ qa, open }: { qa: QA; open: boolean }) {
 
 /** The interview, one question at a time, in two groups. Fits on one screen. */
 export function InterviewDeck({ answers, open }: { answers: QA[]; open: boolean }) {
-  const [i, setI] = useState(() => Math.max(0, answers.findIndex((a) => !a.answer)));
+  const [i, setI] = useState(() => Math.max(0, answers.findIndex((a) => !a.answer && !a.submittedAnswer)));
+  // Keep a successful save visible immediately, even before the server refresh finishes.
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<number, string>>({});
   const a = answers[i];
+  const submitted = submittedAnswers[i] ?? a.submittedAnswer ?? null;
   const groups: { title: string; kind: 'interview' | 'screening' }[] = [{ title: 'Interview', kind: 'interview' }, { title: 'Screening', kind: 'screening' }];
   return (
     <section aria-label="Interview questions">
@@ -69,8 +72,8 @@ export function InterviewDeck({ answers, open }: { answers: QA[]; open: boolean 
           <nav key={g.kind} aria-label={g.title} className="flex flex-wrap items-center gap-2">
             <span className="mr-1 text-[13px] font-semibold uppercase tracking-wide text-muted">{g.title}</span>
             {answers.map((x, n) => x.kind !== g.kind ? null : (
-              <button key={n} type="button" onClick={() => setI(n)} aria-current={n === i ? 'true' : undefined} aria-label={`Question ${n + 1}${x.answer ? '' : ', not answered yet'}`}
-                className={cx('press tnum flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-semibold', n === i ? 'bg-primary text-white' : x.answer ? 'bg-surface text-ink shadow-[0_2px_8px_rgb(18_37_29/0.06)]' : 'bg-warning-tint text-warning ring-1 ring-warning/40')}>{n + 1}</button>
+              <button key={n} type="button" onClick={() => setI(n)} aria-current={n === i ? 'true' : undefined} aria-label={`Question ${n + 1}${x.answer || submittedAnswers[n] || x.submittedAnswer ? '' : ', not answered yet'}`}
+                className={cx('press tnum flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-semibold', n === i ? 'bg-primary text-white' : x.answer || submittedAnswers[n] || x.submittedAnswer ? 'bg-surface text-ink shadow-[0_2px_8px_rgb(18_37_29/0.06)]' : 'bg-warning-tint text-warning ring-1 ring-warning/40')}>{n + 1}</button>
             ))}
           </nav>
         ))}
@@ -79,9 +82,10 @@ export function InterviewDeck({ answers, open }: { answers: QA[]; open: boolean 
         <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">{a.kind === 'screening' ? 'Screening' : 'Interview'} · question {i + 1} of {answers.length}</p>
         <p className="mt-1 font-display text-[21px] font-semibold leading-snug">{a.question}</p>
         {a.answer
-          ? <div className="mt-4 rounded-2xl bg-page p-4"><span className="mb-1 block text-[13px] font-semibold text-primary">Your mini-me said</span><ClampText text={`“${a.answer}”`} className="text-[17px] leading-relaxed" /></div>
-          : <p className="mt-4 rounded-2xl bg-warning-tint p-4 text-[16px] text-warning">Your mini-me didn’t know this one yet.</p>}
-        <EditAnswer key={`e-${i}-${a.answer ?? ''}`} qa={a} open={open} />
+          ? <div className="mt-4 rounded-2xl bg-page p-4"><span className="mb-1 block text-[13px] font-semibold text-primary">What your mini-me originally said</span><ClampText text={`“${a.answer}”`} className="text-[17px] leading-relaxed" /></div>
+          : !submitted ? <p className="mt-4 rounded-2xl bg-warning-tint p-4 text-[16px] text-warning">Your mini-me didn’t know this one at the time of the interview.</p> : null}
+        {submitted && <div className="mt-4 rounded-2xl bg-page p-4"><span className="mb-1 block text-[13px] font-semibold text-primary">Your saved answer</span><ClampText text={submitted} className="text-[17px] leading-relaxed" /><p className="mt-2 text-[13px] text-muted">Added to your mini-me after the interview. Reassessment is separate from this saved answer.</p></div>}
+        <EditAnswer key={`e-${i}-${submitted ?? a.answer ?? ''}`} qa={{ ...a, submittedAnswer: submitted }} open={open} onSaved={(answer) => setSubmittedAnswers((previous) => ({ ...previous, [i]: answer }))} />
         <div className="mt-6 flex items-center justify-between border-t border-line pt-4">
           <button type="button" className={buttonClass('ghost')} disabled={i === 0} onClick={() => setI(i - 1)}>← Back</button>
           {i < answers.length - 1 ? <button type="button" className={cx(buttonClass('primary'), 'rounded-full!')} onClick={() => setI(i + 1)}>Next →</button> : <span className="text-[15px] font-semibold text-primary">That’s the whole interview</span>}
