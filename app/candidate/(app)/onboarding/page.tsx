@@ -7,6 +7,10 @@ import { cx } from '@/components/ui';
 import { PhotoBackdrop } from '@/components/photo-backdrop';
 import { MapPin, Briefcase, Trophy, Wrench, Users, Target, FileText, MoreHorizontal, LayoutGrid } from 'lucide-react';
 import { ApproveAll, Extras, QuestionDeck, AddSomething, ConnectBanner, AlwaysOnRow, KnowsCard } from '@/components/onboarding-doc';
+import { knowledgeView } from '@/server/services/knowledge';
+import { GENERAL, SCREENING } from '@/server/services/simulation';
+import { ASK_STARTERS } from '@/config/knowledge';
+import { MiniMeExperience } from '@/components/knowledge-globe/mini-me-experience';
 
 const AREA_ICONS: Record<string, typeof MapPin> = { all: LayoutGrid, now: MapPin, experience: Briefcase, examples: Trophy, skills: Wrench, style: Users, next: Target, practical: FileText, extras: MoreHorizontal };
 
@@ -17,8 +21,14 @@ const PAGE = 6;
  * Your mini-me. By default: what it knows, as a feed of short topics, built up over relaxed chats with
  * their own AI. The question list is only a guide for the AI; "Answer some yourself" opens it for typing.
  */
-export default async function Onboarding({ searchParams }: { searchParams: Promise<{ ai?: string; s?: string; mode?: string; a?: string; n?: string }> }) {
+export default async function Onboarding({ searchParams }: { searchParams: Promise<{ ai?: string; s?: string; mode?: string; a?: string; n?: string; view?: string }> }) {
   const { ctx } = await pageViewer('candidate');
+  const q = await searchParams;
+  // The Knowledge Globe is the default. Training (connect your AI, check what it wrote, type answers) keeps the earlier views.
+  if (!q.mode && !q.ai && !q.a && !q.n) {
+    const [view, connected, drafts, ob] = await Promise.all([knowledgeView(ctx), connectedAi(ctx), draftsWaiting(ctx), onboardingView(ctx)]);
+    return <MiniMeExperience view={view} connected={connected} waiting={{ checkInDrafts: drafts, toCheck: ob.toCheck }} screen={q.view === 'knowledge' ? 'knowledge' : 'globe'} starters={ASK_STARTERS} interviewQuestions={[...GENERAL, ...SCREENING].map((x) => x.text)} />;
+  }
   const [v, connected, sp, questionDrafts, story] = await Promise.all([onboardingView(ctx), connectedAi(ctx), searchParams, draftsWaiting(ctx), miniMeStory(ctx)]);
   const pct = Math.round((v.answered / v.total) * 100);
   const typing = sp.mode === 'type';
@@ -48,7 +58,7 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
     return (
       <div className="mx-auto max-w-[1080px]">
         {header}
-        <p className="mt-6"><Link href="/candidate/onboarding">← Back to what your mini-me knows</Link></p>
+        <p className="mt-6"><Link href="/candidate/onboarding?mode=train">← Back to what your mini-me knows</Link></p>
         <nav aria-label="Sections" className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-9">
           {tiles.map((t) => {
             const on = t.key === current; const full = t.total ? t.checked === t.total : t.answered > 0 && t.checked === t.answered;
@@ -70,14 +80,15 @@ export default async function Onboarding({ searchParams }: { searchParams: Promi
   const area = areas.find((a) => a.key === sp.a && a.key !== 'all')?.key ?? null;
   const shown = v.feed.filter((f) => !area || areaKeyOf(f.areaKey) === area);
   const n = Math.max(PAGE, Number(sp.n) || PAGE);
-  const href = (q: Record<string, string | null>) => `/candidate/onboarding?${new URLSearchParams(Object.entries(q).filter(([, x]) => x) as [string, string][]).toString()}`;
+  const href = (q: Record<string, string | null>) => `/candidate/onboarding?${new URLSearchParams(Object.entries({ mode: 'train', ...q }).filter(([, x]) => x) as [string, string][]).toString()}`;
   return (
     <div>
       <section className="relative -mt-4 lg:-mt-6">
         <PhotoBackdrop height={600} />
         <div className="flex flex-col gap-6 pb-8 pt-10 text-white lg:flex-row lg:items-center lg:justify-between lg:pb-10 lg:pt-14">
           <div>
-            <h1 className="text-[44px] leading-[1.05] text-white lg:text-[64px]">Your mini-me</h1>
+            <p><Link href="/candidate/onboarding" className="text-[15px] font-semibold text-white/90 no-underline hover:text-white">← Knowledge Globe</Link></p>
+            <h1 className="mt-2 text-[44px] leading-[1.05] text-white lg:text-[64px]">Train your mini-me</h1>
             <p className="mt-3 max-w-[46ch] text-[17px] text-white/90 lg:text-[19px]">The more it knows, the better your interviews go. Your name stays hidden until you say yes.</p>
           </div>
           <div className="flex items-center gap-5">

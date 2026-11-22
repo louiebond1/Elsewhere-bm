@@ -178,6 +178,24 @@ npm run worker                      # background jobs (second terminal)
 - **Built-in chat:** `/candidate/onboarding/chat`.
 - **Mini-me page refresh:** every 15 seconds while visible, and as soon as its tab is shown again.
 
+
+### 5.2a Mini Me: the Knowledge Globe (`/candidate/onboarding`)
+- **What it is:** the candidate's Mini Me page is now a full-screen black page with a rotating 3D globe (Three.js through React Three Fiber). Code: `src/components/knowledge-globe/`.
+- **Every bright dot is one real record** (one row in `onboarding_answers`). Its id is the row's question key (`top_skills`, `extra:…`), which never changes. Its position comes only from that id and its area (`geometry.ts`), so it never moves between visits. The thousands of small particles are decoration and are drawn separately.
+- **Eight areas** (`src/config/knowledge.ts`): Work and Career, Education, Skills and Experience, Personal Life, Values and Beliefs, Interests and Hobbies, Goals and Ambitions, Other Knowledge. Checklist answers take the area from their question. Extras take the candidate's choice (new column `knowledge_category`, migration `0021`), or else words in the heading, then the text.
+- **Ask Mini Me / Test It (Interview Mode):** `POST /api/knowledge/ask` (`src/server/services/knowledge.ts`).
+  - Live AI (task `ask`, prompt in `src/server/ai/prompts/ask.ts`, kept apart from interview prompts) answers in the first person from the records only, and returns the ids it used.
+  - Ids it wasn't given are dropped. If it used no records, it may only say it doesn't know.
+  - Without the live AI (demo mode, budget or outage), "basic mode" quotes the closest records word for word and says so.
+  - The globe lights, pulses and joins exactly the returned ids.
+  - Interview questions are the same lists real interviews use (`GENERAL`, `SCREENING` in `simulation.ts`).
+- **Changes need approval:** editing a record, correcting one after a test answer, and adding something new each show the change first (before/after, or "this will be added"). Nothing saves until the candidate presses Save. Edits, additions and deletions refresh live interviews as before.
+- **"That's right"** turns an AI-saved record into the candidate's own (`source = self`, provider kept). Their AI can then no longer overwrite it.
+- **Rating an answer** stores only the verdict and the number of records used (`minime.answer_reviewed`).
+- **Training** (`?mode=train`) keeps the earlier page (connect your AI, check drafts, the timeline). `?mode=type` is still the question-by-question view. Settings goes to `/candidate/ai`.
+- **Privacy:** every knowledge route is candidate-only and scoped to the signed-in candidate. Hiring managers get "not found".
+- **Fallbacks:** no WebGL means a still, flat version with the same clickable dots. "Reduce motion" turns off spinning and animated turns.
+
 ### 5.3 Who gets interviewed (hard rules only)
 - **Location:** where they can work. A hard rule.
 - **Age:** if a job requires 18 or over, people who said they're under 18 are ruled out. People who haven't said are still interviewed, marked "Age requirement to confirm". Age is private.
@@ -446,6 +464,7 @@ Each step says what "done" means. Do them in order.
 ---
 
 ## 11. Recent history (newest first)
+- (this commit) **Mini Me rebuilt as the Knowledge Globe**: real records as dots, Ask and Test It with the records each answer used, approve-before-save edits, migration 0021.
 - `52ad914` Handover: AI works live; first real quality result.
 - `1637f11` Fix: quality page variable order (the commit before it, `5be326c`, didn't typecheck and was never deployed).
 - `5be326c` Quality page: AI's order of all 36 vs ours, top-10 match and order score.

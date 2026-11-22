@@ -4,10 +4,11 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
 import { prototype } from '../../../config/prototype';
 import { QUESTION_SYSTEM, EXTRACTION_SYSTEM, FEEDBACK_SYSTEM, MATCHING_SYSTEM, ROLE_SYSTEM, HIRING_SYSTEM, SIMULATION_SYSTEM, MINIME_SYSTEM } from '../prompts';
-import { questionOutput, extractionOutput, feedbackOutput, assessmentOutput, roleStructureOutput, hiringTurnOutput, simulationOutput, miniMeChatOutput } from '../schemas';
+import { questionOutput, extractionOutput, feedbackOutput, assessmentOutput, roleStructureOutput, hiringTurnOutput, simulationOutput, miniMeChatOutput, askMiniMeOutput } from '../schemas';
+import { ASK_SYSTEM } from '../prompts/ask';
 import { AiFailure, type AiProvider, type AiResult } from './types';
 
-export const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 4000, hiring: 1500, simulate: 6000, minime: 3000 } as const;
+export const MAX_TOKENS = { question: 700, extract: 2000, feedback: 1000, role: 1500, assess: 4000, hiring: 1500, simulate: 6000, minime: 3000, ask: 1200 } as const;
 
 let client: Anthropic | null = null;
 function c() {
@@ -68,5 +69,6 @@ export const anthropicProvider: AiProvider = {
   structureRole: (i) => call('role', ROLE_SYSTEM, wrap('employer_brief', { title: i.title, brief: i.brief }), roleStructureOutput),
   simulateInterview: (i) => call('simulate', SIMULATION_SYSTEM, `${wrap('role', i.role)}\n${wrap('interview_questions', i.questions.map((q, n) => ({ index: n, ...q })))}\n${wrap('approved_examples', i.examples)}`, simulationOutput),
   miniMeChat: (i) => call('minime', MINIME_SYSTEM, `job_preferences: ${i.preferencesSet ? 'set' : 'NOT SET'}\n${wrap('cv', i.cv ?? 'none uploaded')}\n${wrap('already_known', i.known)}\n${wrap('interview_agenda', i.interviewAgenda ?? [])}\n${wrap('missing_topics', i.missing)}\n${wrap('all_topics', i.allTopics)}\n${wrap('conversation', i.messages.slice(-14))}`, miniMeChatOutput),
+  askMiniMe: (i) => call('ask', ASK_SYSTEM, `mode: ${i.mode}\n${wrap('question', i.question)}\n${wrap('knowledge', i.records)}`, askMiniMeOutput),
   hiringTurn: (i) => call('hiring', HIRING_SYSTEM, `Missing, in order: ${i.missing.join(', ') || 'nothing'}\n${wrap('what_you_remember_about_this_manager', i.memory)}\n${wrap('current_understanding', i.understanding)}\n${wrap('conversation', i.messages.slice(-16))}`, hiringTurnOutput),
 };

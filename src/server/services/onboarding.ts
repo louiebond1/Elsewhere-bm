@@ -179,7 +179,7 @@ export async function miniMeStory(ctx: Ctx, limit = 30) {
     const n = m.count ?? 1; const things = `${n} thing${n === 1 ? '' : 's'}`;
     const text = r.action === 'onboarding.ai_saved' ? `${m.provider ?? 'Your AI'} added ${things}`
       : r.action === 'onboarding.extras_added' ? (m.provider ? `${m.provider} added ${things} beyond the usual questions` : `You added ${things}`)
-      : r.action === 'onboarding.approved' ? `You approved ${things}` : r.action === 'onboarding.self_saved' ? 'You answered something yourself' : 'Your mini-me changed';
+      : r.action === 'onboarding.approved' ? `You approved ${things}` : r.action === 'onboarding.removed' ? 'You removed something' : r.action === 'onboarding.self_saved' ? 'You answered something yourself' : 'Your mini-me changed';
     return { at: r.at.toISOString(), text, kind: r.action === 'onboarding.approved' ? 'approved' : m.provider ? 'ai' : 'you' };
   });
 }

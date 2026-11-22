@@ -50,7 +50,7 @@ export function scoreCardFor(questions: ReturnType<typeof interviewQuestions>, a
 }
 
 /** Standard behavioural questions, answered from the matching part of their mini-me. */
-const GENERAL: { key: string; text: string }[] = [
+export const GENERAL: { key: string; text: string }[] = [
   { key: 'ex_problem', text: 'Tell me about a problem you solved at work. How did you work it out?' },
   { key: 'ex_pressure', text: 'Tell me about a time you had a tight deadline or a lot on. How did you handle it?' },
   { key: 'ex_teamwork', text: 'Describe a time you worked with other people to get something done.' },

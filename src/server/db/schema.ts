@@ -305,6 +305,8 @@ export const onboardingAnswers = pgTable('onboarding_answers', {
   aiProvider: text('ai_provider'),
   status: text('status').notNull().default('draft'),
   approvedAt: ts('approved_at'),
+  /** The Knowledge Globe area the candidate chose for this item; null means worked out from the question or wording. */
+  knowledgeCategory: text('knowledge_category'),
 }, (t) => [uniqueIndex('onboarding_answer_once').on(t.candidateId, t.questionKey)]);
 
 /** The in-app mini-me chat (for people not using ChatGPT or Claude). */

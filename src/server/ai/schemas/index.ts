@@ -82,3 +82,11 @@ export const miniMeChatOutput = z.object({
   }).nullable(),
 });
 export type MiniMeChatOutput = z.infer<typeof miniMeChatOutput>;
+
+/** Ask Mini Me: a first-person answer and the ids of the knowledge records it actually used. */
+export const askMiniMeOutput = z.object({
+  answer: z.string().max(1400),
+  usedIds: z.array(z.string().max(80)).max(10),
+  notKnown: z.string().max(300).nullable(),
+});
+export type AskMiniMeOutput = z.infer<typeof askMiniMeOutput>;

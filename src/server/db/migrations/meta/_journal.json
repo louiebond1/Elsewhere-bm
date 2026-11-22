@@ -148,6 +148,13 @@
       "when": 1794596682487,
       "tag": "0020_shortlist_reminder",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795312442633,
+      "tag": "0021_knowledge_category",
+      "breakpoints": true
     }
   ]
 }

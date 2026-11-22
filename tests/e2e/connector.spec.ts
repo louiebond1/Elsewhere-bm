@@ -130,10 +130,11 @@ test('Onboarding: welcome page, answer one yourself, your AI saves others straig
   await page.request.post('/mcp', { headers: { authorization: `Bearer ${t.access_token}` }, data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'save_onboarding_answers', arguments: { answers: [{ key: 'current_role', answer: 'Finance assistant' }, { key: 'top_skills', answer: 'Reconciliations and Excel' }] } } } });
   await page.unroute('https://chatgpt.com/**');
   // Straight into the profile: nothing waiting to approve, and it shows on the page and in the story.
-  await page.goto('/candidate/onboarding');
+  await page.goto('/candidate/onboarding?mode=train');
   await expect(page.getByText('Your AI wrote')).toHaveCount(0);
   await expect(page.getByText('From your ChatGPT').first()).toBeVisible();
   await page.getByText(/How your mini-me has grown/).click();
   await expect(page.getByText('ChatGPT added 2 things')).toBeVisible();
-  await expect(page.getByText('6%', { exact: true })).toBeVisible();
+  // 3 of 62 checklist questions.
+  await expect(page.getByText('5%', { exact: true })).toBeVisible();
 });

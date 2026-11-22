@@ -59,6 +59,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 /* Page entrance: content rises 12px and fades in. */
 @keyframes page-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .page-in { animation: page-in 240ms var(--ease-enter) both; }
+/* Full-screen pages (the Knowledge Globe) sit outside the entrance animation, which would trap fixed positioning. */
+.page-in:has(> .takeover) { animation: none; }
+/* The app's phone bar is replaced by the full-screen page's own navigation. */
+body:has(.takeover) nav.app-mobile-nav { display: none; }
 /* Sheets slide up and settle; the backdrop fades. */
 @keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes dialog-in { from { opacity: 0; transform: translateY(16px) scale(.98); } to { opacity: 1; transform: none; } }

@@ -111,7 +111,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
   const rest = items.slice(3);
   return (
     <>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
+      <nav aria-label="Main" className="app-mobile-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
         {main.map((i) => {
           const active = path === i.href || path.startsWith(i.href + '/');
           const Icon = ICONS[i.icon] ?? Home;

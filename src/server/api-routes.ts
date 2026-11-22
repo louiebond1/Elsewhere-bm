@@ -72,6 +72,19 @@ export const ROUTES: R[] = [
     const { chatTurn } = await import('./services/mini-me-chat');
     return chatTurn(base, b.text);
   } },
+  // ---------- Knowledge Globe (the candidate's own Mini Me only) ----------
+  { method: 'POST', path: 'knowledge/ask', types: ['candidate'], h: async ({ base, body, viewer }) => {
+    const { rateLimitHit } = await import('./auth');
+    if (await rateLimitHit(`ask:${viewer.actor.kind === 'user' ? viewer.actor.userId : 'x'}`, 'minime_ask', 60, 40)) throw new AppError('RATE_LIMITED', 429, 'That’s a lot of questions. Take a short break and try again.');
+    const b = parse(z.object({ question: z.string().trim().min(1, 'Ask a question first').max(500), mode: z.enum(['ask', 'interview']).default('ask') }), body);
+    const { askMiniMe } = await import('./services/knowledge');
+    return askMiniMe(base, b.question, b.mode);
+  } },
+  { method: 'POST', path: 'knowledge/review', types: ['candidate'], h: async ({ base, body }) => { const { reviewAnswer } = await import('./services/knowledge'); const b = parse(z.object({ verdict: z.enum(['good', 'inaccurate', 'incomplete']), usedIds: z.array(z.string().max(80)).max(10) }), body); return T(base, (c) => reviewAnswer(c, b.verdict, b.usedIds)); } },
+  { method: 'POST', path: 'knowledge/confirm', types: ['candidate'], h: async ({ base, body }) => { const { confirmKnowledge } = await import('./services/knowledge'); const b = parse(z.object({ id: z.string().min(1).max(80) }), body); return T(base, (c) => confirmKnowledge(c, b.id)); } },
+  { method: 'POST', path: 'knowledge/category', types: ['candidate'], h: async ({ base, body }) => { const { setKnowledgeCategory } = await import('./services/knowledge'); const b = parse(z.object({ id: z.string().min(1).max(80), category: z.string().max(20).nullable() }), body); return T(base, (c) => setKnowledgeCategory(c, b.id, b.category)); } },
+  { method: 'POST', path: 'knowledge/delete', types: ['candidate'], h: async ({ base, body }) => { const { deleteKnowledge } = await import('./services/knowledge'); const b = parse(z.object({ id: z.string().min(1).max(80) }), body); return T(base, (c) => deleteKnowledge(c, b.id)); } },
+  { method: 'POST', path: 'knowledge/add', types: ['candidate'], h: async ({ base, body }) => { const { addKnowledge } = await import('./services/knowledge'); const b = parse(z.object({ topic: z.string().trim().min(2, 'Add a short heading').max(200), answer: z.string().trim().min(1, 'Write something').max(1500), category: z.string().max(20).nullable().default(null) }), body); return T(base, (c) => addKnowledge(c, b.topic, b.answer, b.category)); } },
   { method: 'POST', path: 'onboarding/extra', types: ['candidate'], h: async ({ base, body }) => { const { addExtras } = await import('./services/onboarding'); const b = parse(z.object({ topic: z.string().trim().min(2, 'Add a short heading').max(200), answer: z.string().trim().min(1, 'Write something').max(1500) }), body); return T(base, (c) => addExtras(c, [b], 'self')); } },
   { method: 'POST', path: 'onboarding/approve', types: ['candidate'], h: async ({ base, body }) => { const { approveAnswers } = await import('./services/onboarding'); const b = parse(z.object({ keys: z.union([z.literal('all'), z.array(z.string().max(60)).max(60)]) }), body); return T(base, (c) => approveAnswers(c, b.keys)); } },
   { method: 'GET', path: 'ai/status', types: ['candidate'], h: async ({ base }) => { const c = readCtx(base); return { connected: await aiDrafts.connectedAi(c), ready: await aiDrafts.draftsWaiting(c) }; } },
