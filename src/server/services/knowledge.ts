@@ -118,6 +118,9 @@ export async function reviewAnswer(ctx: Ctx, verdict: 'good' | 'inaccurate' | 'i
 }
 
 const MAX_SENT = 40;
+const ASKS_MISSING = /\b(what|which)\b.*\b(missing|don[’']?t you know|do you not know|gaps?)\b/i;
+const ASKS_ABOUT_ME = /\b(tell me about (yourself|you|me|myself)|who are you|introduce yourself|describe yourself)\b/i;
+const ABOUT_ME_KEYS = ['current_role', 'current_duties', 'top_skills', 'career_goal', 'why_move'];
 const NOT_KNOWN = 'I don’t know that yet. Nothing I’ve been told covers it.';
 export type AskResult = { answer: string; usedIds: string[]; notKnown: string | null; live: boolean; basic: string | null };
 
@@ -132,6 +135,14 @@ export async function askMiniMe(base: BaseCtx, question: string, mode: 'ask' | '
   const candidateId = me(ctx);
   const items = await knowledgeItems(ctx);
   if (!items.length) return { answer: 'I don’t know anything about you yet. Add something, or connect your AI, and I’ll start learning.', usedIds: [], notKnown: 'Nothing saved yet.', live: false, basic: null };
+  // "What are you missing?" is answered from the real gaps, never by the AI.
+  if (ASKS_MISSING.test(q)) {
+    const v = await knowledgeView(ctx);
+    const empty = v.missingAreas.filter((m) => m.empty).map((m) => m.label);
+    const open = v.categories.flatMap((c) => c.unanswered);
+    const parts = [empty.length ? `I don’t know anything yet about: ${empty.join(', ')}.` : 'I know at least something in every area.', open.length ? `There are ${open.length} questions I still can’t answer, for example ${open.slice(0, 4).join(', ').toLowerCase()}.` : ''];
+    return { answer: parts.filter(Boolean).join(' '), usedIds: [], notKnown: null, live: false, basic: 'Worked out from what’s saved, not by the AI.' };
+  }
   const ranked = rankRecords(q, items.map((i) => ({ ...i, area: CATEGORY_LABEL[i.category] })));
   let basic: string | null = 'Basic mode: no AI wording, just what you saved.';
   if (aiMode() === 'live') {
@@ -152,6 +163,11 @@ export async function askMiniMe(base: BaseCtx, question: string, mode: 'ask' | '
       if (!(e instanceof AiFailure)) throw e;
       basic = e.code === 'daily_budget' || e.code === 'monthly_budget' || e.code === 'user_rate_limited' ? 'The AI limit is reached for now, so this is a basic answer: just what you saved.' : 'The AI isn’t available right now, so this is a basic answer: just what you saved.';
     }
+  }
+  // "Tell me about yourself": the basics, where they exist.
+  if (ASKS_ABOUT_ME.test(q)) {
+    const basics = ABOUT_ME_KEYS.map((k) => items.find((i) => i.id === k)).filter((x): x is (typeof items)[number] => !!x).slice(0, 3);
+    if (basics.length) return { answer: basics.map((p) => p.text).join('\n\n'), usedIds: basics.map((p) => p.id), notKnown: null, live: false, basic };
   }
   // Plain matching is crude, so only records sharing at least half the question's words count.
   const strong = ranked.filter((r) => r.coverage >= 0.5);

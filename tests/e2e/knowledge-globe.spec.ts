@@ -46,7 +46,7 @@ test('Mini Me globe: add a record (approved before saving), ask about it, see wh
 
   // Interview mode offers the same questions real interviews use.
   await page.getByRole('tab', { name: /Test It/ }).click();
-  await page.getByRole('button', { name: /Random interview question/ }).click();
+  await page.getByRole('button', { name: /Random question/ }).click();
   await expect(page.getByLabel('Interview question')).not.toHaveValue('');
 });
 

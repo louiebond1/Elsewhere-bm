@@ -52,7 +52,9 @@ describe('globe geometry', () => {
     expect(knowledgePosition('x', 'nope')).toEqual(knowledgePosition('x', 'other'));
   });
   it('decorative particles are separate and plentiful; arcs join two dots', () => {
-    expect(decorativeParticles(2600, 700).count).toBe(3300);
+    const d = decorativeParticles(2600, 700);
+    expect(d.count).toBeGreaterThan(2600 * 0.9 + 700);
+    expect(d.count).toBeLessThan(2600 * 1.1 + 700);
     const a = knowledgePosition('a', 'work'), b = knowledgePosition('b', 'goals');
     const line = arc(a, b);
     expect(line[0].map((x, i) => x / 1.005 - a[i]).every((d) => Math.abs(d) < 1e-6)).toBe(true);

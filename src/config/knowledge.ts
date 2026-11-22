@@ -42,4 +42,4 @@ export function categoryOf(key: string, sectionKey: string | null, texts: string
 }
 
 /** Starter questions for "Ask Mini Me": general, so they never assume anything about the person. */
-export const ASK_STARTERS = ['What am I best at?', 'Why do I want to move?', 'What do I want next?', 'How do I like to work?'];
+export const ASK_STARTERS = ['Tell me about yourself', 'What are your biggest strengths?', 'What do you know about my career?', 'What information are you missing?'];

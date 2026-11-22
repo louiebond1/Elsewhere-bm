@@ -14,6 +14,14 @@ export function words(s: string) {
   return [...new Set(s.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9£%]+/g, ' ').split(' ').filter((w) => w.length > 2 && !STOP.has(w)).map(stem))];
 }
 
+/** A few everyday synonyms (already stemmed), so "strengths" finds "best at" and "leadership" finds "led a team". */
+const SYNONYMS: Record<string, string[]> = {
+  strength: ['best', 'skill', 'good'], weakness: ['grow', 'better', 'improv'], career: ['job', 'role', 'work'],
+  leadership: ['lead', 'led', 'manag', 'team'], lead: ['led', 'manag'], manag: ['lead', 'led', 'team'],
+  passionat: ['lov', 'enjoy'], passion: ['lov', 'enjoy'], challeng: ['problem', 'pressur', 'difficult'], hobby: ['enjoy', 'weekend'],
+  goal: ['want', 'ambition', 'year'], ambition: ['goal', 'want'], qualification: ['aat', 'degre', 'study'], educat: ['qualification', 'study', 'degre'],
+};
+
 export type Searchable = { id: string; title: string; text: string; question?: string | null; area?: string };
 
 /**
@@ -25,10 +33,13 @@ export function rankRecords<T extends Searchable>(question: string, records: T[]
   if (!q.length) return [] as { record: T; score: number; coverage: number }[];
   // Rarer words count for more, so "the" style words that slipped through don't dominate.
   const docs = records.map((r) => ({ r, head: new Set(words(`${r.title} ${r.question ?? ''} ${r.area ?? ''}`)), body: new Set(words(r.text)) }));
-  const df = new Map(q.map((w) => [w, docs.filter((d) => d.head.has(w) || d.body.has(w)).length]));
+  const alts = (w: string) => [w, ...(SYNONYMS[w] ?? [])];
+  const inHead = (d: (typeof docs)[number], w: string) => alts(w).some((a) => d.head.has(a));
+  const inBody = (d: (typeof docs)[number], w: string) => alts(w).some((a) => d.body.has(a));
+  const df = new Map(q.map((w) => [w, docs.filter((d) => inHead(d, w) || inBody(d, w)).length]));
   const idf = (w: string) => Math.log(1 + records.length / (1 + (df.get(w) ?? 0)));
   return docs
-    .map((d) => ({ record: d.r, score: q.reduce((a, w) => a + (d.head.has(w) ? 2 : 0) * idf(w) + (d.body.has(w) ? 1 : 0) * idf(w), 0), coverage: q.filter((w) => d.head.has(w) || d.body.has(w)).length / q.length }))
+    .map((d) => ({ record: d.r, score: q.reduce((a, w) => a + (inHead(d, w) ? 2 : 0) * idf(w) + (inBody(d, w) ? 1 : 0) * idf(w), 0), coverage: q.filter((w) => inHead(d, w) || inBody(d, w)).length / q.length }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score);
 }

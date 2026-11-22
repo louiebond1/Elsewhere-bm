@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Orbit, Library, GraduationCap, Settings, ArrowLeft, ArrowUp, Search, Shuffle, Plus, Check, X } from 'lucide-react';
+import { Orbit, Library, GraduationCap, Settings, ArrowLeft, Search, Shuffle, Plus, Check, X, User, Briefcase, Heart, Wrench, Target, Leaf, Ellipsis, MessageCircle, Mic, Send, Database, LayoutGrid, RefreshCw } from 'lucide-react';
 import { useCommand, type ApiError } from '../client';
 import { cx } from '../ui';
 import { KnowledgeGlobe, useReducedMotion } from './globe';
@@ -18,12 +18,15 @@ const sourceOf = (i: Item) => i.source === 'self'
   ? (i.provider ? `Saved by ${i.provider === 'Elsewhere' ? 'the Elsewhere coach' : i.provider}, confirmed by you` : 'Written by you')
   : `Saved by ${i.provider === 'Elsewhere' ? 'the Elsewhere coach' : (i.provider ?? 'your AI')}`;
 
+/** One quiet line icon per area, as in the reference. */
+const AREA_ICON: Record<string, typeof User> = { personal: User, work: Briefcase, values: Heart, education: GraduationCap, skills: Wrench, goals: Target, interests: Leaf, other: Ellipsis };
 const MUTED = 'text-[#8E8E93]';
 const FAINT = 'text-[#5E5E63]';
 const CARD = 'rounded-[22px] border border-white/[0.08] bg-white/[0.035]';
 const BTN = 'press inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-medium transition-colors disabled:opacity-40';
 const BTN_PRIMARY = cx(BTN, 'bg-white text-black hover:bg-white/90');
 const BTN_QUIET = cx(BTN, 'bg-white/[0.08] text-white hover:bg-white/[0.14]');
+const CHIP = 'rounded-full bg-white/[0.07] px-4 py-2 text-[14px] text-white/85 transition-colors hover:bg-white/[0.12] hover:text-white disabled:opacity-40';
 const FIELD = 'w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[15px] text-white placeholder:text-[#5E5E63] focus:border-white/30 focus:outline-none';
 
 function Err({ error }: { error: ApiError | null }) {
@@ -68,11 +71,11 @@ export function MiniMeExperience({ view, connected, waiting, interviewQuestions,
       <div className="mx-auto flex min-h-full max-w-[1560px] flex-col lg:flex-row">
         <Rail screen={screen} />
         <main className="min-w-0 flex-1 px-4 pb-16 pt-4 sm:px-6 lg:px-10 lg:pt-10">
-          <header>
-            <h1 className="font-display text-[34px] font-semibold leading-none tracking-[-0.035em] text-white lg:text-[44px]">{screen === 'knowledge' ? 'Knowledge' : 'Mini Me'}</h1>
-            <p className={cx('mt-3 max-w-[52ch] text-[15px] lg:text-[17px]', MUTED)}>{screen === 'knowledge' ? 'Everything your Mini Me knows. Check it, correct it, or remove it.' : 'An AI version of you, trained on your life, thoughts, and experiences.'}</p>
+          <header className={screen === 'globe' ? 'text-center' : ''}>
+            <h1 className="font-display text-[34px] font-semibold leading-none tracking-[-0.035em] text-white lg:text-[48px]">{screen === 'knowledge' ? 'Knowledge' : 'Mini Me'}</h1>
+            <p className={cx('mt-3 text-[15px] lg:text-[18px]', screen === 'globe' && 'mx-auto max-w-[52ch]', MUTED)}>{screen === 'knowledge' ? 'Everything your Mini Me knows. Check it, correct it, or remove it.' : 'An AI version of you, trained on your life, thoughts, and experiences.'}</p>
             {(waiting.checkInDrafts > 0 || waiting.toCheck > 0) && (
-              <div className="mt-4 flex flex-wrap gap-2 text-[14px]">
+              <div className={cx('mt-4 flex flex-wrap gap-2 text-[14px]', screen === 'globe' && 'justify-center')}>
                 {waiting.checkInDrafts > 0 && <Link href="/candidate/ai" className="rounded-full border border-white/15 px-4 py-1.5 text-white no-underline hover:border-white/30">Your AI also drafted {waiting.checkInDrafts} answer{waiting.checkInDrafts > 1 ? 's' : ''} to a check-in question →</Link>}
                 {waiting.toCheck > 0 && <Link href="/candidate/onboarding?mode=train" className="rounded-full border border-white/15 px-4 py-1.5 text-white no-underline hover:border-white/30">Your AI wrote {waiting.toCheck} new thing{waiting.toCheck > 1 ? 's' : ''} to check →</Link>}
               </div>
@@ -85,19 +88,21 @@ export function MiniMeExperience({ view, connected, waiting, interviewQuestions,
               <div className="lg:sticky lg:top-6 lg:self-start">{panel.kind === 'item' || panel.kind === 'add' ? side : <InsideSummary view={view} openItem={openItem} />}</div>
             </div>
           ) : (
-            <div className="mt-4 grid gap-6 lg:mt-2 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
-              <section aria-label="Your Knowledge Globe" className="relative lg:sticky lg:top-4 lg:self-start">
-                <div className="relative mx-auto h-[min(100vw,560px)] w-full lg:h-[max(520px,calc(100vh-190px))]">
-                  {view.total === 0 && <p className={cx('pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 text-center text-[15px]', MUTED)}>Nothing here yet. What your Mini Me learns appears as points of light.</p>}
-                  <KnowledgeGlobe dots={dots} selectedId={selectedId} focusCategory={focusCategory} litIds={litIds} reducedMotion={reducedMotion} onSelect={openItem} callout={callout} />
-                </div>
-                <SummaryCard view={view} connected={connected} />
-              </section>
-              <div className="space-y-4 lg:pt-4">
-                {side}
+            <>
+              <div className="mt-2 grid items-center gap-6 lg:grid-cols-[260px_minmax(0,1fr)_320px] xl:grid-cols-[280px_minmax(0,1fr)_340px]">
+                <section aria-label="Your Knowledge Globe" className="relative lg:order-2">
+                  <div className="relative mx-auto h-[min(100vw,520px)] w-full lg:h-[min(60vh,600px)] lg:min-h-[440px]">
+                    {view.total === 0 && <p className={cx('pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 text-center text-[15px]', MUTED)}>Nothing here yet. What your Mini Me learns appears as points of light.</p>}
+                    <KnowledgeGlobe dots={dots} selectedId={selectedId} focusCategory={focusCategory} litIds={litIds} reducedMotion={reducedMotion} onSelect={openItem} callout={callout} />
+                  </div>
+                </section>
+                <div className="lg:order-1"><SummaryCard view={view} connected={connected} /></div>
+                <div className="lg:order-3">{side}</div>
+              </div>
+              <div className="mx-auto mt-4 max-w-[1180px]">
                 <AskPanel interviewQuestions={interviewQuestions} starters={starters} byId={byId} label={label} onAnswer={showAnswer} openItem={openItem} onAdd={(topic) => setPanel((p) => ({ kind: 'add', topic, category: null, from: p }))} />
               </div>
-            </div>
+            </>
           )}
         </main>
       </div>
@@ -130,15 +135,16 @@ function Rail({ screen }: { screen: 'globe' | 'knowledge' }) {
 }
 
 function SummaryCard({ view, connected }: { view: View; connected: string | null }) {
+  const row = 'flex items-center gap-3 text-[15px] text-white/90';
   return (
-    <div className={cx(CARD, 'mt-4 grid grid-cols-2 gap-3 p-4 bg-black/60 backdrop-blur lg:absolute lg:bottom-6 lg:left-0 lg:mt-0 lg:w-[300px] lg:grid-cols-1 lg:gap-4 lg:p-5')}>
-      <p className={cx('col-span-2 text-[12px] uppercase tracking-[0.14em] lg:col-span-1', MUTED)}>Your Knowledge Globe</p>
-      <p><span className="tnum block font-display text-[26px] font-semibold leading-none lg:inline lg:text-[30px]">{view.total}</span> <span className={cx('text-[13px] lg:text-[14px]', MUTED)}>piece{view.total === 1 ? '' : 's'} of information</span></p>
-      <p><span className="tnum block font-display text-[26px] font-semibold leading-none lg:inline lg:text-[30px]">{view.areas}</span> <span className={cx('text-[13px] lg:text-[14px]', MUTED)}>of {view.categories.length} key areas</span></p>
-      <p className="col-span-2 text-[13px] leading-snug lg:col-span-1 lg:text-[14px]">
-        {connected ? <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" />Learning from your {connected}</> : <Link href="/candidate/onboarding?mode=train&ai=1" className={cx('no-underline hover:text-white', MUTED)}>Not learning yet. Connect your AI</Link>}
-        {view.lastUpdatedAt && <span className={cx('block', FAINT)}>Last updated {day(view.lastUpdatedAt)}</span>}
-      </p>
+    <div className={cx(CARD, 'p-5 lg:p-6')}>
+      <h2 className="font-display text-[19px] font-semibold tracking-[-0.02em] text-white">Your Knowledge Globe</h2>
+      <ul className="mt-4 space-y-3">
+        <li className={row}><Database aria-hidden size={19} strokeWidth={1.5} className={MUTED} /><span><span className="tnum font-semibold text-white">{view.total.toLocaleString('en-GB')}</span> piece{view.total === 1 ? '' : 's'} of information</span></li>
+        <li className={row}><LayoutGrid aria-hidden size={19} strokeWidth={1.5} className={MUTED} /><span><span className="tnum font-semibold text-white">{view.areas}</span> of {view.categories.length} key areas</span></li>
+        <li className={row}><RefreshCw aria-hidden size={19} strokeWidth={1.5} className={MUTED} />{connected ? <span>Learning from your {connected}</span> : <Link href="/candidate/onboarding?mode=train&ai=1" className="text-white/90 no-underline hover:text-white">Not learning yet. Connect your AI</Link>}</li>
+      </ul>
+      {view.lastUpdatedAt && <p className={cx('mt-4 text-[13px]', FAINT)}>Last updated {day(view.lastUpdatedAt)}</p>}
     </div>
   );
 }
@@ -164,17 +170,21 @@ function SidePanel({ panel, setPanel, view, byId, label, openItem, openCategory 
     );
   }
   return (
-    <div className={cx(CARD, 'p-5')}>
-      <h2 className="font-display text-[20px] font-semibold tracking-[-0.02em] text-white">What’s inside</h2>
-      <ul className="mt-2 divide-y divide-white/[0.06]">
-        {view.categories.map((c) => (
-          <li key={c.key}>
-            <button type="button" onClick={() => openCategory(c.key)} className="group flex w-full items-center justify-between gap-3 py-[7px] text-left">
-              <span className={cx('text-[15px]', c.count ? 'text-white' : FAINT)}>{c.label}</span>
-              <span className={cx('tnum text-[15px] group-hover:text-white', c.count ? MUTED : FAINT)}>{c.count}</span>
-            </button>
-          </li>
-        ))}
+    <div className="lg:px-1">
+      <h2 className="font-display text-[24px] font-semibold tracking-[-0.025em] text-white">What’s inside</h2>
+      <ul className="mt-3 space-y-0.5">
+        {view.categories.map((c) => {
+          const Icon = AREA_ICON[c.key] ?? Ellipsis;
+          return (
+            <li key={c.key}>
+              <button type="button" onClick={() => openCategory(c.key)} className="group flex w-full items-center gap-3 rounded-xl px-3 py-[9px] text-left transition-colors hover:bg-white/[0.07]">
+                <Icon aria-hidden size={18} strokeWidth={1.5} className={c.count ? 'text-white/85' : FAINT} />
+                <span className={cx('flex-1 text-[15px]', c.count ? 'text-white/90' : FAINT)}>{c.label}</span>
+                <span className={cx('tnum text-[15px]', c.count ? 'text-white/85' : FAINT)}>{c.count.toLocaleString('en-GB')}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <InsideFooter view={view} openItem={openItem} />
     </div>
@@ -361,6 +371,7 @@ function AskPanel({ interviewQuestions, starters, byId, label, onAnswer, openIte
     onAnswer(r.usedIds);
     requestAnimationFrame(() => answerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
   };
+  const switchTab = (t: 'ask' | 'interview') => { setTab(t); setAnswer(null); setVerdict(null); onAnswer([]); };
   const random = () => {
     const pool = interviewQuestions.filter((x) => x !== q);
     const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -374,21 +385,30 @@ function AskPanel({ interviewQuestions, starters, byId, label, onAnswer, openIte
   const used = (answer?.usedIds ?? []).map((id) => byId.get(id)).filter((x): x is Item => !!x);
 
   return (
-    <section aria-label="Ask Mini Me" className={cx(CARD, 'p-5')}>
-      <div role="tablist" className="flex gap-1 rounded-full bg-white/[0.05] p-1">
-        {(['ask', 'interview'] as const).map((t) => (
-          <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => { setTab(t); setAnswer(null); setVerdict(null); onAnswer([]); }} className={cx('flex-1 whitespace-nowrap rounded-full px-2 py-1.5 text-[13px] transition-colors', tab === t ? 'bg-white text-black' : cx(MUTED, 'hover:text-white'))}>{t === 'ask' ? 'Ask Mini Me' : 'Test It (Interview Mode)'}</button>
-        ))}
+    <section aria-label="Ask Mini Me" className={cx(CARD, 'rounded-[28px] p-4 sm:p-5 lg:p-6')}>
+      <div role="tablist" className="inline-flex max-w-full gap-1 rounded-2xl border border-white/[0.08] p-1">
+        {(['ask', 'interview'] as const).map((t) => {
+          const Icon = t === 'ask' ? MessageCircle : Mic;
+          return <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => switchTab(t)} className={cx('flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[14px] transition-colors sm:px-4 sm:text-[15px]', tab === t ? 'bg-white/[0.1] text-white' : cx(MUTED, 'hover:text-white'))}><Icon aria-hidden size={17} strokeWidth={1.6} />{t === 'ask' ? 'Ask Mini Me' : 'Test It (Interview Mode)'}</button>;
+        })}
       </div>
       <form className="relative mt-4" onSubmit={(e) => { e.preventDefault(); void ask(q); }}>
         <label htmlFor="ask-input" className="sr-only">{tab === 'ask' ? 'Ask your Mini Me' : 'Interview question'}</label>
-        <input id="ask-input" value={q} maxLength={500} onChange={(e) => setQ(e.target.value)} placeholder={tab === 'ask' ? 'Ask me anything…' : 'Type an interview question…'} className={cx(FIELD, 'pr-12')} />
-        <button type="submit" aria-label="Ask" disabled={busy || !q.trim()} className="press absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black disabled:opacity-30"><ArrowUp aria-hidden size={18} /></button>
+        <input id="ask-input" value={q} maxLength={500} onChange={(e) => setQ(e.target.value)} placeholder={tab === 'ask' ? 'Ask me anything…' : 'Type an interview question…'} className="w-full rounded-[22px] border border-white/15 bg-white/[0.03] py-4 pl-5 pr-16 text-[16px] text-white placeholder:text-[#6E6E73] focus:border-white/35 focus:outline-none lg:text-[17px]" />
+        <button type="submit" aria-label="Ask" disabled={busy || !q.trim()} className="press absolute right-2.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-black disabled:opacity-40"><Send aria-hidden size={17} /></button>
       </form>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {tab === 'ask'
-          ? starters.map((s) => <button key={s} type="button" disabled={busy} onClick={() => void ask(s)} className="rounded-full border border-white/10 px-3 py-1 text-[13px] text-white/80 hover:border-white/25 hover:text-white">{s}</button>)
-          : <button type="button" onClick={random} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1 text-[13px] text-white/80 hover:border-white/25 hover:text-white"><Shuffle aria-hidden size={13} /> Random interview question</button>}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {tab === 'ask' ? (
+          <>
+            {starters.map((s) => <button key={s} type="button" disabled={busy} onClick={() => void ask(s)} className={CHIP}>“{s}”</button>)}
+            <button type="button" onClick={() => switchTab('interview')} className={cx('flex items-center gap-2 px-2 text-[14px] hover:text-white', MUTED)}><Briefcase aria-hidden size={16} strokeWidth={1.6} /> Try an interview question</button>
+          </>
+        ) : (
+          <>
+            {interviewQuestions.slice(0, 3).map((s) => <button key={s} type="button" disabled={busy} onClick={() => void ask(s)} className={cx(CHIP, 'max-w-full truncate')}>“{s}”</button>)}
+            <button type="button" onClick={random} className={cx(CHIP, 'flex items-center gap-1.5')}><Shuffle aria-hidden size={14} /> Random question</button>
+          </>
+        )}
       </div>
       <Err error={error} />
       {busy && <p className={cx('mt-4 text-[14px]', MUTED)} aria-live="polite">Thinking…</p>}

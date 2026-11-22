@@ -12,7 +12,7 @@ import type { GlobeProps } from './types';
  * in screen space on the knowledge dots only.
  */
 const CAMERA_Z = 4.0;
-const SURFACE = 2600, INNER = 700;
+const SURFACE = 4000, INNER = 600;
 
 const VERT = /* glsl */ `
 attribute float aSize; attribute float aBright; attribute float aState; attribute float aPhase;
@@ -68,7 +68,7 @@ function Scene({ dots, selectedId, focusCategory, litIds, reducedMotion, shared,
   const dotGeo = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions.flat()), 3));
-    g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(dots.length).fill(6.5), 1));
+    g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(dots.length).fill(7.5), 1));
     g.setAttribute('aBright', new THREE.BufferAttribute(new Float32Array(dots.length).fill(0.95), 1));
     g.setAttribute('aState', new THREE.BufferAttribute(new Float32Array(dots.length).fill(1), 1));
     g.setAttribute('aPhase', new THREE.BufferAttribute(Float32Array.from(dots.map((_, i) => i * 0.7)), 1));
@@ -87,7 +87,7 @@ function Scene({ dots, selectedId, focusCategory, litIds, reducedMotion, shared,
       st.setX(i, s);
     });
     st.needsUpdate = true;
-    decorMat.uniforms.uDim.value = lit.size || focusCategory || selectedId ? 0.55 : 1;
+    decorMat.uniforms.uDim.value = lit.size || focusCategory ? 0.5 : selectedId ? 0.8 : 1;
   }, [dots, dotGeo, selectedId, focusCategory, lit, decorMat]);
 
   // Connections between the dots an answer used, in the order it used them.
@@ -105,9 +105,9 @@ function Scene({ dots, selectedId, focusCategory, litIds, reducedMotion, shared,
   const lineObj = useMemo(() => (lines ? new THREE.Line(lines.geo, lineMat) : null), [lines, lineMat]);
 
   const rings = useMemo(() => [
-    { r: 1.3, tilt: [1.2, 0.18, 0.14] as Vec3, speed: 0.03, opacity: 0.18 },
-    { r: 1.48, tilt: [1.38, -0.42, 0] as Vec3, speed: -0.02, opacity: 0.11 },
-    { r: 1.16, tilt: [0.42, 0.85, 0.2] as Vec3, speed: 0.025, opacity: 0.08 },
+    { r: 1.3, tilt: [1.2, 0.18, 0.14] as Vec3, speed: 0.03, opacity: 0.32 },
+    { r: 1.48, tilt: [1.38, -0.42, 0] as Vec3, speed: -0.02, opacity: 0.2 },
+    { r: 1.16, tilt: [0.42, 0.85, 0.2] as Vec3, speed: 0.025, opacity: 0.12 },
   ].map((ring) => {
     const g = new THREE.BufferGeometry().setFromPoints(Array.from({ length: 257 }, (_, i) => new THREE.Vector3(Math.cos((i / 256) * Math.PI * 2) * ring.r, 0, Math.sin((i / 256) * Math.PI * 2) * ring.r)));
     return { ...ring, obj: new THREE.LineLoop(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: ring.opacity, depthWrite: false })) };

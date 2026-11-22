@@ -37,28 +37,38 @@ export function knowledgePosition(id: string, area: string): Vec3 {
   return norm([c[0] * k + (t1[0] * Math.cos(a) + t2[0] * Math.sin(a)) * s, c[1] * k + (t1[1] * Math.cos(a) + t2[1] * Math.sin(a)) * s, c[2] * k + (t1[2] * Math.cos(a) + t2[2] * Math.sin(a)) * s]);
 }
 
-/** Decorative particles: an even Fibonacci sphere with a little jitter, plus a faint inner cloud for depth. */
+/**
+ * Decorative particles: neat rows of latitude (the look of the reference), about `surface` of them, with slight
+ * brightness and size variation, plus a faint inner cloud for depth. They carry no meaning.
+ */
 export function decorativeParticles(surface: number, inner: number) {
-  const pos = new Float32Array((surface + inner) * 3);
-  const bright = new Float32Array(surface + inner);
-  const size = new Float32Array(surface + inner);
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < surface; i++) {
-    const y = 1 - ((i + 0.5) / surface) * 2, r = Math.sqrt(1 - y * y), th = golden * i;
-    const j = 1 + (hash01(`d${i}`, 3) - 0.5) * 0.012;
-    pos.set([Math.cos(th) * r * j, y * j, Math.sin(th) * r * j], i * 3);
-    bright[i] = 0.42 + 0.58 * hash01(`d${i}`, 4) ** 2;
-    size[i] = 2.1 + 1.9 * hash01(`d${i}`, 5);
+  // Rows so that spacing along a row matches spacing between rows: n ≈ 4·rows²/π.
+  const rows = Math.max(8, Math.round(Math.sqrt((surface * Math.PI) / 4)));
+  const ring: [number, number, number][] = [];
+  for (let r = 0; r < rows; r++) {
+    const lat = -Math.PI / 2 + ((r + 0.5) / rows) * Math.PI;
+    const per = Math.max(1, Math.round(rows * 2 * Math.cos(lat)));
+    const offset = hash01(`row${r}`, 11) * Math.PI * 2;
+    for (let k = 0; k < per; k++) { const lon = offset + (k / per) * Math.PI * 2; ring.push([Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)]); }
   }
-  for (let n = 0; n < inner; n++) {
-    const i = surface + n;
-    const u = hash01(`i${n}`, 6) * 2 - 1, th = 2 * Math.PI * hash01(`i${n}`, 7), rr = 0.55 + 0.4 * Math.cbrt(hash01(`i${n}`, 8));
+  const n = ring.length;
+  const pos = new Float32Array((n + inner) * 3);
+  const bright = new Float32Array(n + inner);
+  const size = new Float32Array(n + inner);
+  for (let i = 0; i < n; i++) {
+    pos.set(ring[i], i * 3);
+    bright[i] = 0.62 + 0.38 * hash01(`d${i}`, 4) ** 1.5;
+    size[i] = 2.9 + 1.6 * hash01(`d${i}`, 5);
+  }
+  for (let m = 0; m < inner; m++) {
+    const i = n + m;
+    const u = hash01(`i${m}`, 6) * 2 - 1, th = 2 * Math.PI * hash01(`i${m}`, 7), rr = 0.55 + 0.4 * Math.cbrt(hash01(`i${m}`, 8));
     const r = Math.sqrt(1 - u * u);
     pos.set([Math.cos(th) * r * rr, u * rr, Math.sin(th) * r * rr], i * 3);
-    bright[i] = 0.16 + 0.24 * hash01(`i${n}`, 9);
-    size[i] = 1.5 + 1.0 * hash01(`i${n}`, 10);
+    bright[i] = 0.12 + 0.18 * hash01(`i${m}`, 9);
+    size[i] = 1.4 + 0.9 * hash01(`i${m}`, 10);
   }
-  return { pos, bright, size, count: surface + inner };
+  return { pos, bright, size, count: n + inner };
 }
 
 /** Points along the great circle from a to b, lifted off the surface in the middle: a connection line. */
