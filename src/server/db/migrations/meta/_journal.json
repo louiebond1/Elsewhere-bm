@@ -155,6 +155,13 @@
       "when": 1795312442633,
       "tag": "0021_knowledge_category",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795679464534,
+      "tag": "0022_interview_sweep_job",
+      "breakpoints": true
     }
   ]
 }

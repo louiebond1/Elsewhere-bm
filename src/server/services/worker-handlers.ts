@@ -3,14 +3,13 @@ import { PROMPT_VERSION } from '../ai/prompts';
 import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
-import { enqueue } from './jobs';
 import { jobs, files, checkInQuestions, checkInAnswers, conversations, candidates, evidenceItems, introductions, contracts, roles } from '../db/schema';
 import { runAi, AiFailure } from '../ai';
 import { validateExtraction } from '../ai/validate';
 import { extractPdfText, extractDocxText, ExtractionError } from '../lib/extract';
 import { storage } from './storage';
 import { withTx, getActiveDataset, type BaseCtx } from './context';
-import { claimJob } from './jobs';
+import { claimJob, enqueue } from './jobs';
 import { purgeCandidate } from './candidates';
 import { notify } from './audit';
 import { releaseHoldIfUnneeded } from './roles';
@@ -22,8 +21,28 @@ import { aiRuns } from '../db/schema';
 import { handleSendEmail } from '../email';
 import { reportError } from '../monitoring';
 import { handleSimulateJob } from './simulation';
+import { drainBudgetExhausted, drainRemainingMs, runInDrain } from './drain-state';
 
 type JobRow = NonNullable<Awaited<ReturnType<typeof claimJob>>>;
+
+/** One live model call can be slow. Don't start one that would outlive this invocation. */
+const ASSESS_MIN_SLICE_MS = 12_000;
+
+/**
+ * Inline drain budget. The API route caps the whole invocation at 60s, which also
+ * covers work done before the response. Hobby's platform ceiling is 300s.
+ */
+export const INLINE_DRAIN_BUDGET_MS = 20_000;
+/** Cron drain budget. Under the 2-minute job lease and the 60s route cap. */
+export const CRON_DRAIN_BUDGET_MS = 50_000;
+
+/** The invocation is out of time. The job returns to the queue and does not spend a retry. */
+export class JobDeferred extends Error {
+  constructor() {
+    super('deferred');
+    this.name = 'JobDeferred';
+  }
+}
 
 async function handleExtractCv(base: BaseCtx, job: JobRow) {
   const [f] = await db().select().from(files).where(eq(files.id, job.subject_id!));
@@ -109,6 +128,9 @@ async function handleAssessRole(base: BaseCtx, job: JobRow) {
   let applied = 0;
   let attempted = 0;
   for (const candidateId of pending) {
+    // In a time-limited drain (Vercel), hand the job back rather than start a call that would be cut off.
+    // Pairs already assessed stay assessed, so the next run picks up where this one stopped.
+    if (drainRemainingMs() < ASSESS_MIN_SLICE_MS) throw new JobDeferred();
     const prepared = await assessmentInput({ tx: db() }, roleId, candidateId);
     if (!prepared || !prepared.input.evidence.length) continue;
     if (attempted >= 40) break;
@@ -127,6 +149,22 @@ async function handleAssessRole(base: BaseCtx, job: JobRow) {
   }
   if (pending.length > 40 && applied > 0) await enqueue({ tx: db(), datasetId: base.datasetId }, 'assess_match', roleId, `assess-next:${job.id}`);
   if (failures && failures === attempted) throw new AiFailure('assessment_failed', 'No assessments could be completed.', true);
+}
+
+/**
+ * Make sure everyone eligible for every live job has a current interview. Interviews also start on their own
+ * when something changes; this catches anything missed (e.g. jobs open before a deploy).
+ */
+async function handleInterviewSweep(base: BaseCtx) {
+  const { requestSimulations } = await import('./simulation');
+  const { recomputeRole } = await import('./matching');
+  const open = await db().select({ id: roles.id }).from(roles).where(and(eq(roles.datasetId, base.datasetId), eq(roles.status, 'open')));
+  let queued = 0;
+  for (const r of open) {
+    await withTx(base, (ctx) => recomputeRole(ctx, r.id));
+    if ((await withTx(base, (ctx) => requestSimulations(ctx, r.id))).queued) queued++;
+  }
+  if (queued) console.log(`[jobs] interview sweep: ${queued} of ${open.length} live jobs had people to interview`);
 }
 
 /** Live developmental feedback, stored separately from the immutable approved profile content. */
@@ -167,23 +205,28 @@ export async function runJob(base: BaseCtx, job: JobRow) {
       await enqueue({ tx: db(), datasetId: base.datasetId }, 'quality_check', job.subject_id!, `quality:${job.subject_id}:${run?.n ?? 0}`);
       return;
     }
+    case 'interview_sweep': return handleInterviewSweep(base);
     case 'reconcile_wallet': return withTx(base, (ctx) => reconcileWallet(ctx, job.subject_id!).then(() => undefined));
     default: return;
   }
 }
 
-/** Claims and runs one job. Returns false when the queue is empty. */
-export async function processOne(workerId: string): Promise<boolean> {
+/** Claims and runs one job. `empty` means the queue has nothing runnable. */
+export async function processOne(workerId: string): Promise<'ran' | 'empty' | 'deferred'> {
   const ds = await getActiveDataset();
-  if (!ds || ds.maintenance) return false;
+  if (!ds || ds.maintenance) return 'empty';
   const job = await claimJob(db(), workerId, ds.id);
-  if (!job) return false;
+  if (!job) return 'empty';
   const base: BaseCtx = { datasetId: ds.id, generation: ds.generation, now: ds.businessNow ?? new Date(), actor: { kind: 'system', label: 'worker' } };
   const heartbeat=setInterval(()=>{void db().update(jobs).set({leaseExpiresAt:new Date(Date.now()+120000)}).where(and(eq(jobs.id,job.id),eq(jobs.lockedBy,workerId),eq(jobs.status,'running'))).catch(()=>{});},30000);
   try {
     await runJob(base, job);
     await db().update(jobs).set({ status: 'succeeded', lockedBy: null, leaseExpiresAt: null, errorCode: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
   } catch (e) {
+    if (e instanceof JobDeferred) {
+      await db().update(jobs).set({ status: 'queued', availableAt: new Date(), lockedBy: null, leaseExpiresAt: null, attempts: Math.max(0, job.attempts - 1), errorCode: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
+      return 'deferred';
+    }
     const code = e instanceof AiFailure ? e.code : e instanceof ExtractionError ? e.code : 'job_error';
     const retryable = e instanceof AiFailure ? e.retryable : !(e instanceof ExtractionError);
     const again = retryable && job.attempts < 3;
@@ -191,11 +234,57 @@ export async function processOne(workerId: string): Promise<boolean> {
     if (process.env.LOG_LEVEL === 'debug') console.error(`[worker] job ${job.kind} failed: ${code}`);
     if (!again) reportError(new Error(`job_failed:${job.kind}:${code}`), { where: 'job', kind: job.kind, code });
   } finally {clearInterval(heartbeat);}
+  return 'ran';
+}
+
+/**
+ * The scheduled housekeeping, queued at most once per period (the dedupe key does that), so the
+ * long-lived worker and the serverless drains can both call it freely:
+ * every minute, introduction/contract expiry and the shortlist tick; every 10 minutes, the interview sweep.
+ */
+export async function tickExpiry(): Promise<boolean> {
+  const ds = await getActiveDataset();
+  if (!ds) return false;
+  const minute = Math.floor(Date.now() / 60_000);
+  await enqueue({ tx: db(), datasetId: ds.id }, 'expire_intros', null, `expire:${minute}`);
+  await enqueue({ tx: db(), datasetId: ds.id }, 'shortlist_tick', null, `shortlists:${minute}`);
+  await enqueue({ tx: db(), datasetId: ds.id }, 'interview_sweep', null, `sweep:${Math.floor(Date.now() / 600_000)}`);
   return true;
+}
+
+export type DrainResult = {
+  processed: number;
+  deferred: boolean;
+  empty: boolean;
+  timedOut: boolean;
+  expiryTicked: boolean;
+};
+
+/**
+ * Runs the expiry tick (optional) and then jobs until the queue is empty, `max` is hit,
+ * or the time budget runs out. An infinite budget never stops early (local worker, tests).
+ */
+export async function drainQueue(opts: { budgetMs?: number; max?: number; tickExpiry?: boolean; workerId?: string } = {}): Promise<DrainResult> {
+  const budgetMs = opts.budgetMs ?? Number.POSITIVE_INFINITY;
+  const max = opts.max ?? 50;
+  const deadline = Date.now() + budgetMs;
+  const workerId = opts.workerId ?? `inline-${randomUUID().slice(0, 8)}`;
+  return runInDrain(deadline, async () => {
+    let expiryTicked = false;
+    if (opts.tickExpiry) expiryTicked = await tickExpiry();
+    let processed = 0;
+    for (let i = 0; i < max; i++) {
+      if (drainBudgetExhausted()) return { processed, deferred: false, empty: false, timedOut: true, expiryTicked };
+      const outcome = await processOne(workerId);
+      if (outcome === 'empty') return { processed, deferred: false, empty: true, timedOut: false, expiryTicked };
+      if (outcome === 'deferred') return { processed, deferred: true, empty: false, timedOut: true, expiryTicked };
+      processed++;
+    }
+    return { processed, deferred: false, empty: false, timedOut: false, expiryTicked };
+  });
 }
 
 /** Test and demo helper: drain the queue in this process. */
 export async function drainJobs(max = 50) {
-  const id = `inline-${randomUUID()}`;
-  for (let i = 0; i < max; i++) if (!(await processOne(id))) break;
+  await drainQueue({ max });
 }

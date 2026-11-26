@@ -74,7 +74,7 @@ export const replacementStatus = pgEnum('replacement_status', ['requested', 'app
 export const workCategory = pgEnum('work_category', ['training', 'screening', 'support', 'shortlisting', 'search', 'offer', 'admin']);
 export const notificationType = pgEnum('notification_type', ['intro_requested', 'intro_accepted', 'intro_declined', 'screening_updated', 'profile_ready', 'credit_low', 'hire_recorded', 'replacement_updated', 'system', 'welcome']);
 export const idemState = pgEnum('idem_state', ['processing', 'completed']);
-export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews', 'quality_check', 'shortlist_tick']);
+export const jobKind = pgEnum('job_kind', ['extract_cv', 'ask_question', 'build_profile', 'assess_match', 'expire_intros', 'delete_candidate', 'reconcile_wallet', 'seed_demo', 'generate_feedback', 'send_email', 'simulate_interviews', 'quality_check', 'shortlist_tick', 'interview_sweep']);
 export const hiringConversationStatus = pgEnum('hiring_conversation_status', ['active', 'saved', 'abandoned']);
 export const emailStatus = pgEnum('email_status', ['queued', 'recorded', 'sent', 'suppressed', 'failed']);
 export const jobStatus = pgEnum('job_status', ['queued', 'running', 'succeeded', 'failed', 'cancelled']);
@@ -892,7 +892,7 @@ export const rateLimitBuckets = pgTable('rate_limit_buckets', {
   count: integer('count').notNull().default(0),
 }, (t) => [uniqueIndex('rate_uq').on(t.scopeHash, t.action, t.windowStart)]);
 
-/** Private object storage fallback table used only when STORAGE_DRIVER=database (local/test). */
+/** Private file bytes when STORAGE_DRIVER=database. No object storage. Used locally, in tests, and on Vercel. */
 export const localObjects = pgTable('local_objects', {
   objectKey: text('object_key').primaryKey(),
   bytes: text('bytes_b64').notNull(),
