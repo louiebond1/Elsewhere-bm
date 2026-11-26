@@ -16,6 +16,9 @@ import { users, activityEvents } from '@/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+/** Covers the handler plus the post-response job drain. Hobby's ceiling is 300s; this stays short. */
+export const maxDuration = 60;
 
 const ipOf = (req: NextRequest) => (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'local';
 const maxAge = prototype.sessionHours * 3600;

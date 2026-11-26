@@ -1,12 +1,11 @@
-/** Durable job worker. Run with `npm run worker`. Uses the same services and policies as the web app. */
+/** Durable job worker. Run with `npm run worker`. Uses the same drain as the Vercel cron path. */
 import { loadEnv } from '../../scripts/load-env';
 loadEnv();
+process.env.JOB_RUNNER = 'worker';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { db, closeDb } from './db/client';
-import { processOne } from './services/worker-handlers';
-import { enqueue } from './services/jobs';
-import { getActiveDataset } from './services/context';
+import { drainQueue } from './services/worker-handlers';
 import { sentryOptions, setErrorReporter, reportError } from './monitoring';
 
 const workerId = `worker-${randomUUID().slice(0, 8)}`;
@@ -19,36 +18,6 @@ async function schemaReady() {
   } catch {
     return false;
   }
-}
-
-async function tickExpiry() {
-  const ds = await getActiveDataset();
-  if (!ds) return;
-  const bucket = Math.floor(Date.now() / 60000);
-  await enqueue({ tx: db(), datasetId: ds.id }, 'expire_intros', null, `expire:${bucket}`);
-  await enqueue({ tx: db(), datasetId: ds.id }, 'shortlist_tick', null, `shortlists:${bucket}`);
-}
-
-/**
- * Every 10 minutes: make sure everyone eligible for every live job has a current interview. Interviews also start
- * on their own when something changes; this sweep catches anything missed (e.g. jobs open before a deploy).
- */
-async function tickInterviews() {
-  const ds = await getActiveDataset();
-  if (!ds) return;
-  const { withTx, baseCtx } = await import('./services/context');
-  const { roles } = await import('./db/schema');
-  const { and, eq } = await import('drizzle-orm');
-  const { requestSimulations } = await import('./services/simulation');
-  const { recomputeRole } = await import('./services/matching');
-  const open = await db().select({ id: roles.id }).from(roles).where(and(eq(roles.datasetId, ds.id), eq(roles.status, 'open')));
-  let queued = 0;
-  const base = await baseCtx({ kind: 'system', label: 'interview-sweep' });
-  for (const r of open) {
-    await withTx(base, (ctx) => recomputeRole(ctx, r.id));
-    if ((await withTx(base, (ctx) => requestSimulations(ctx, r.id))).queued) queued++;
-  }
-  if (queued) console.log(`[worker] interview sweep: ${queued} of ${open.length} live jobs had people to interview`);
 }
 
 async function initMonitoring() {
@@ -73,13 +42,13 @@ async function main() {
   }
   console.log(`[worker] ${workerId} started`);
   let lastExpiry = 0;
-  let lastSweep = 0;
   while (!stopping) {
     try {
-      if (Date.now() - lastExpiry > 60000) { await tickExpiry(); lastExpiry = Date.now(); }
-      if (Date.now() - lastSweep > 600000) { lastSweep = Date.now(); await tickInterviews(); }
-      const did = await processOne(workerId);
-      if (!did) await new Promise((r) => setTimeout(r, 1000));
+      // The tick also queues the shortlist tick and, every 10 minutes, the interview sweep.
+      const tick = Date.now() - lastExpiry > 60_000;
+      const result = await drainQueue({ workerId, tickExpiry: tick, max: 20 });
+      if (tick) lastExpiry = Date.now();
+      if (result.processed === 0) await new Promise((r) => setTimeout(r, 1000));
     } catch (e) {
       console.error('[worker] loop error', (e as Error).message);
       reportError(e, { where: 'worker_loop' });

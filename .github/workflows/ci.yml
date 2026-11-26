@@ -1,0 +1,50 @@
+name: CI
+# Typecheck, lint, unit and integration tests (real Postgres), and a production build. Free on a public repository.
+on:
+  pull_request:
+  push:
+    branches: [main, simple-hiring]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Test-only values for a throwaway database. Not secrets.
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+      # The test setup (tests/integration/env.ts) reads this, not DATABASE_URL.
+      TEST_DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+      APP_MODE: demo
+      APP_URL: http://localhost:3000
+      STORAGE_DRIVER: database
+      AI_PROVIDER: fixture
+      DEMO_ACCESS_PASSWORD: ci-access-password-1
+      DEMO_LOGIN_PASSWORD: ci-login-password-1
+      SESSION_PEPPER: 1111111111111111111111111111111111111111111111111111111111111111
+      PUBLIC_REF_SECRET: 2222222222222222222222222222222222222222222222222222222222222222
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npx eslint . --quiet
+      - run: npm run db:migrate
+      - run: npx vitest run
+      - run: npm run build

@@ -13,6 +13,37 @@ function withEnv(extra: Record<string, string>) {
 }
 afterEach(() => { for (const k of Object.keys(process.env)) delete process.env[k]; Object.assign(process.env, snapshot); resetEnvCacheForTests(); });
 
+describe('storage, AI and cron environment', () => {
+  it('defaults to fixture AI and does not require object storage when files live in Postgres', () => {
+    withEnv({});
+    const e = env();
+    expect(e.STORAGE_DRIVER).toBe('database');
+    expect(e.AI_PROVIDER).toBe('fixture');
+    expect(e.S3_BUCKET).toBeUndefined();
+    expect(e.CRON_SECRET).toBeUndefined();
+  });
+  it('still requires the S3 settings when that driver is selected, and live AI when selected', () => {
+    withEnv({ STORAGE_DRIVER: 's3', AI_PROVIDER: 'live' });
+    let msg = '';
+    try { env(); } catch (e) { msg = (e as Error).message; }
+    expect(msg).toContain('S3_BUCKET');
+    expect(msg).toContain('ANTHROPIC_API_KEY');
+    expect(msg).not.toContain('postgres://');
+  });
+  it('keeps live AI when a key is set and accepts a cron secret', () => {
+    withEnv({ AI_PROVIDER: 'live', ANTHROPIC_API_KEY: 'sk-test', CRON_SECRET: 'c'.repeat(16) });
+    expect(env().AI_PROVIDER).toBe('live');
+    expect(env().CRON_SECRET).toBe('c'.repeat(16));
+  });
+  it('rejects a short cron secret by name only', () => {
+    withEnv({ CRON_SECRET: 'too-short' });
+    let msg = '';
+    try { env(); } catch (e) { msg = (e as Error).message; }
+    expect(msg).toContain('CRON_SECRET');
+    expect(msg).not.toContain('too-short');
+  });
+});
+
 describe('email and monitoring environment', () => {
   it('defaults to the fixture email driver with nothing else required', () => {
     withEnv({ EMAIL_REPLY_TO: '', SENTRY_DSN: '', EMAIL_ALLOWLIST: '' });

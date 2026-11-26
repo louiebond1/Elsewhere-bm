@@ -20,10 +20,10 @@ beforeEach(async () => { await ensureMigrated(); await db().execute(sql`delete f
 afterEach(() => { setProviderForTests(null); delete process.env.AI_MONTHLY_BUDGET_USD; });
 
 describe('monthly AI spend cap', () => {
-  it('is $5 by default and can be lowered but never raised by configuration', () => {
-    expect(monthlyBudgetMicroUsd()).toBe(5_000_000n);
+  it('is $10 by default (raised with the owner\'s approval) and can be lowered but never raised by configuration', () => {
+    expect(monthlyBudgetMicroUsd()).toBe(10_000_000n);
     process.env.AI_MONTHLY_BUDGET_USD = '50';
-    expect(monthlyBudgetMicroUsd()).toBe(5_000_000n);
+    expect(monthlyBudgetMicroUsd()).toBe(10_000_000n);
     process.env.AI_MONTHLY_BUDGET_USD = '0.5';
     expect(monthlyBudgetMicroUsd()).toBe(500_000n);
   });
