@@ -26,6 +26,8 @@ jobs:
     env:
       # Test-only values for a throwaway database. Not secrets.
       DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+      # The test setup (tests/integration/env.ts) reads this, not DATABASE_URL.
+      TEST_DATABASE_URL: postgres://ci:ci@localhost:5432/ci
       APP_MODE: demo
       APP_URL: http://localhost:3000
       STORAGE_DRIVER: database
