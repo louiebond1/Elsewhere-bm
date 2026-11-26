@@ -10,6 +10,7 @@
     "dev": "next dev",
     "worker:dev": "tsx watch --conditions=react-server src/server/worker.ts",
     "build": "next build",
+    "vercel-build": "tsx --conditions=react-server scripts/migrate.ts && next build",
     "start": "node scripts/start.mjs",
     "worker": "tsx --conditions=react-server src/server/worker.ts",
     "db:generate": "drizzle-kit generate",

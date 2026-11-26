@@ -1,5 +1,17 @@
-/** CV text extraction. No external resource fetching, page and character limits enforced. */
+/** CV text extraction. No external resource fetching, page and character limits enforced.
+ *  pdf.js legacy build runs in Node, including Vercel. Only text is read (no page render),
+ *  so a missing canvas polyfill does not block extraction. Standard fonts are loaded from disk.
+ */
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { prototype } from '../../config/prototype';
+
+const require = createRequire(import.meta.url);
+
+function standardFontDataUrl() {
+  const root = dirname(require.resolve('pdfjs-dist/package.json'));
+  return join(root, 'standard_fonts') + '/';
+}
 
 export class ExtractionError extends Error {
   constructor(public code: string) {
@@ -11,7 +23,18 @@ export async function extractPdfText(bytes: Buffer): Promise<string> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   let doc;
   try {
-    doc = await pdfjs.getDocument({ data: new Uint8Array(bytes), disableFontFace: true, useSystemFonts: false, stopAtErrors: true } as Parameters<typeof pdfjs.getDocument>[0]).promise;
+    doc = await pdfjs.getDocument({
+      data: new Uint8Array(bytes),
+      disableFontFace: true,
+      useSystemFonts: false,
+      stopAtErrors: true,
+      verbosity: 0,
+      useWasm: false,
+      disableRange: true,
+      disableStream: true,
+      disableAutoFetch: true,
+      standardFontDataUrl: standardFontDataUrl(),
+    } as Parameters<typeof pdfjs.getDocument>[0]).promise;
   } catch (e) {
     if ((e as { name?: string }).name === 'PasswordException') throw new ExtractionError('encrypted');
     throw new ExtractionError('unreadable');

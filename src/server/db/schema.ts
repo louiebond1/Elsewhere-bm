@@ -764,7 +764,7 @@ export const rateLimitBuckets = pgTable('rate_limit_buckets', {
   count: integer('count').notNull().default(0),
 }, (t) => [uniqueIndex('rate_uq').on(t.scopeHash, t.action, t.windowStart)]);
 
-/** Private object storage fallback table used only when STORAGE_DRIVER=database (local/test). */
+/** Private file bytes when STORAGE_DRIVER=database. No object storage. Used locally, in tests, and on Vercel. */
 export const localObjects = pgTable('local_objects', {
   objectKey: text('object_key').primaryKey(),
   bytes: text('bytes_b64').notNull(),

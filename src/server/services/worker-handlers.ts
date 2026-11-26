@@ -7,7 +7,7 @@ import { validateExtraction } from '../ai/validate';
 import { extractPdfText, extractDocxText, ExtractionError } from '../lib/extract';
 import { storage } from './storage';
 import { withTx, getActiveDataset, type BaseCtx } from './context';
-import { claimJob } from './jobs';
+import { claimJob, enqueue } from './jobs';
 import { purgeCandidate } from './candidates';
 import { notify } from './audit';
 import { releaseHoldIfUnneeded } from './roles';
@@ -18,8 +18,28 @@ import { profileVersions } from '../db/schema';
 import { aiRuns } from '../db/schema';
 import { handleSendEmail } from '../email';
 import { reportError } from '../monitoring';
+import { drainBudgetExhausted, drainRemainingMs, runInDrain } from './drain-state';
 
 type JobRow = NonNullable<Awaited<ReturnType<typeof claimJob>>>;
+
+/** One live model call can be slow. Don't start one that would outlive this invocation. */
+const ASSESS_MIN_SLICE_MS = 12_000;
+
+/**
+ * Inline drain budget. The API route caps the whole invocation at 60s, which also
+ * covers work done before the response. Hobby's platform ceiling is 300s.
+ */
+export const INLINE_DRAIN_BUDGET_MS = 20_000;
+/** Cron drain budget. Under the 2-minute job lease and the 60s route cap. */
+export const CRON_DRAIN_BUDGET_MS = 50_000;
+
+/** The invocation is out of time. The job returns to the queue and does not spend a retry. */
+export class JobDeferred extends Error {
+  constructor() {
+    super('deferred');
+    this.name = 'JobDeferred';
+  }
+}
 
 async function handleExtractCv(base: BaseCtx, job: JobRow) {
   const [f] = await db().select().from(files).where(eq(files.id, job.subject_id!));
@@ -103,6 +123,7 @@ async function handleAssessRole(base: BaseCtx, job: JobRow) {
   const pending = await pairsAwaitingAssessment({ tx: db() }, roleId);
   let failures = 0;
   for (const candidateId of pending.slice(0, 40)) {
+    if (drainRemainingMs() < ASSESS_MIN_SLICE_MS) throw new JobDeferred();
     const prepared = await assessmentInput({ tx: db() }, roleId, candidateId);
     if (!prepared || !prepared.input.evidence.length) continue;
     try {
@@ -150,17 +171,21 @@ export async function runJob(base: BaseCtx, job: JobRow) {
   }
 }
 
-/** Claims and runs one job. Returns false when the queue is empty. */
-export async function processOne(workerId: string): Promise<boolean> {
+/** Claims and runs one job. `empty` means the queue has nothing runnable. */
+export async function processOne(workerId: string): Promise<'ran' | 'empty' | 'deferred'> {
   const ds = await getActiveDataset();
-  if (!ds || ds.maintenance) return false;
+  if (!ds || ds.maintenance) return 'empty';
   const job = await claimJob(db(), workerId, ds.id);
-  if (!job) return false;
+  if (!job) return 'empty';
   const base: BaseCtx = { datasetId: ds.id, generation: ds.generation, now: ds.businessNow ?? new Date(), actor: { kind: 'system', label: 'worker' } };
   try {
     await runJob(base, job);
     await db().update(jobs).set({ status: 'succeeded', lockedBy: null, leaseExpiresAt: null, errorCode: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
   } catch (e) {
+    if (e instanceof JobDeferred) {
+      await db().update(jobs).set({ status: 'queued', availableAt: new Date(), lockedBy: null, leaseExpiresAt: null, attempts: Math.max(0, job.attempts - 1), errorCode: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
+      return 'deferred';
+    }
     const code = e instanceof AiFailure ? e.code : e instanceof ExtractionError ? e.code : 'job_error';
     const retryable = e instanceof AiFailure ? e.retryable : !(e instanceof ExtractionError);
     const again = retryable && job.attempts < 3;
@@ -168,11 +193,51 @@ export async function processOne(workerId: string): Promise<boolean> {
     if (process.env.LOG_LEVEL === 'debug') console.error(`[worker] job ${job.kind} failed: ${code}`);
     if (!again) reportError(new Error(`job_failed:${job.kind}:${code}`), { where: 'job', kind: job.kind, code });
   }
+  return 'ran';
+}
+
+/** Enqueues the per-minute introduction and contract expiry job for the active dataset. */
+export async function tickExpiry(): Promise<boolean> {
+  const ds = await getActiveDataset();
+  if (!ds) return false;
+  const bucket = Math.floor(Date.now() / 60_000);
+  await enqueue({ tx: db(), datasetId: ds.id }, 'expire_intros', null, `expire:${bucket}`);
   return true;
+}
+
+export type DrainResult = {
+  processed: number;
+  deferred: boolean;
+  empty: boolean;
+  timedOut: boolean;
+  expiryTicked: boolean;
+};
+
+/**
+ * Runs the expiry tick (optional) and then jobs until the queue is empty, `max` is hit,
+ * or the time budget runs out. An infinite budget never stops early (local worker, tests).
+ */
+export async function drainQueue(opts: { budgetMs?: number; max?: number; tickExpiry?: boolean; workerId?: string } = {}): Promise<DrainResult> {
+  const budgetMs = opts.budgetMs ?? Number.POSITIVE_INFINITY;
+  const max = opts.max ?? 50;
+  const deadline = Date.now() + budgetMs;
+  const workerId = opts.workerId ?? `inline-${randomUUID().slice(0, 8)}`;
+  return runInDrain(deadline, async () => {
+    let expiryTicked = false;
+    if (opts.tickExpiry) expiryTicked = await tickExpiry();
+    let processed = 0;
+    for (let i = 0; i < max; i++) {
+      if (drainBudgetExhausted()) return { processed, deferred: false, empty: false, timedOut: true, expiryTicked };
+      const outcome = await processOne(workerId);
+      if (outcome === 'empty') return { processed, deferred: false, empty: true, timedOut: false, expiryTicked };
+      if (outcome === 'deferred') return { processed, deferred: true, empty: false, timedOut: true, expiryTicked };
+      processed++;
+    }
+    return { processed, deferred: false, empty: false, timedOut: false, expiryTicked };
+  });
 }
 
 /** Test and demo helper: drain the queue in this process. */
 export async function drainJobs(max = 50) {
-  const id = `inline-${randomUUID()}`;
-  for (let i = 0; i < max; i++) if (!(await processOne(id))) break;
+  await drainQueue({ max });
 }
