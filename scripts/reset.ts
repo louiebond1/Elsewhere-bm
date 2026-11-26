@@ -1,5 +1,7 @@
 import { loadEnv } from './load-env';
 loadEnv();
+import { preferDirectDatabaseUrl } from './direct-url';
+preferDirectDatabaseUrl();
 import { closeDb } from '../src/server/db/client';
 import { resetDemo } from '../src/server/services/demo';
 

@@ -1,5 +1,7 @@
 import { loadEnv } from './load-env';
 loadEnv();
+import { preferDirectDatabaseUrl } from './direct-url';
+preferDirectDatabaseUrl();
 import { sql } from 'drizzle-orm';
 import { db, closeDb } from '../src/server/db/client';
 import { getActiveDataset } from '../src/server/services/context';

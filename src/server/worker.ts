@@ -1,12 +1,11 @@
-/** Durable job worker. Run with `npm run worker`. Uses the same services and policies as the web app. */
+/** Durable job worker. Run with `npm run worker`. Uses the same drain as the Vercel cron path. */
 import { loadEnv } from '../../scripts/load-env';
 loadEnv();
+process.env.JOB_RUNNER = 'worker';
 import { randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { db, closeDb } from './db/client';
-import { processOne } from './services/worker-handlers';
-import { enqueue } from './services/jobs';
-import { getActiveDataset } from './services/context';
+import { drainQueue } from './services/worker-handlers';
 import { sentryOptions, setErrorReporter, reportError } from './monitoring';
 
 const workerId = `worker-${randomUUID().slice(0, 8)}`;
@@ -19,13 +18,6 @@ async function schemaReady() {
   } catch {
     return false;
   }
-}
-
-async function tickExpiry() {
-  const ds = await getActiveDataset();
-  if (!ds) return;
-  const bucket = Math.floor(Date.now() / 60000);
-  await enqueue({ tx: db(), datasetId: ds.id }, 'expire_intros', null, `expire:${bucket}`);
 }
 
 async function initMonitoring() {
@@ -52,9 +44,10 @@ async function main() {
   let lastExpiry = 0;
   while (!stopping) {
     try {
-      if (Date.now() - lastExpiry > 60000) { await tickExpiry(); lastExpiry = Date.now(); }
-      const did = await processOne(workerId);
-      if (!did) await new Promise((r) => setTimeout(r, 1000));
+      const tick = Date.now() - lastExpiry > 60_000;
+      const result = await drainQueue({ workerId, tickExpiry: tick, max: 20 });
+      if (tick) lastExpiry = Date.now();
+      if (result.processed === 0) await new Promise((r) => setTimeout(r, 1000));
     } catch (e) {
       console.error('[worker] loop error', (e as Error).message);
       reportError(e, { where: 'worker_loop' });

@@ -1,8 +1,20 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { jobs } from '../db/schema';
 import type { Ctx } from './context';
+import { inDrain } from './drain-state';
 
 type JobKind = (typeof jobs.$inferInsert)['kind'];
+
+/** Registers a post-response drain when a job is newly queued. No-op for the worker, tests, and an in-flight drain. */
+async function notifyEnqueued() {
+  if (process.env.JOB_RUNNER === 'worker' || process.env.VITEST || inDrain()) return;
+  try {
+    const { scheduleBackgroundDrain } = await import('./background');
+    scheduleBackgroundDrain();
+  } catch {
+    // Scripts have no Next.js request scope. A failed schedule must not fail the enqueue.
+  }
+}
 
 /** One deduplicated job per operation. Payload holds identifiers only. */
 export async function enqueue(ctx: Pick<Ctx, 'tx' | 'datasetId'>, kind: JobKind, subjectId: string | null, dedupeKey: string, payload: Record<string, string | number | boolean | null> = {}) {
@@ -10,11 +22,13 @@ export async function enqueue(ctx: Pick<Ctx, 'tx' | 'datasetId'>, kind: JobKind,
   if (existing) {
     if (existing.status === 'failed' || existing.status === 'cancelled') {
       const [u] = await ctx.tx.update(jobs).set({ status: 'queued', availableAt: new Date(), errorCode: null, updatedAt: new Date() }).where(eq(jobs.id, existing.id)).returning();
+      await notifyEnqueued();
       return u;
     }
     return existing;
   }
   const [j] = await ctx.tx.insert(jobs).values({ datasetId: ctx.datasetId, kind, subjectId, dedupeKey, payload }).returning();
+  await notifyEnqueued();
   return j;
 }
 

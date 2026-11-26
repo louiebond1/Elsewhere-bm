@@ -34,6 +34,8 @@ const schema = z.object({
   EMAIL_ALLOWLIST: opt(z.string()),
   SENTRY_DSN: opt(z.string().url()),
   SENTRY_ENVIRONMENT: opt(z.string()),
+  /** Protects POST /api/cron/drain. Unset disables the route (401). Not required for local or Railway. */
+  CRON_SECRET: opt(z.string().min(16, 'must be at least 16 characters')),
 }).superRefine((v, ctx) => {
   if (v.SESSION_PEPPER === v.PUBLIC_REF_SECRET) ctx.addIssue({ code: 'custom', path: ['PUBLIC_REF_SECRET'], message: 'must differ from SESSION_PEPPER' });
   if (v.DEMO_ACCESS_PASSWORD === v.DEMO_LOGIN_PASSWORD) ctx.addIssue({ code: 'custom', path: ['DEMO_ACCESS_PASSWORD'], message: 'must differ from DEMO_LOGIN_PASSWORD' });
